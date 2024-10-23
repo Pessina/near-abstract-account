@@ -2348,6 +2348,7 @@ dependencies = [
  "near-sdk",
  "near-workspaces",
  "p256",
+ "schemars",
  "serde_json",
  "sha2",
  "tokio",
