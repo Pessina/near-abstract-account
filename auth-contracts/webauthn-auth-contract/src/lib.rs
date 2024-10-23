@@ -9,16 +9,16 @@ use p256::{
 use sha2::{Digest, Sha256};
 
 #[near(contract_state)]
-pub struct Contract {}
+pub struct WebAuthnAuthContract {}
 
-impl Default for Contract {
+impl Default for WebAuthnAuthContract {
     fn default() -> Self {
         Self {}
     }
 }
 
 #[near]
-impl Contract {
+impl WebAuthnAuthContract {
     /// Validates a WebAuthn passkey signature using the P-256 elliptic curve.
     pub fn validate_p256_signature(
         &self,
@@ -71,7 +71,7 @@ mod tests {
 
     #[test]
     fn validate_signature_should_succeed() {
-        let contract = Contract::default();
+        let contract = WebAuthnAuthContract::default();
         let public_key = get_public_key();
         let webauthn_data = WebAuthnData {
             signature: Signature {
@@ -87,7 +87,7 @@ mod tests {
 
     #[test]
     fn validate_signature_should_fail() {
-        let contract = Contract::default();
+        let contract = WebAuthnAuthContract::default();
         let public_key = get_public_key();
         let webauthn_data = WebAuthnData {
             signature: Signature {
