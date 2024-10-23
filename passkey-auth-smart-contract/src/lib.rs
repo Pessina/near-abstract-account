@@ -20,12 +20,16 @@ impl Default for Contract {
 #[near]
 impl Contract {
     /// Validates a WebAuthn passkey signature using the P-256 elliptic curve.
-    pub fn validate_p256_signature(&self, webauthn_data: WebAuthnData) -> bool {
+    pub fn validate_p256_signature(
+        &self,
+        webauthn_data: WebAuthnData,
+        public_key: PublicKey,
+    ) -> bool {
         let signed_data = self.prepare_signed_data(
             &webauthn_data.authenticator_data,
             &webauthn_data.client_data,
         );
-        let public_key = self.import_public_key(webauthn_data.public_key);
+        let public_key = self.import_public_key(public_key);
         let signature = self.prepare_signature_array(webauthn_data.signature);
 
         public_key.verify(&signed_data, &signature).is_ok()
@@ -58,14 +62,18 @@ impl Contract {
 mod tests {
     use super::*;
 
+    fn get_public_key() -> PublicKey {
+        PublicKey {
+            x: "13aabc191d749b6fe278745db9b17741ad2732a67073a25b7a25230fc10dad63".to_string(),
+            y: "1eb43bbb8add0bfa8c99d65a37c1e0009ba908e6cd61b69705b4619fa2a0bb5e".to_string(),
+        }
+    }
+
     #[test]
     fn validate_signature_should_succeed() {
         let contract = Contract::default();
+        let public_key = get_public_key();
         let webauthn_data = WebAuthnData {
-            public_key: PublicKey {
-                x: "13aabc191d749b6fe278745db9b17741ad2732a67073a25b7a25230fc10dad63".to_string(),
-                y: "1eb43bbb8add0bfa8c99d65a37c1e0009ba908e6cd61b69705b4619fa2a0bb5e".to_string(),
-            },
             signature: Signature {
                 r: "6bc8437ba86b6ebded1d4943828bf9e12c639eb21b7d96158741a3a82f9bbc65".to_string(),
                 s: "7b6202afb2b5543ca897a9f2036918afe874dac23e5f2ee527e63f01abbd53cb".to_string(),
@@ -74,17 +82,14 @@ mod tests {
             client_data: r#"{"type":"webauthn.get","challenge":"QXV0aGVudGljYXRlOjEyODAwNQ","origin":"http://localhost:3000","crossOrigin":false}"#.to_string(),
         };
 
-        assert!(contract.validate_p256_signature(webauthn_data));
+        assert!(contract.validate_p256_signature(webauthn_data, public_key));
     }
 
     #[test]
     fn validate_signature_should_fail() {
         let contract = Contract::default();
+        let public_key = get_public_key();
         let webauthn_data = WebAuthnData {
-            public_key: PublicKey {
-                x: "13aabc191d749b6fe278745db9b17741ad2732a67073a25b7a25230fc10dad63".to_string(),
-                y: "1eb43bbb8add0bfa8c99d65a37c1e0009ba908e6cd61b69705b4619fa2a0bb5e".to_string(),
-            },
             signature: Signature {
                 r: "fd3c8efd79cf8ee65f47f64b0109699c0b06819319a4007cb4ceb5cbb113852d".to_string(),
                 s: "69fc59fde3f234412c8d01ae1f11976a562efc74c81ff028ec85334b5d531af3".to_string(),
@@ -93,6 +98,6 @@ mod tests {
             client_data: r#"{"type":"webauthn.get","challenge":"QXV0aGVudGljYXRlOjE0Mjk5OQ","origin":"http://localhost:3000","crossOrigin":false}"#.to_string(),
         };
 
-        assert!(!contract.validate_p256_signature(webauthn_data));
+        assert!(!contract.validate_p256_signature(webauthn_data, public_key));
     }
 }
