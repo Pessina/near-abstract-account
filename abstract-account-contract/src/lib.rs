@@ -26,7 +26,7 @@ impl Default for AbstractAccountContract {
 
 #[near]
 impl AbstractAccountContract {
-    #[init]
+    #[init(ignore_state)]
     pub fn new(owner: AccountId) -> Self {
         let mut this = Self {
             public_keys: LookupMap::new(b"p"),
@@ -92,23 +92,23 @@ impl AbstractAccountContract {
                     .expect("WebAuthn contract not set");
 
                 mods::external_contracts::webauthn_auth::ext(webauthn_contract.clone())
-                    .with_static_gas(Gas::from_tgas(5))
+                    .with_static_gas(Gas::from_tgas(300))
                     .validate_p256_signature(webauthn_data, public_key)
                     .then(
                         Self::ext(env::current_account_id())
-                            .with_static_gas(Gas::from_tgas(5))
+                            .with_static_gas(Gas::from_tgas(300))
                             .auth_callback(),
                     )
             }
             _ => Promise::new(env::current_account_id())
                 .then(
                     Self::ext(env::current_account_id())
-                        .with_static_gas(Gas::from_tgas(5))
+                        .with_static_gas(Gas::from_tgas(300))
                         .on_auth_failed(),
                 )
                 .then(
                     Self::ext(env::current_account_id())
-                        .with_static_gas(Gas::from_tgas(5))
+                        .with_static_gas(Gas::from_tgas(300))
                         .auth_callback(),
                 ),
         }
