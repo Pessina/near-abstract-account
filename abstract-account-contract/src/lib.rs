@@ -92,23 +92,23 @@ impl AbstractAccountContract {
                     .expect("WebAuthn contract not set");
 
                 mods::external_contracts::webauthn_auth::ext(webauthn_contract.clone())
-                    .with_static_gas(Gas::from_tgas(300))
+                    .with_static_gas(Gas::from_tgas(100))
                     .validate_p256_signature(webauthn_data, public_key)
                     .then(
                         Self::ext(env::current_account_id())
-                            .with_static_gas(Gas::from_tgas(300))
+                            .with_static_gas(Gas::from_tgas(100))
                             .auth_callback(),
                     )
             }
             _ => Promise::new(env::current_account_id())
                 .then(
                     Self::ext(env::current_account_id())
-                        .with_static_gas(Gas::from_tgas(300))
+                        .with_static_gas(Gas::from_tgas(100))
                         .on_auth_failed(),
                 )
                 .then(
                     Self::ext(env::current_account_id())
-                        .with_static_gas(Gas::from_tgas(300))
+                        .with_static_gas(Gas::from_tgas(100))
                         .auth_callback(),
                 ),
         }
