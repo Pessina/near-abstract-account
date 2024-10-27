@@ -15,23 +15,10 @@ pub struct Auth {
     pub auth_data: Value,
 }
 
-// -------- Should be imported from auth-contracts/webauthn-auth-contract/src/types.rs
+// Import types from external contracts
+use crate::mods::external_contracts::WebAuthnData;
 
-#[derive(Deserialize, Serialize, JsonSchema)]
-#[serde(crate = "near_sdk::serde")]
-pub struct Signature {
-    pub r: String,
-    pub s: String,
-}
-
-#[derive(Deserialize, Serialize, JsonSchema)]
-#[serde(crate = "near_sdk::serde")]
-pub struct WebAuthnData {
-    pub signature: Signature,
-    pub authenticator_data: String,
-    pub client_data: String,
-}
-
+// Define WebAuthnAuth struct using imported types
 #[derive(Deserialize, Serialize, JsonSchema)]
 #[serde(crate = "near_sdk::serde")]
 pub struct WebAuthnAuth {

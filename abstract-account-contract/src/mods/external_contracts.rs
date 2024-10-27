@@ -2,7 +2,8 @@ use near_sdk::ext_contract;
 use near_sdk::serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
 
-// TODO: those types should be imported from auth-contracts/webauthn-auth-contract/src/types.rs
+// TODO: Copied from auth-contracts/webauthn-auth-contract/src/types.rs, replace with a dependency
+
 #[derive(Deserialize, Serialize, JsonSchema)]
 #[serde(crate = "near_sdk::serde")]
 pub struct PublicKey {
@@ -24,9 +25,6 @@ pub struct WebAuthnData {
     pub authenticator_data: String,
     pub client_data: String,
 }
-
-pub const NO_DEPOSIT: u128 = 0;
-pub const XCC_SUCCESS: u64 = 1;
 
 #[ext_contract(webauthn_auth)]
 pub trait WebAuthnAuth {

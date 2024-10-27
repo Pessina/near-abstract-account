@@ -1,4 +1,4 @@
-mod types;
+pub mod types;
 
 use crate::types::{PublicKey, Signature, WebAuthnData};
 use near_sdk::near;

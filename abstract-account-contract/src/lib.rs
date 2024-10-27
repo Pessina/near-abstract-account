@@ -3,19 +3,23 @@ mod types;
 
 use crate::types::{UserOperation, WebAuthnAuth};
 use mods::external_contracts::{PublicKey, WebAuthnData};
-use near_sdk::near;
-use near_sdk::store::LookupSet;
+use near_sdk::store::LookupMap;
+use near_sdk::{env, near};
 use near_sdk::{AccountId, Gas, Promise};
 
 #[near(contract_state)]
 pub struct AbstractAccountContract {
-    public_keys: LookupSet<String>,
+    public_keys: LookupMap<String, bool>,
+    owner: AccountId,
+    auth_contracts: LookupMap<String, AccountId>,
 }
 
 impl Default for AbstractAccountContract {
     fn default() -> Self {
         Self {
-            public_keys: LookupSet::new(b"p"),
+            public_keys: LookupMap::new(b"p"),
+            owner: env::predecessor_account_id(),
+            auth_contracts: LookupMap::new(b"a"),
         }
     }
 }
@@ -23,18 +27,41 @@ impl Default for AbstractAccountContract {
 #[near]
 impl AbstractAccountContract {
     #[init]
-    pub fn new() -> Self {
-        Self {
-            public_keys: LookupSet::new(b"p"),
-        }
+    pub fn new(owner: AccountId) -> Self {
+        let mut this = Self {
+            public_keys: LookupMap::new(b"p"),
+            owner,
+            auth_contracts: LookupMap::new(b"a"),
+        };
+        this.auth_contracts.insert(
+            "webauthn".to_string(),
+            "webauthn-auth.testnet".parse().unwrap(),
+        );
+        this
+    }
+
+    #[private]
+    pub fn assert_owner(&self) {
+        assert_eq!(
+            env::predecessor_account_id(),
+            self.owner,
+            "Only the owner can perform this action"
+        );
     }
 
     pub fn add_public_key(&mut self, public_key: String) {
-        self.public_keys.insert(public_key);
+        self.assert_owner();
+        self.public_keys.insert(public_key, true);
     }
 
     pub fn has_public_key(&self, public_key: String) -> bool {
-        self.public_keys.contains(&public_key)
+        self.public_keys.contains_key(&public_key)
+    }
+
+    pub fn set_auth_contract(&mut self, auth_type: String, auth_contract_account_id: AccountId) {
+        self.assert_owner();
+        self.auth_contracts
+            .insert(auth_type, auth_contract_account_id);
     }
 
     #[payable]
@@ -44,7 +71,7 @@ impl AbstractAccountContract {
                 let webauthn_auth: WebAuthnAuth =
                     serde_json::from_str(&user_op.auth.auth_data.to_string()).unwrap();
 
-                if !self.public_keys.contains(&webauthn_auth.public_key) {
+                if !self.public_keys.contains_key(&webauthn_auth.public_key) {
                     near_sdk::env::panic_str("Public key not found");
                 }
 
@@ -59,17 +86,42 @@ impl AbstractAccountContract {
                     client_data: webauthn_auth.webauthn_data.client_data,
                 };
 
-                mods::external_contracts::webauthn_auth::ext(AccountId::new_unchecked(
-                    "webauthn-auth.near".to_string(),
-                ))
-                .with_static_gas(Gas::from_tgas(5))
-                .validate_p256_signature(webauthn_data, public_key)
-            }
-            _ => Promise::new(env::current_account_id()).then(
-                Self::ext(env::current_account_id())
+                let webauthn_contract = self
+                    .auth_contracts
+                    .get("webauthn")
+                    .expect("WebAuthn contract not set");
+
+                mods::external_contracts::webauthn_auth::ext(webauthn_contract.clone())
                     .with_static_gas(Gas::from_tgas(5))
-                    .on_auth_failed(),
-            ),
+                    .validate_p256_signature(webauthn_data, public_key)
+                    .then(
+                        Self::ext(env::current_account_id())
+                            .with_static_gas(Gas::from_tgas(5))
+                            .auth_callback(),
+                    )
+            }
+            _ => Promise::new(env::current_account_id())
+                .then(
+                    Self::ext(env::current_account_id())
+                        .with_static_gas(Gas::from_tgas(5))
+                        .on_auth_failed(),
+                )
+                .then(
+                    Self::ext(env::current_account_id())
+                        .with_static_gas(Gas::from_tgas(5))
+                        .auth_callback(),
+                ),
+        }
+    }
+
+    #[private]
+    pub fn auth_callback(
+        &self,
+        #[callback_result] auth_result: Result<bool, near_sdk::PromiseError>,
+    ) {
+        match auth_result {
+            Ok(result) => near_sdk::log!("Auth result: {}", result),
+            Err(e) => near_sdk::log!("Auth failed with error: {:?}", e),
         }
     }
 
