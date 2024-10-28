@@ -1,5 +1,6 @@
 use near_sdk::ext_contract;
 use near_sdk::serde::{Deserialize, Serialize};
+use near_sdk::Gas;
 use schemars::JsonSchema;
 
 // TODO: Copied from auth-contracts/webauthn-auth-contract/src/types.rs, replace with a dependency
@@ -25,6 +26,8 @@ pub struct WebAuthnData {
     pub authenticator_data: String,
     pub client_data: String,
 }
+
+pub const VALIDATE_P256_SIGNATURE_GAS: Gas = Gas::from_tgas(30);
 
 #[ext_contract(webauthn_auth)]
 pub trait WebAuthnAuth {

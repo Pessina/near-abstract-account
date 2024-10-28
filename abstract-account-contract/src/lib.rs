@@ -2,10 +2,12 @@ mod mods;
 mod types;
 
 use crate::types::{UserOperation, WebAuthnAuth};
-use mods::external_contracts::{PublicKey, WebAuthnData};
+use mods::external_contracts::{PublicKey, WebAuthnData, VALIDATE_P256_SIGNATURE_GAS};
 use near_sdk::store::LookupMap;
 use near_sdk::{env, near};
 use near_sdk::{AccountId, Gas, Promise};
+
+const AUTH_CALLBACK_GAS: Gas = Gas::from_tgas(3);
 
 #[near(contract_state)]
 pub struct AbstractAccountContract {
@@ -28,16 +30,11 @@ impl Default for AbstractAccountContract {
 impl AbstractAccountContract {
     #[init(ignore_state)]
     pub fn new(owner: AccountId) -> Self {
-        let mut this = Self {
+        Self {
             public_keys: LookupMap::new(b"p"),
             owner,
             auth_contracts: LookupMap::new(b"a"),
-        };
-        this.auth_contracts.insert(
-            "webauthn".to_string(),
-            "webauthn-auth.testnet".parse().unwrap(),
-        );
-        this
+        }
     }
 
     #[private]
@@ -58,7 +55,7 @@ impl AbstractAccountContract {
         self.public_keys.contains_key(&public_key)
     }
 
-    pub fn set_auth_contract(&mut self, auth_type: String, auth_contract_account_id: AccountId) {
+    pub fn add_auth_contract(&mut self, auth_type: String, auth_contract_account_id: AccountId) {
         self.assert_owner();
         self.auth_contracts
             .insert(auth_type, auth_contract_account_id);
@@ -92,25 +89,15 @@ impl AbstractAccountContract {
                     .expect("WebAuthn contract not set");
 
                 mods::external_contracts::webauthn_auth::ext(webauthn_contract.clone())
-                    .with_static_gas(Gas::from_tgas(100))
+                    .with_static_gas(VALIDATE_P256_SIGNATURE_GAS)
                     .validate_p256_signature(webauthn_data, public_key)
                     .then(
                         Self::ext(env::current_account_id())
-                            .with_static_gas(Gas::from_tgas(100))
+                            .with_static_gas(AUTH_CALLBACK_GAS)
                             .auth_callback(),
                     )
             }
-            _ => Promise::new(env::current_account_id())
-                .then(
-                    Self::ext(env::current_account_id())
-                        .with_static_gas(Gas::from_tgas(100))
-                        .on_auth_failed(),
-                )
-                .then(
-                    Self::ext(env::current_account_id())
-                        .with_static_gas(Gas::from_tgas(100))
-                        .auth_callback(),
-                ),
+            _ => near_sdk::env::panic_str("No supported auth method"),
         }
     }
 
