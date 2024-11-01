@@ -16,13 +16,13 @@ export interface UserOperation {
 }
 
 export interface WebAuthnAuth {
-  public_key: string;
+  compressed_public_key: string;
   webauthn_data: WebAuthnData;
 }
 
 type AbstractContract = Contract & {
-  add_public_key: (args: { public_key: string }) => Promise<void>;
-  has_public_key: (args: { public_key: string }) => Promise<boolean>;
+  add_public_key: (args: { compressed_public_key: string }) => Promise<void>;
+  has_public_key: (args: { compressed_public_key: string }) => Promise<boolean>;
   add_auth_contract: (args: { auth_type: string, auth_contract_account_id: string }) => Promise<void>;
   auth: (args: { user_op: UserOperation }, gas: string) => Promise<void>;
 }
@@ -48,12 +48,12 @@ export class AbstractAccountContract {
     ) as unknown as AbstractContract;
   }
 
-  async addPublicKey(publicKey: string): Promise<void> {
-    return await this.contract.add_public_key({ public_key: publicKey });
+  async addPublicKey(compressedPublicKey: string): Promise<void> {
+    return await this.contract.add_public_key({ compressed_public_key: compressedPublicKey });
   }
 
-  async hasPublicKey(publicKey: string): Promise<boolean> {
-    return await this.contract.has_public_key({ public_key: publicKey });
+  async hasPublicKey(compressedPublicKey: string): Promise<boolean> {
+    return await this.contract.has_public_key({ compressed_public_key: compressedPublicKey });
   }
 
   async addAuthContract(authType: string, authContractAccountId: string): Promise<void> {

@@ -1,7 +1,7 @@
 import { AsnParser } from "@peculiar/asn1-schema";
 import { ECDSASigValue } from "@peculiar/asn1-ecc";
 import { toHex } from "viem";
-import { P256Signature } from "./WebAuthn/types";
+import { P256Signature } from "./types";
 
 export function shouldRemoveLeadingZero(bytes: Uint8Array): boolean {
   return bytes[0] === 0x0 && (bytes[1] & (1 << 7)) !== 0;

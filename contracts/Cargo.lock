@@ -21,6 +21,7 @@ dependencies = [
  "near-workspaces",
  "schemars",
  "serde_json",
+ "sha2",
  "tokio",
 ]
 
@@ -3856,6 +3857,7 @@ dependencies = [
  "getrandom",
  "hex",
  "interfaces",
+ "lazy_static",
  "near-sdk",
  "near-workspaces",
  "p256",

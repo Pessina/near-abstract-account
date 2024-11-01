@@ -1,7 +1,7 @@
 use near_sdk::serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
 
-#[derive(Deserialize, Serialize, JsonSchema)]
+#[derive(Deserialize, Serialize, JsonSchema, Debug, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub struct PublicKey {
     pub x: String,
