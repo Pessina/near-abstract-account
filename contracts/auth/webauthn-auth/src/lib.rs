@@ -17,12 +17,7 @@ impl Default for WebAuthnAuthContract {
 
 #[near]
 impl WebAuthnAuthContract {
-    #[init(ignore_state)]
-    pub fn new() -> Self {
-        Self {}
-    }
-
-    /// Validates a WebAuthn passkey signature using the P-256 elliptic curve.
+    // Validates a WebAuthn passkey signature using the P-256 elliptic curve.
     pub fn validate_p256_signature(
         &self,
         webauthn_data: WebAuthnData,
