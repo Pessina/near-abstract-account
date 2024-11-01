@@ -2,7 +2,8 @@ mod mods;
 mod types;
 
 use crate::types::{UserOperation, WebAuthnAuth};
-use mods::external_contracts::{PublicKey, WebAuthnData, VALIDATE_P256_SIGNATURE_GAS};
+use interfaces::webauthn_auth::{PublicKey, WebAuthnData};
+use mods::external_contracts::VALIDATE_P256_SIGNATURE_GAS;
 use near_sdk::store::LookupMap;
 use near_sdk::{env, near};
 use near_sdk::{AccountId, Gas, Promise};

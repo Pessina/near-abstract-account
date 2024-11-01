@@ -1,5 +1,9 @@
 [workspace]
-members = ["abstract-account-contract", "auth-contracts/webauthn-auth-contract"]
+members = [
+  "abstract-account-contract",
+  "auth-contracts/webauthn-auth-contract",
+  "interfaces",
+]
 
 [workspace.dependencies]
 near-sdk = "5.5.0"

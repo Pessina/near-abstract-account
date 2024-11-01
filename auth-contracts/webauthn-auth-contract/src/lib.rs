@@ -1,6 +1,4 @@
-pub mod types;
-
-use crate::types::{PublicKey, Signature, WebAuthnData};
+use interfaces::webauthn_auth::{PublicKey, Signature, WebAuthnData};
 use near_sdk::near;
 use p256::{
     ecdsa::{signature::Verifier, Signature as P256Signature, VerifyingKey},

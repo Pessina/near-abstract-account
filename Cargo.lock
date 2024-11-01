@@ -16,6 +16,7 @@ dependencies = [
 name = "abstract-account-contract"
 version = "0.1.0"
 dependencies = [
+ "interfaces",
  "near-sdk",
  "near-workspaces",
  "schemars",
@@ -1408,6 +1409,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a0c10553d664a4d0bcff9f4215d0aac67a639cc68ef660840afe309b807bc9f5"
 dependencies = [
  "generic-array",
+]
+
+[[package]]
+name = "interfaces"
+version = "0.1.0"
+dependencies = [
+ "near-sdk",
+ "schemars",
 ]
 
 [[package]]
@@ -3861,6 +3870,7 @@ version = "0.1.0"
 dependencies = [
  "getrandom",
  "hex",
+ "interfaces",
  "near-sdk",
  "near-workspaces",
  "p256",

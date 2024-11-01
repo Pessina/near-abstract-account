@@ -1,3 +1,4 @@
+use interfaces::webauthn_auth::WebAuthnData;
 use near_sdk::serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
 use serde_json::Value;
@@ -14,9 +15,6 @@ pub struct Auth {
     pub auth_type: String,
     pub auth_data: Value,
 }
-
-// Import types from external contracts
-use crate::mods::external_contracts::WebAuthnData;
 
 // Define WebAuthnAuth struct using imported types
 #[derive(Deserialize, Serialize, JsonSchema)]
