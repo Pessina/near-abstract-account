@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { WebAuthn } from "../lib/auth";
 import { AbstractAccountContract } from "../lib/contract/AbstractAccountContract";
 import initNear from "../lib/near";
+import { Input } from "../components/ui/input";
+import { Button } from "../components/ui/button";
 
 export default function Home() {
   const [username, setUsername] = useState("");
@@ -136,46 +138,44 @@ export default function Home() {
       <div className="space-y-6 max-w-md">
         <div>
           <label className="block mb-2">Username:</label>
-          <input
+          <Input
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="w-full p-2 border rounded"
           />
         </div>
 
         <div>
           <label className="block mb-2">Auth Contract Address:</label>
           <div className="flex gap-2">
-            <input
+            <Input
               type="text"
               value={authContractAddress}
               onChange={(e) => setAuthContractAddress(e.target.value)}
-              className="flex-1 p-2 border rounded"
               placeholder="Enter auth contract address"
             />
-            <button
+            <Button
               onClick={handleAddAuthContract}
-              className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600"
+              variant="secondary"
             >
               Add Auth Contract
-            </button>
+            </Button>
           </div>
         </div>
 
         <div className="space-x-4">
-          <button
+          <Button
             onClick={handleRegister}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            variant="default"
           >
             Register
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleAuthenticate}
-            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+            variant="secondary"
           >
             Authenticate
-          </button>
+          </Button>
         </div>
 
         {publicKey && (
