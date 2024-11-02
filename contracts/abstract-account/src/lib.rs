@@ -7,14 +7,13 @@ use mods::external_contracts::VALIDATE_P256_SIGNATURE_GAS;
 use near_sdk::store::LookupMap;
 use near_sdk::{env, near};
 use near_sdk::{AccountId, Gas, Promise};
-use sha2::{Digest, Sha256};
 
 const AUTH_CALLBACK_GAS: Gas = Gas::from_tgas(3);
 
 #[near(contract_state)]
 pub struct AbstractAccountContract {
-    public_keys: LookupMap<Vec<u8>, bool>,
     owner: AccountId,
+    public_keys: LookupMap<String, String>, // key_id -> compressed_public_key
     auth_contracts: LookupMap<String, AccountId>,
 }
 
@@ -48,24 +47,16 @@ impl AbstractAccountContract {
         );
     }
 
-    fn hash_compressed_public_key(compressed_public_key: &str) -> Vec<u8> {
-        let mut hasher = Sha256::new();
-        hasher.update(&compressed_public_key);
-        hasher.finalize().to_vec()
-    }
-
-    pub fn add_public_key(&mut self, compressed_public_key: String) {
+    pub fn add_public_key(&mut self, key_id: String, compressed_public_key: String) {
         self.assert_owner();
-        let key_hash = Self::hash_compressed_public_key(&compressed_public_key);
-        self.public_keys.insert(key_hash, true);
+        self.public_keys.insert(key_id, compressed_public_key);
     }
 
-    pub fn has_public_key(&self, compressed_public_key: String) -> bool {
-        let key_hash = Self::hash_compressed_public_key(&compressed_public_key);
-        self.public_keys.contains_key(&key_hash)
+    pub fn get_public_key(&self, key_id: String) -> Option<String> {
+        self.public_keys.get(&key_id).cloned()
     }
 
-    pub fn add_auth_contract(&mut self, auth_type: String, auth_contract_account_id: AccountId) {
+    pub fn set_auth_contract(&mut self, auth_type: String, auth_contract_account_id: AccountId) {
         self.assert_owner();
         self.auth_contracts
             .insert(auth_type, auth_contract_account_id);
@@ -78,11 +69,9 @@ impl AbstractAccountContract {
                 let webauthn_auth: WebAuthnAuth =
                     serde_json::from_str(&user_op.auth.auth_data.to_string()).unwrap();
 
-                let key_hash =
-                    Self::hash_compressed_public_key(&webauthn_auth.compressed_public_key);
-                if !self.public_keys.contains_key(&key_hash) {
-                    near_sdk::env::panic_str("Public key not found");
-                }
+                let compressed_public_key = self
+                    .get_public_key(webauthn_auth.public_key_id)
+                    .expect("Public key not found");
 
                 let webauthn_data = WebAuthnData {
                     signature: webauthn_auth.webauthn_data.signature,
@@ -97,7 +86,7 @@ impl AbstractAccountContract {
 
                 mods::external_contracts::webauthn_auth::ext(webauthn_contract.clone())
                     .with_static_gas(VALIDATE_P256_SIGNATURE_GAS)
-                    .validate_p256_signature(webauthn_data, webauthn_auth.compressed_public_key)
+                    .validate_p256_signature(webauthn_data, compressed_public_key)
                     .then(
                         Self::ext(env::current_account_id())
                             .with_static_gas(AUTH_CALLBACK_GAS)

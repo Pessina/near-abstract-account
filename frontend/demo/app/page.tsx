@@ -9,7 +9,6 @@ import { Button } from "../components/ui/button";
 
 export default function Home() {
   const [username, setUsername] = useState("");
-  const [publicKey, setPublicKey] = useState("");
   const [status, setStatus] = useState("");
   const [authContractAddress, setAuthContractAddress] = useState("");
   const [isWebAuthnSupported, setIsWebAuthnSupported] = useState<boolean | null>(null);
@@ -50,7 +49,7 @@ export default function Home() {
           return;
         }
 
-        await contract.addAuthContract("webauthn", authContractAddress);
+        await contract.setAuthContract("webauthn", authContractAddress);
         setStatus("Auth contract added successfully!");
       } catch (error) {
         console.error(error);
@@ -75,16 +74,13 @@ export default function Home() {
           return;
         }
 
-        // Combine x and y coordinates for the public key
-        setPublicKey(credential.compressedPublicKey);
-
         // Add public key to contract
         if (!contract) {
           setStatus("Contract not initialized");
           return;
         }
 
-        await contract.addPublicKey(credential.compressedPublicKey);
+        await contract.addPublicKey(credential.rawId, credential.compressedPublicKey);
         setStatus("Registration successful!");
 
       } catch (error) {
@@ -109,26 +105,12 @@ export default function Home() {
           return;
         }
 
-        console.log({
-          auth: {
-            auth_type: "webauthn",
-            auth_data: {
-              compressed_public_key: publicKey,
-              webauthn_data: {
-                signature: credential.signature,
-                authenticator_data: credential.authenticatorData,
-                client_data: JSON.stringify(credential.clientData)
-              }
-            }
-          }
-        })
-
         // Call contract auth method
         await contract.auth({
           auth: {
             auth_type: "webauthn",
             auth_data: {
-              compressed_public_key: publicKey,
+              public_key_id: credential.rawId,
               webauthn_data: {
                 signature: credential.signature,
                 authenticator_data: credential.authenticatorData,
@@ -202,14 +184,6 @@ export default function Home() {
             Authenticate
           </Button>
         </div>
-
-        {publicKey && (
-          <div className="mt-4">
-            <h2 className="font-bold">Generated Public Key:</h2>
-            <p className="break-all bg-gray-100 p-2 rounded">{publicKey}</p>
-          </div>
-        )}
-
         {status && (
           <div className="mt-4 p-4 bg-gray-100 rounded">
             <p>{status}</p>

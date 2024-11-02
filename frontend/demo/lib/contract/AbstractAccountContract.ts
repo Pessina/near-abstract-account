@@ -16,14 +16,14 @@ export interface UserOperation {
 }
 
 export interface WebAuthnAuth {
-  compressed_public_key: string;
+  public_key_id: string;
   webauthn_data: WebAuthnData;
 }
 
 type AbstractContract = Contract & {
-  add_public_key: (args: { compressed_public_key: string }) => Promise<void>;
-  has_public_key: (args: { compressed_public_key: string }) => Promise<boolean>;
-  add_auth_contract: (args: { auth_type: string, auth_contract_account_id: string }) => Promise<void>;
+  add_public_key: (args: { key_id: string, compressed_public_key: string }) => Promise<void>;
+  get_public_key: (args: { key_id: string }) => Promise<string | null>;
+  set_auth_contract: (args: { auth_type: string, auth_contract_account_id: string }) => Promise<void>;
   auth: (args: { user_op: UserOperation }, gas: string) => Promise<void>;
 }
 
@@ -41,23 +41,26 @@ export class AbstractAccountContract {
       account,
       contractId,
       {
-        viewMethods: ['has_public_key'],
-        changeMethods: ['add_public_key', 'add_auth_contract', 'auth'],
+        viewMethods: ['get_public_key'],
+        changeMethods: ['add_public_key', 'set_auth_contract', 'auth'],
         useLocalViewExecution: false
       }
     ) as unknown as AbstractContract;
   }
 
-  async addPublicKey(compressedPublicKey: string): Promise<void> {
-    return await this.contract.add_public_key({ compressed_public_key: compressedPublicKey });
+  async addPublicKey(keyId: string, compressedPublicKey: string): Promise<void> {
+    return await this.contract.add_public_key({ 
+      key_id: keyId,
+      compressed_public_key: compressedPublicKey 
+    });
   }
 
-  async hasPublicKey(compressedPublicKey: string): Promise<boolean> {
-    return await this.contract.has_public_key({ compressed_public_key: compressedPublicKey });
+  async getPublicKey(keyId: string): Promise<string | null> {
+    return await this.contract.get_public_key({ key_id: keyId });
   }
 
-  async addAuthContract(authType: string, authContractAccountId: string): Promise<void> {
-    return await this.contract.add_auth_contract({
+  async setAuthContract(authType: string, authContractAccountId: string): Promise<void> {
+    return await this.contract.set_auth_contract({
       auth_type: authType,
       auth_contract_account_id: authContractAccountId
     });

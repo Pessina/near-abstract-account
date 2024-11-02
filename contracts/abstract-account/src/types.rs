@@ -20,6 +20,6 @@ pub struct Auth {
 #[derive(Deserialize, Serialize, JsonSchema)]
 #[serde(crate = "near_sdk::serde")]
 pub struct WebAuthnAuth {
-    pub compressed_public_key: String,
+    pub public_key_id: String,
     pub webauthn_data: WebAuthnData,
 }
