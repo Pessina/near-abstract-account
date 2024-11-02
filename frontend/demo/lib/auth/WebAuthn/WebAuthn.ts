@@ -120,22 +120,10 @@ export class WebAuthn {
     const x = toHex(publicKey.get(-2));
     const y = toHex(publicKey.get(-3));
 
-    console.log({
-      x,
-      y
-    })
-
-
     // Create compressed public key by prepending 0x02 or 0x03 based on y coordinate
     const yLastBit = parseInt(y.slice(-1), 16) % 2;
     const prefix = yLastBit === 0 ? "0x02" : "0x03";
     const compressedPublicKey = prefix + x.slice(2); // Remove '0x' from x before concatenating
-
-    console.log({
-      x, 
-      y,
-      compressedPublicKey
-    })
 
     return {
       rawId: toHex(new Uint8Array(cred.rawId)),

@@ -1,9 +1,9 @@
-use interfaces::webauthn_auth::{PublicKey, Signature, WebAuthnData};
-use near_sdk::near;
+use interfaces::webauthn_auth::WebAuthnData;
+use near_sdk::{log, near};
 use p256::{
     ecdsa::{signature::Verifier, Signature as P256Signature, VerifyingKey},
     elliptic_curve::sec1::ToEncodedPoint,
-    EncodedPoint, PublicKey as P256PublicKey,
+    PublicKey as P256PublicKey,
 };
 use sha2::{Digest, Sha256};
 
@@ -18,74 +18,99 @@ impl Default for WebAuthnAuthContract {
 
 #[near]
 impl WebAuthnAuthContract {
-    // Validates a WebAuthn passkey signature using the P-256 elliptic curve.
+    /// Validates a WebAuthn passkey signature using the P-256 elliptic curve.
     pub fn validate_p256_signature(
         &self,
         webauthn_data: WebAuthnData,
         compressed_public_key: String,
     ) -> bool {
-        let signed_data = self.prepare_signed_data(
-            &webauthn_data.authenticator_data,
-            &webauthn_data.client_data,
-        );
-        let public_key = self.decompress_public_key(&compressed_public_key);
-
-        println!("public_key: {:?}", public_key);
-
-        let verifying_key = self.import_public_key(public_key);
-        let signature = self.prepare_signature_array(webauthn_data.signature);
+        let (verifying_key, signed_data, signature) = match (
+            self.create_verifying_key(&compressed_public_key),
+            self.prepare_signed_data(&webauthn_data),
+            self.create_signature(&webauthn_data.signature),
+        ) {
+            (Ok(key), Ok(data), Ok(sig)) => (key, data, sig),
+            (Err(e), _, _) => {
+                log!("Failed to create verifying key: {}", e);
+                return false;
+            }
+            (_, Err(e), _) => {
+                log!("Failed to prepare signed data: {}", e);
+                return false;
+            }
+            (_, _, Err(e)) => {
+                log!("Failed to create signature: {}", e);
+                return false;
+            }
+        };
 
         verifying_key.verify(&signed_data, &signature).is_ok()
     }
 
-    fn prepare_signed_data(&self, authenticator_data: &str, client_data: &str) -> Vec<u8> {
-        let authenticator_data = authenticator_data
-            .strip_prefix("0x")
-            .unwrap_or(authenticator_data);
-        let authenticator_data =
-            hex::decode(authenticator_data).expect("Invalid authenticator data");
-        let client_data_hash = Sha256::digest(client_data.as_bytes());
-        [authenticator_data, client_data_hash.to_vec()].concat()
+    #[inline(always)]
+    fn create_verifying_key(&self, compressed_public_key: &str) -> Result<VerifyingKey, String> {
+        let compressed_bytes = hex::decode(
+            compressed_public_key
+                .strip_prefix("0x")
+                .unwrap_or(compressed_public_key),
+        )
+        .map_err(|_| "Invalid hex encoding in public key")?;
+
+        let key = P256PublicKey::from_sec1_bytes(&compressed_bytes)
+            .map_err(|_| String::from("Invalid SEC1 encoding in public key"))?;
+        Ok(
+            VerifyingKey::from_encoded_point(&key.to_encoded_point(false))
+                .map_err(|_| String::from("Failed to create verifying key from point"))?,
+        )
     }
 
-    fn decompress_public_key(&self, compressed_public_key: &str) -> PublicKey {
-        let compressed_bytes =
-            hex::decode(&compressed_public_key[2..]).expect("Invalid compressed public key");
-        let decompressed_key = P256PublicKey::from_sec1_bytes(&compressed_bytes).unwrap();
-        let decompressed = decompressed_key.to_encoded_point(false);
+    #[inline(always)]
+    fn prepare_signed_data(&self, webauthn_data: &WebAuthnData) -> Result<Vec<u8>, String> {
+        let auth_bytes = hex::decode(
+            webauthn_data
+                .authenticator_data
+                .strip_prefix("0x")
+                .unwrap_or(&webauthn_data.authenticator_data),
+        )
+        .map_err(|_| "Invalid hex encoding in authenticator data")?;
 
-        PublicKey {
-            x: hex::encode(decompressed.x().unwrap()),
-            y: hex::encode(decompressed.y().unwrap()),
-        }
+        let mut hasher = Sha256::new();
+        hasher.update(webauthn_data.client_data.as_bytes());
+        let client_data_hash = hasher.finalize();
+
+        let mut result = Vec::with_capacity(auth_bytes.len() + 32);
+        result.extend_from_slice(&auth_bytes);
+        result.extend_from_slice(&client_data_hash);
+        Ok(result)
     }
 
-    fn import_public_key(&self, public_key: PublicKey) -> VerifyingKey {
-        let x = public_key.x.strip_prefix("0x").unwrap_or(&public_key.x);
-        let y = public_key.y.strip_prefix("0x").unwrap_or(&public_key.y);
-        let x = hex::decode(x).expect("Invalid public key x coordinate");
-        let y = hex::decode(y).expect("Invalid public key y coordinate");
-        let point =
-            EncodedPoint::from_affine_coordinates(x.as_slice().into(), y.as_slice().into(), false);
-        VerifyingKey::from_encoded_point(&point).expect("Invalid public key")
-    }
+    #[inline(always)]
+    fn create_signature(
+        &self,
+        signature: &interfaces::webauthn_auth::Signature,
+    ) -> Result<P256Signature, String> {
+        let mut combined = Vec::with_capacity(64);
+        combined.extend_from_slice(
+            &hex::decode(signature.r.strip_prefix("0x").unwrap_or(&signature.r))
+                .map_err(|_| "Invalid hex encoding in signature r component")?,
+        );
+        combined.extend_from_slice(
+            &hex::decode(signature.s.strip_prefix("0x").unwrap_or(&signature.s))
+                .map_err(|_| "Invalid hex encoding in signature s component")?,
+        );
 
-    fn prepare_signature_array(&self, signature: Signature) -> P256Signature {
-        let r = signature.r.strip_prefix("0x").unwrap_or(&signature.r);
-        let s = signature.s.strip_prefix("0x").unwrap_or(&signature.s);
-        let r = hex::decode(r).expect("Invalid signature r value");
-        let s = hex::decode(s).expect("Invalid signature s value");
-        let combined = [r, s].concat();
-        P256Signature::try_from(combined.as_slice()).expect("Invalid signature")
+        Ok(P256Signature::try_from(combined.as_slice())
+            .map_err(|_| String::from("Invalid signature format"))?)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use interfaces::webauthn_auth::Signature;
 
     fn get_compressed_public_key() -> String {
-        "0x039f6ceec855f5ef57984863418d948070d1c384d0c02295c1a84c7cad427869f5".to_string()
+        "039f6ceec855f5ef57984863418d948070d1c384d0c02295c1a84c7cad427869f5".to_string()
     }
 
     #[test]
