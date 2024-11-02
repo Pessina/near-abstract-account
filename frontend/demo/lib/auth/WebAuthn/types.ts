@@ -2,10 +2,7 @@ import { Hex } from "viem";
 
 export type CreateCredential = {
   rawId: Hex;
-  pubKey: {
-    x: Hex;
-    y: Hex;
-  };
+  compressedPublicKey: string;
 };
 
 export type P256Credential = {

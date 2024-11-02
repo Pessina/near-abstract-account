@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { WebAuthn } from "../lib/auth";
 import { AbstractAccountContract } from "../lib/contract/AbstractAccountContract";
 import initNear from "../lib/near";
@@ -11,118 +11,140 @@ export default function Home() {
   const [username, setUsername] = useState("");
   const [publicKey, setPublicKey] = useState("");
   const [status, setStatus] = useState("");
-  const [contract, setContract] = useState<AbstractAccountContract>();
   const [authContractAddress, setAuthContractAddress] = useState("");
   const [isWebAuthnSupported, setIsWebAuthnSupported] = useState<boolean | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const [contract, setContract] = useState<AbstractAccountContract | null>(null);
 
   useEffect(() => {
-    const init = async () => {
-      setIsWebAuthnSupported(WebAuthn.isSupportedByBrowser());
+    setIsWebAuthnSupported(WebAuthn.isSupportedByBrowser());
 
+    // Initialize NEAR and contract
+    const setupContract = async () => {
       try {
         const { account } = await initNear();
-        const contract = new AbstractAccountContract({
+        const contractInstance = new AbstractAccountContract({
           account,
           contractId: process.env.NEXT_PUBLIC_ABSTRACT_ACCOUNT_CONTRACT as string
         });
-        setContract(contract);
+        setContract(contractInstance);
       } catch (error) {
         console.error("Failed to initialize contract:", error);
         setStatus("Failed to initialize contract");
       }
     };
-    init();
+
+    setupContract();
   }, []);
 
-  const handleAddAuthContract = async () => {
-    try {
-      if (!contract) {
-        setStatus("Contract not initialized");
-        return;
-      }
+  const handleAddAuthContract = () => {
+    startTransition(async () => {
+      try {
+        if (!contract) {
+          setStatus("Contract not initialized");
+          return;
+        }
 
-      if (!authContractAddress) {
-        setStatus("Please provide an auth contract address");
-        return;
-      }
+        if (!authContractAddress) {
+          setStatus("Please provide an auth contract address");
+          return;
+        }
 
-      await contract.addAuthContract("webauthn", authContractAddress);
-      setStatus("Auth contract added successfully!");
-    } catch (error) {
-      console.error(error);
-      setStatus("Error adding auth contract: " + (error as Error).message);
-    }
+        await contract.addAuthContract("webauthn", authContractAddress);
+        setStatus("Auth contract added successfully!");
+      } catch (error) {
+        console.error(error);
+        setStatus("Error adding auth contract: " + (error as Error).message);
+      }
+    });
   };
 
-  const handleRegister = async () => {
-    try {
-      // Check if WebAuthn is supported
-      if (!WebAuthn.isSupportedByBrowser()) {
-        setStatus("WebAuthn is not supported by this browser");
-        return;
+  const handleRegister = () => {
+    startTransition(async () => {
+      try {
+        // Check if WebAuthn is supported
+        if (!WebAuthn.isSupportedByBrowser()) {
+          setStatus("WebAuthn is not supported by this browser");
+          return;
+        }
+
+        // Create WebAuthn credential
+        const credential = await WebAuthn.create({ username });
+        if (!credential) {
+          setStatus("Failed to create credential");
+          return;
+        }
+
+        // Combine x and y coordinates for the public key
+        setPublicKey(credential.compressedPublicKey);
+
+        // Add public key to contract
+        if (!contract) {
+          setStatus("Contract not initialized");
+          return;
+        }
+
+        await contract.addPublicKey(credential.compressedPublicKey);
+        setStatus("Registration successful!");
+
+      } catch (error) {
+        console.error(error);
+        setStatus("Error during registration: " + (error as Error).message);
       }
-
-      // Create WebAuthn credential
-      const credential = await WebAuthn.create({ username });
-      if (!credential) {
-        setStatus("Failed to create credential");
-        return;
-      }
-
-      // Combine x and y coordinates for the public key
-      const fullPublicKey = credential.pubKey.x + credential.pubKey.y;
-      setPublicKey(fullPublicKey);
-
-      // Add public key to contract
-      if (!contract) {
-        setStatus("Contract not initialized");
-        return;
-      }
-
-      await contract.addPublicKey(fullPublicKey);
-      setStatus("Registration successful!");
-
-    } catch (error) {
-      console.error(error);
-      setStatus("Error during registration: " + (error as Error).message);
-    }
+    });
   };
 
-  const handleAuthenticate = async () => {
-    try {
-      // Get WebAuthn credential
-      const credential = await WebAuthn.get();
-      if (!credential) {
-        setStatus("Failed to get credential");
-        return;
-      }
+  const handleAuthenticate = () => {
+    startTransition(async () => {
+      try {
+        // Get WebAuthn credential
+        const credential = await WebAuthn.get();
+        if (!credential) {
+          setStatus("Failed to get credential");
+          return;
+        }
 
-      if (!contract) {
-        setStatus("Contract not initialized");
-        return;
-      }
+        if (!contract) {
+          setStatus("Contract not initialized");
+          return;
+        }
 
-      // Call contract auth method
-      await contract.auth({
-        auth: {
-          auth_type: "webauthn",
-          auth_data: {
-            public_key: publicKey,
-            webauthn_data: {
-              signature: credential.signature,
-              authenticator_data: credential.authenticatorData,
-              client_data: JSON.stringify(credential.clientData)
+        console.log({
+          auth: {
+            auth_type: "webauthn",
+            auth_data: {
+              compressed_public_key: publicKey,
+              webauthn_data: {
+                signature: credential.signature,
+                authenticator_data: credential.authenticatorData,
+                client_data: JSON.stringify(credential.clientData)
+              }
             }
           }
-        }
-      });
+        })
 
-      setStatus("Authentication successful!");
+        // Call contract auth method
+        await contract.auth({
+          auth: {
+            auth_type: "webauthn",
+            auth_data: {
+              compressed_public_key: publicKey,
+              webauthn_data: {
+                signature: credential.signature,
+                authenticator_data: credential.authenticatorData,
+                client_data: JSON.stringify(credential.clientData)
+              }
+            }
+          }
+        });
 
-    } catch (error) {
-      console.error(error);
-      setStatus("Error during authentication: " + (error as Error).message);
-    }
+        setStatus("Authentication successful!");
+
+      } catch (error) {
+        console.error(error);
+        setStatus("Error during authentication: " + (error as Error).message);
+      }
+    });
   };
 
   return (
@@ -157,6 +179,7 @@ export default function Home() {
             <Button
               onClick={handleAddAuthContract}
               variant="secondary"
+              disabled={isPending}
             >
               Add Auth Contract
             </Button>
@@ -167,12 +190,14 @@ export default function Home() {
           <Button
             onClick={handleRegister}
             variant="default"
+            disabled={isPending}
           >
             Register
           </Button>
           <Button
             onClick={handleAuthenticate}
             variant="secondary"
+            disabled={isPending}
           >
             Authenticate
           </Button>

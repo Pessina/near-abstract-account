@@ -120,13 +120,26 @@ export class WebAuthn {
     const x = toHex(publicKey.get(-2));
     const y = toHex(publicKey.get(-3));
 
-    // SAVE PUBKEY TO FACTORY
+    console.log({
+      x,
+      y
+    })
+
+
+    // Create compressed public key by prepending 0x02 or 0x03 based on y coordinate
+    const yLastBit = parseInt(y.slice(-1), 16) % 2;
+    const prefix = yLastBit === 0 ? "0x02" : "0x03";
+    const compressedPublicKey = prefix + x.slice(2); // Remove '0x' from x before concatenating
+
+    console.log({
+      x, 
+      y,
+      compressedPublicKey
+    })
+
     return {
       rawId: toHex(new Uint8Array(cred.rawId)),
-      pubKey: {
-        x,
-        y,
-      },
+      compressedPublicKey
     };
   }
 
@@ -192,12 +205,12 @@ export class WebAuthn {
 
   // New method to validate the signature
   public static async validateSignature({
-    publicKey,
+    compressedPublicKey,
     signature,
     authenticatorData,
     clientData,
   }: {
-    publicKey: { x: string; y: string };
+    compressedPublicKey: string;
     signature: P256Signature;
     authenticatorData: string;
     clientData: {
@@ -209,7 +222,7 @@ export class WebAuthn {
   }): Promise<boolean> {
     // Prepare data for verification
     const signedData = await this.prepareSignedData(authenticatorData, clientData);
-    const publicKeyCryptoKey = await this.importPublicKey(publicKey);
+    const publicKeyCryptoKey = await this.importCompressedPublicKey(compressedPublicKey);
     const signatureArray = this.prepareSignatureArray(signature);
 
     // Verify the signature
@@ -237,15 +250,25 @@ export class WebAuthn {
     return concatUint8Arrays([authenticatorDataArray, clientDataHash]);
   }
 
-  private static async importPublicKey(publicKey: { x: string; y: string }): Promise<CryptoKey> {
-    const xBase64Url = hexToBase64Url(publicKey.x);
-    const yBase64Url = hexToBase64Url(publicKey.y);
+  private static async importCompressedPublicKey(compressedPublicKey: string): Promise<CryptoKey> {
+    // Remove '0x' prefix if present
+    const cleanKey = compressedPublicKey.startsWith('0x') ? compressedPublicKey.slice(2) : compressedPublicKey;
+    
+    // First byte indicates if y is even (0x02) or odd (0x03)
+    const x = cleanKey.slice(2);
+
+    // Convert to base64url for JWK
+    const xBase64Url = hexToBase64Url(x);
+
+    // Create JWK with x coordinate and curve point compression
     const jwk: JsonWebKey = {
       kty: "EC",
       crv: "P-256",
       x: xBase64Url,
-      y: yBase64Url,
+      // Note: y coordinate is derived by the WebCrypto API
+      ext: true
     };
+
     return window.crypto.subtle.importKey(
       "jwk",
       jwk,
@@ -264,4 +287,3 @@ export class WebAuthn {
     return concatUint8Arrays([rBytes, sBytes]);
   }
 }
-

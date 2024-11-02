@@ -21,6 +21,7 @@ dependencies = [
  "near-workspaces",
  "schemars",
  "serde_json",
+ "sha2",
  "tokio",
 ]
 
