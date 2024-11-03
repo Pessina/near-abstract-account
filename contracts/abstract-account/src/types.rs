@@ -6,12 +6,13 @@ use serde_json::Value;
 // TODO: Those types should be imported from near libs and we should also find a way to automatically convert them to u64 and u128, without using parse.
 type Gas = String; // u64;
 type Balance = String; // u128;
+type Args = String; // Vec<u8>: Base64
 
 #[derive(Deserialize, Serialize, JsonSchema)]
 #[serde(crate = "near_sdk::serde")]
 pub struct FunctionCallAction {
     pub method_name: String,
-    pub args: Vec<u8>,
+    pub args: Args,
     pub gas: Gas,
     pub deposit: Balance,
 }

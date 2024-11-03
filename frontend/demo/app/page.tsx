@@ -119,20 +119,31 @@ export default function Home() {
             }
           },
           transaction: {
-            receiver_id: "felipe-sandbox.testnet",
+            receiver_id: "v1.signer-prod.testnet",
             actions: [{
               Transfer: {
                 deposit: "1000000000000000000000"
               }
+            },
+            {
+              FunctionCall: {
+                method_name: "sign",
+                args: JSON.stringify({
+                  request: {
+                    path: "ethereum,1",
+                    payload: [
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+                      0, 1
+                    ],
+                    key_version: 0
+                  }
+                }),
+                gas: "50000000000000",
+                deposit: "250000000000000000000000"
+              }
             }
-              // {
-              //   FunctionCall: {
-              //     method_name: "example_method", 
-              //     args: new TextEncoder().encode(JSON.stringify({ example: "data" })),
-              //     gas: "30000000000000",
-              //     deposit: "0"
-              //   }
-              // }
             ]
           }
         });

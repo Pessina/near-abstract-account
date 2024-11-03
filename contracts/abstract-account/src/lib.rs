@@ -8,8 +8,6 @@ use interfaces::webauthn_auth::WebAuthnData;
 use mods::external_contracts::VALIDATE_P256_SIGNATURE_GAS;
 use near_sdk::{env, near, store::LookupMap, AccountId, Gas, NearToken, Promise};
 
-const AUTH_CALLBACK_GAS: Gas = Gas::from_tgas(3);
-
 #[near(contract_state)]
 pub struct AbstractAccountContract {
     owner: AccountId,
@@ -115,7 +113,7 @@ impl AbstractAccountContract {
                         Action::FunctionCall(function_call) => {
                             promise = promise.function_call(
                                 function_call.method_name,
-                                function_call.args,
+                                function_call.args.as_bytes().to_vec(),
                                 NearToken::from_yoctonear(
                                     function_call.deposit.parse::<u128>().unwrap(),
                                 ),

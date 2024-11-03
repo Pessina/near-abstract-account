@@ -9,7 +9,7 @@ export interface WebAuthnData {
 export interface FunctionCallAction {
   FunctionCall: {
     method_name: string;
-    args: Uint8Array;
+    args: string;
     gas: string;
     deposit: string;
   }
