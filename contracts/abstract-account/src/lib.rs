@@ -4,15 +4,18 @@ mod types;
 use std::str::FromStr;
 
 use crate::types::{Action, Transaction, UserOperation, WebAuthnAuth};
+use base64::engine::{general_purpose::URL_SAFE_NO_PAD, Engine};
 use interfaces::webauthn_auth::WebAuthnData;
 use mods::external_contracts::VALIDATE_P256_SIGNATURE_GAS;
 use near_sdk::{env, near, store::LookupMap, AccountId, Gas, NearToken, Promise};
+use serde_json_canonicalizer::to_string as canonicalize;
 
 #[near(contract_state)]
 pub struct AbstractAccountContract {
     owner: AccountId,
     public_keys: LookupMap<String, String>, // key_id -> compressed_public_key
     auth_contracts: LookupMap<String, AccountId>,
+    nonce: u64,
 }
 
 impl Default for AbstractAccountContract {
@@ -21,6 +24,7 @@ impl Default for AbstractAccountContract {
             public_keys: LookupMap::new(b"p"),
             owner: env::predecessor_account_id(),
             auth_contracts: LookupMap::new(b"a"),
+            nonce: 0,
         }
     }
 }
@@ -28,11 +32,12 @@ impl Default for AbstractAccountContract {
 #[near]
 impl AbstractAccountContract {
     #[init(ignore_state)]
-    pub fn new(owner: AccountId) -> Self {
+    pub fn new() -> Self {
         Self {
             public_keys: LookupMap::new(b"p"),
-            owner,
+            owner: env::predecessor_account_id(),
             auth_contracts: LookupMap::new(b"a"),
+            nonce: 0,
         }
     }
 
@@ -60,8 +65,19 @@ impl AbstractAccountContract {
             .insert(auth_type, auth_contract_account_id);
     }
 
+    pub fn get_nonce(&self) -> u64 {
+        self.nonce
+    }
+
     #[payable]
     pub fn auth(&mut self, user_op: UserOperation) -> Promise {
+        // Validate nonce matches current contract nonce
+        assert_eq!(
+            user_op.transaction.nonce.parse::<u64>().unwrap(),
+            self.nonce,
+            "Invalid nonce"
+        );
+
         match user_op.auth.auth_type.as_str() {
             "webauthn" => {
                 let webauthn_auth: WebAuthnAuth =
@@ -70,6 +86,22 @@ impl AbstractAccountContract {
                 let compressed_public_key = self
                     .get_public_key(webauthn_auth.public_key_id)
                     .expect("Public key not found");
+
+                let client_data: serde_json::Value =
+                    serde_json::from_str(&webauthn_auth.webauthn_data.client_data)
+                        .expect("Invalid client data JSON");
+                let client_challenge = client_data["challenge"]
+                    .as_str()
+                    .expect("Missing challenge in client data");
+
+                let canonical =
+                    canonicalize(&user_op.transaction).expect("Failed to canonicalize transaction");
+                let transaction_hash = URL_SAFE_NO_PAD.encode(env::sha256(canonical.as_bytes()));
+
+                assert_eq!(
+                    client_challenge, transaction_hash,
+                    "Challenge does not match transaction hash"
+                );
 
                 let webauthn_data = WebAuthnData {
                     signature: webauthn_auth.webauthn_data.signature,
@@ -93,12 +125,14 @@ impl AbstractAccountContract {
 
     #[private]
     pub fn auth_callback(
-        &self,
+        &mut self,
         transaction: Transaction,
         #[callback_result] auth_result: Result<bool, near_sdk::PromiseError>,
     ) -> Promise {
         match auth_result {
             Ok(true) => {
+                self.nonce += 1;
+
                 let mut promise = Promise::new(
                     AccountId::from_str(&transaction.receiver_id).expect("Invalid AccountId"),
                 );

@@ -7,6 +7,7 @@ use serde_json::Value;
 type Gas = String; // u64;
 type Balance = String; // u128;
 type Args = String; // Vec<u8>: Base64
+type Nonce = String; // u64
 
 #[derive(Deserialize, Serialize, JsonSchema)]
 #[serde(crate = "near_sdk::serde")]
@@ -33,6 +34,7 @@ pub enum Action {
 #[derive(Deserialize, Serialize, JsonSchema)]
 #[serde(crate = "near_sdk::serde")]
 pub struct Transaction {
+    pub nonce: Nonce,
     pub receiver_id: String,
     pub actions: Vec<Action>,
 }

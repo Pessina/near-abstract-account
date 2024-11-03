@@ -23,6 +23,9 @@ importers:
       '@simplewebauthn/server':
         specifier: ^11.0.0
         version: 11.0.0
+      canonicalize:
+        specifier: ^2.0.0
+        version: 2.0.0
       cbor:
         specifier: ^10.0.2
         version: 10.0.2
@@ -688,6 +691,9 @@ packages:
 
   caniuse-lite@1.0.30001676:
     resolution: {integrity: sha512-Qz6zwGCiPghQXGJvgQAem79esjitvJ+CxSbSQkW9H/UX5hg8XM88d4lp2W+MEQ81j+Hip58Il+jGVdazk1z9cw==}
+
+  canonicalize@2.0.0:
+    resolution: {integrity: sha512-ulDEYPv7asdKvqahuAY35c1selLdzDwHqugK92hfkzvlDCwXRRelDkR+Er33md/PtnpqHemgkuDPanZ4fiYZ8w==}
 
   cbor@10.0.2:
     resolution: {integrity: sha512-wJjyC0Efg8yUKpq9/+5SIcUbmBtyw+ZbvE8nNwbfGEKUkrL01h5CQ7h9/OPWtSt5oikmx6E5MuB5rTFz8zmMww==}
@@ -2697,6 +2703,8 @@ snapshots:
   camelcase-css@2.0.1: {}
 
   caniuse-lite@1.0.30001676: {}
+
+  canonicalize@2.0.0: {}
 
   cbor@10.0.2:
     dependencies:

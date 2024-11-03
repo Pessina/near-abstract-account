@@ -6,6 +6,8 @@ import { AbstractAccountContract } from "../lib/contract/AbstractAccountContract
 import initNear from "../lib/near";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
+import canonicalize from 'canonicalize';
+
 
 export default function Home() {
   const [username, setUsername] = useState("");
@@ -93,8 +95,47 @@ export default function Home() {
   const handleAuthenticate = () => {
     startTransition(async () => {
       try {
-        // Get WebAuthn credential
-        const credential = await WebAuthn.get();
+        const nonce = await contract?.getNonce()
+
+        if (nonce === undefined) {
+          setStatus("Failed to get nonce");
+          return;
+        }
+
+        const transaction = {
+          receiver_id: "v1.signer-prod.testnet",
+          nonce: nonce.toString(),
+          actions: [{
+            Transfer: {
+              deposit: "1000000000000000000000"
+            }
+          },
+          {
+            FunctionCall: {
+              method_name: "sign",
+              args: JSON.stringify({
+                request: {
+                  path: "ethereum,1",
+                  payload: [
+                    0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+                    0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+                    0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+                    0, 1
+                  ],
+                  key_version: 0
+                }
+              }),
+              gas: "50000000000000",
+              deposit: "250000000000000000000000"
+            }
+          }]
+        };
+
+        const canonical = canonicalize(transaction);
+        const challenge = new TextEncoder().encode(canonical);
+        const challengeHash = await crypto.subtle.digest('SHA-256', challenge);
+
+        const credential = await WebAuthn.get(new Uint8Array(challengeHash));
         if (!credential) {
           setStatus("Failed to get credential");
           return;
@@ -105,7 +146,7 @@ export default function Home() {
           return;
         }
 
-        // Call contract auth method with example actions
+        // Call contract auth method
         await contract.auth({
           auth: {
             auth_type: "webauthn",
@@ -118,34 +159,7 @@ export default function Home() {
               }
             }
           },
-          transaction: {
-            receiver_id: "v1.signer-prod.testnet",
-            actions: [{
-              Transfer: {
-                deposit: "1000000000000000000000"
-              }
-            },
-            {
-              FunctionCall: {
-                method_name: "sign",
-                args: JSON.stringify({
-                  request: {
-                    path: "ethereum,1",
-                    payload: [
-                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
-                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
-                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
-                      0, 1
-                    ],
-                    key_version: 0
-                  }
-                }),
-                gas: "50000000000000",
-                deposit: "250000000000000000000000"
-              }
-            }
-            ]
-          }
+          transaction
         });
 
         setStatus("Authentication successful!");

@@ -2,7 +2,7 @@
 // Check the license requirements and include it in the project if you still use it later
 
 import crypto from "crypto";
-import { Hex, toHex } from "viem";
+import { toHex } from "viem";
 import cbor from "cbor";
 import { parseAuthenticatorData } from "@simplewebauthn/server/helpers";
 import { ClientData, CreateCredential, P256Credential, P256Signature } from "./types";
@@ -45,21 +45,6 @@ export class WebAuthn {
       return false;
     }
     return await PublicKeyCredential.isConditionalMediationAvailable();
-  }
-
-  public static async isConditional() {
-    if (
-      typeof window.PublicKeyCredential !== "undefined" &&
-      typeof window.PublicKeyCredential.isConditionalMediationAvailable ===
-        "function"
-    ) {
-      const available =
-        await PublicKeyCredential.isConditionalMediationAvailable();
-
-      if (available) {
-        this.get();
-      }
-    }
   }
 
   public static async create({
@@ -131,17 +116,12 @@ export class WebAuthn {
     };
   }
 
-  public static async get(challenge?: Hex): Promise<P256Credential | null> {
+  public static async get(challenge: Uint8Array): Promise<P256Credential | null> {
     this.isSupportedByBrowser();
 
     const options: PublicKeyCredentialRequestOptions = {
       timeout: 60000,
-      challenge: challenge
-        ? Buffer.from(challenge.slice(2), "hex")
-        : Uint8Array.from(
-            "random-challenge",
-            (c) => c.charCodeAt(0)
-          ),
+      challenge,
       rpId: window.location.hostname,
       userVerification: "preferred",
     } as PublicKeyCredentialRequestOptions;

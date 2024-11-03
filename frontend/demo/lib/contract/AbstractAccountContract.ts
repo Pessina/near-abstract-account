@@ -24,6 +24,7 @@ export interface TransferAction {
 export type Action = FunctionCallAction | TransferAction;
 
 export interface Transaction {
+  nonce: string;
   receiver_id: string;
   actions: Action[];
 }
@@ -46,6 +47,7 @@ export interface WebAuthnAuth {
 type AbstractContract = Contract & {
   add_public_key: (args: { key_id: string, compressed_public_key: string }) => Promise<void>;
   get_public_key: (args: { key_id: string }) => Promise<string | null>;
+  get_nonce: () => Promise<number>;
   set_auth_contract: (args: { auth_type: string, auth_contract_account_id: string }) => Promise<void>;
   auth: (args: { user_op: UserOperation }, gas?: string) => Promise<void>;
 }
@@ -64,7 +66,7 @@ export class AbstractAccountContract {
       account,
       contractId,
       {
-        viewMethods: ['get_public_key'],
+        viewMethods: ['get_public_key', 'get_nonce'],
         changeMethods: ['add_public_key', 'set_auth_contract', 'auth'],
         useLocalViewExecution: false
       }
@@ -80,6 +82,10 @@ export class AbstractAccountContract {
 
   async getPublicKey(keyId: string): Promise<string | null> {
     return await this.contract.get_public_key({ key_id: keyId });
+  }
+
+  async getNonce(): Promise<number> {
+    return await this.contract.get_nonce();
   }
 
   async setAuthContract(authType: string, authContractAccountId: string): Promise<void> {
