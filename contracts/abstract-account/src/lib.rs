@@ -1,12 +1,12 @@
 mod mods;
 mod types;
 
-use crate::types::{UserOperation, WebAuthnAuth};
+use std::str::FromStr;
+
+use crate::types::{Action, Transaction, UserOperation, WebAuthnAuth};
 use interfaces::webauthn_auth::WebAuthnData;
 use mods::external_contracts::VALIDATE_P256_SIGNATURE_GAS;
-use near_sdk::store::LookupMap;
-use near_sdk::{env, near};
-use near_sdk::{AccountId, Gas, Promise};
+use near_sdk::{env, near, store::LookupMap, AccountId, Gas, NearToken, Promise};
 
 const AUTH_CALLBACK_GAS: Gas = Gas::from_tgas(3);
 
@@ -87,11 +87,7 @@ impl AbstractAccountContract {
                 mods::external_contracts::webauthn_auth::ext(webauthn_contract.clone())
                     .with_static_gas(VALIDATE_P256_SIGNATURE_GAS)
                     .validate_p256_signature(webauthn_data, compressed_public_key)
-                    .then(
-                        Self::ext(env::current_account_id())
-                            .with_static_gas(AUTH_CALLBACK_GAS)
-                            .auth_callback(),
-                    )
+                    .then(Self::ext(env::current_account_id()).auth_callback(user_op.transaction))
             }
             _ => near_sdk::env::panic_str("No supported auth method"),
         }
@@ -100,11 +96,38 @@ impl AbstractAccountContract {
     #[private]
     pub fn auth_callback(
         &self,
+        transaction: Transaction,
         #[callback_result] auth_result: Result<bool, near_sdk::PromiseError>,
-    ) {
+    ) -> Promise {
         match auth_result {
-            Ok(result) => near_sdk::log!("Auth result: {}", result),
-            Err(e) => near_sdk::log!("Auth failed with error: {:?}", e),
+            Ok(true) => {
+                let mut promise = Promise::new(
+                    AccountId::from_str(&transaction.receiver_id).expect("Invalid AccountId"),
+                );
+
+                for action in transaction.actions {
+                    match action {
+                        Action::Transfer(transfer) => {
+                            promise = promise.transfer(NearToken::from_yoctonear(
+                                transfer.deposit.parse::<u128>().unwrap(),
+                            ));
+                        }
+                        Action::FunctionCall(function_call) => {
+                            promise = promise.function_call(
+                                function_call.method_name,
+                                function_call.args,
+                                NearToken::from_yoctonear(
+                                    function_call.deposit.parse::<u128>().unwrap(),
+                                ),
+                                Gas::from_gas(function_call.gas.parse::<u64>().unwrap()),
+                            );
+                        }
+                    }
+                }
+                promise
+            }
+            Ok(false) => near_sdk::env::panic_str("Authentication failed"),
+            Err(_) => near_sdk::env::panic_str("Error during authentication"),
         }
     }
 

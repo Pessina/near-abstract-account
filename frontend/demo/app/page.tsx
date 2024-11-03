@@ -105,7 +105,7 @@ export default function Home() {
           return;
         }
 
-        // Call contract auth method
+        // Call contract auth method with example actions
         await contract.auth({
           auth: {
             auth_type: "webauthn",
@@ -117,6 +117,23 @@ export default function Home() {
                 client_data: JSON.stringify(credential.clientData)
               }
             }
+          },
+          transaction: {
+            receiver_id: "felipe-sandbox.testnet",
+            actions: [{
+              Transfer: {
+                deposit: "1000000000000000000000"
+              }
+            }
+              // {
+              //   FunctionCall: {
+              //     method_name: "example_method", 
+              //     args: new TextEncoder().encode(JSON.stringify({ example: "data" })),
+              //     gas: "30000000000000",
+              //     deposit: "0"
+              //   }
+              // }
+            ]
           }
         });
 

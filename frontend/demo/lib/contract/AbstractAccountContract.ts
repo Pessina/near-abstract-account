@@ -6,6 +6,28 @@ export interface WebAuthnData {
   client_data: string;
 }
 
+export interface FunctionCallAction {
+  FunctionCall: {
+    method_name: string;
+    args: Uint8Array;
+    gas: string;
+    deposit: string;
+  }
+}
+
+export interface TransferAction {
+  Transfer: {
+    deposit: string;
+  }
+}
+
+export type Action = FunctionCallAction | TransferAction;
+
+export interface Transaction {
+  receiver_id: string;
+  actions: Action[];
+}
+
 export interface Auth {
   auth_type: string;
   auth_data: Record<string, unknown>;
@@ -13,6 +35,7 @@ export interface Auth {
 
 export interface UserOperation {
   auth: Auth;
+  transaction: Transaction;
 }
 
 export interface WebAuthnAuth {
@@ -24,11 +47,11 @@ type AbstractContract = Contract & {
   add_public_key: (args: { key_id: string, compressed_public_key: string }) => Promise<void>;
   get_public_key: (args: { key_id: string }) => Promise<string | null>;
   set_auth_contract: (args: { auth_type: string, auth_contract_account_id: string }) => Promise<void>;
-  auth: (args: { user_op: UserOperation }, gas: string) => Promise<void>;
+  auth: (args: { user_op: UserOperation }, gas?: string) => Promise<void>;
 }
 
 export class AbstractAccountContract {
-  private contract: AbstractContract; 
+  private contract: AbstractContract;
 
   constructor({
     account,
@@ -49,9 +72,9 @@ export class AbstractAccountContract {
   }
 
   async addPublicKey(keyId: string, compressedPublicKey: string): Promise<void> {
-    return await this.contract.add_public_key({ 
+    return await this.contract.add_public_key({
       key_id: keyId,
-      compressed_public_key: compressedPublicKey 
+      compressed_public_key: compressedPublicKey
     });
   }
 
@@ -67,6 +90,6 @@ export class AbstractAccountContract {
   }
 
   async auth(userOp: UserOperation): Promise<void> {
-    return await this.contract.auth({ user_op: userOp}, "300000000000000");
+    return await this.contract.auth({ user_op: userOp }, "300000000000000");
   }
 }
