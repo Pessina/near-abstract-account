@@ -5,8 +5,8 @@ import crypto from "crypto";
 import { toHex } from "viem";
 import cbor from "cbor";
 import { parseAuthenticatorData } from "@simplewebauthn/server/helpers";
-import { ClientData, CreateCredential, P256Credential, P256Signature } from "./types";
-import { parseSignature, concatUint8Arrays, hexStringToUint8Array, hexToBase64Url } from "./utils";
+import { CreateCredential, P256Credential } from "./types";
+import { parseSignature } from "./utils";
 
 export class WebAuthn {
   private static _generateRandomBytes(): Buffer {
@@ -23,28 +23,6 @@ export class WebAuthn {
       window?.PublicKeyCredential !== undefined &&
       typeof window.PublicKeyCredential === "function"
     );
-  }
-
-  public static async platformAuthenticatorIsAvailable(): Promise<boolean> {
-    if (
-      !this.isSupportedByBrowser() &&
-      typeof window.PublicKeyCredential
-        .isUserVerifyingPlatformAuthenticatorAvailable !== "function"
-    ) {
-      return false;
-    }
-    return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-  }
-
-  public static async isConditionalSupported(): Promise<boolean> {
-    if (
-      !this.isSupportedByBrowser() &&
-      typeof window.PublicKeyCredential.isConditionalMediationAvailable !==
-        "function"
-    ) {
-      return false;
-    }
-    return await PublicKeyCredential.isConditionalMediationAvailable();
   }
 
   public static async create({
@@ -169,89 +147,5 @@ export class WebAuthn {
       authenticatorData,
       signature,
     };
-  }
-
-  // New method to validate the signature
-  public static async validateSignature({
-    compressedPublicKey,
-    signature,
-    authenticatorData,
-    clientData,
-  }: {
-    compressedPublicKey: string;
-    signature: P256Signature;
-    authenticatorData: string;
-    clientData: {
-      type: string;
-      challenge: string;
-      origin: string;
-      crossOrigin?: boolean;
-    };
-  }): Promise<boolean> {
-    // Prepare data for verification
-    const signedData = await this.prepareSignedData(authenticatorData, clientData);
-    const publicKeyCryptoKey = await this.importCompressedPublicKey(compressedPublicKey);
-    const signatureArray = this.prepareSignatureArray(signature);
-
-    // Verify the signature
-    const isValid = await window.crypto.subtle.verify(
-      {
-        name: "ECDSA",
-        hash: { name: "SHA-256" },
-      },
-      publicKeyCryptoKey,
-      signatureArray,
-      signedData
-    );
-
-    console.log('Signature validation result:', isValid);
-    return isValid;
-  }
-
-  private static async prepareSignedData(authenticatorData: string, clientData: ClientData): Promise<Uint8Array> {
-    const authenticatorDataArray = hexStringToUint8Array(authenticatorData);
-    const clientDataJSON = JSON.stringify(clientData);
-    const clientDataArray = new TextEncoder().encode(clientDataJSON);
-    const clientDataHash = new Uint8Array(
-      await window.crypto.subtle.digest("SHA-256", clientDataArray)
-    );
-    return concatUint8Arrays([authenticatorDataArray, clientDataHash]);
-  }
-
-  private static async importCompressedPublicKey(compressedPublicKey: string): Promise<CryptoKey> {
-    // Remove '0x' prefix if present
-    const cleanKey = compressedPublicKey.startsWith('0x') ? compressedPublicKey.slice(2) : compressedPublicKey;
-    
-    // First byte indicates if y is even (0x02) or odd (0x03)
-    const x = cleanKey.slice(2);
-
-    // Convert to base64url for JWK
-    const xBase64Url = hexToBase64Url(x);
-
-    // Create JWK with x coordinate and curve point compression
-    const jwk: JsonWebKey = {
-      kty: "EC",
-      crv: "P-256",
-      x: xBase64Url,
-      // Note: y coordinate is derived by the WebCrypto API
-      ext: true
-    };
-
-    return window.crypto.subtle.importKey(
-      "jwk",
-      jwk,
-      {
-        name: "ECDSA",
-        namedCurve: "P-256",
-      },
-      false,
-      ["verify"]
-    );
-  }
-
-  private static prepareSignatureArray(signature: P256Signature): Uint8Array {
-    const rBytes = hexStringToUint8Array(signature.r);
-    const sBytes = hexStringToUint8Array(signature.s);
-    return concatUint8Arrays([rBytes, sBytes]);
   }
 }

@@ -1,14 +1,9 @@
 mod mods;
 mod types;
 
-use std::str::FromStr;
-
-use crate::types::{Action, Transaction, UserOperation, WebAuthnAuth};
-use base64::engine::{general_purpose::URL_SAFE_NO_PAD, Engine};
-use interfaces::webauthn_auth::WebAuthnData;
-use mods::external_contracts::VALIDATE_P256_SIGNATURE_GAS;
-use near_sdk::{env, near, require, store::LookupMap, AccountId, Gas, NearToken, Promise};
-
+use mods::transaction::Transaction;
+use near_sdk::{env, near, require, store::LookupMap, AccountId, Promise};
+use types::UserOp;
 #[near(contract_state)]
 pub struct AbstractAccountContract {
     owner: AccountId,
@@ -63,7 +58,7 @@ impl AbstractAccountContract {
     }
 
     #[payable]
-    pub fn auth(&mut self, user_op: UserOperation) -> Promise {
+    pub fn auth(&mut self, user_op: UserOp) -> Promise {
         let parsed_nonce = user_op
             .transaction
             .nonce
@@ -89,53 +84,6 @@ impl AbstractAccountContract {
         }
     }
 
-    fn handle_webauthn_auth(&self, user_op: UserOperation) -> Result<Promise, String> {
-        let webauthn_auth: WebAuthnAuth = serde_json::from_str(&user_op.auth.auth_data.to_string())
-            .map_err(|_| "Invalid WebAuthn auth data")?;
-
-        let compressed_public_key = self
-            .get_public_key(webauthn_auth.public_key_id.clone())
-            .ok_or("Public key not found")?;
-
-        let client_data: serde_json::Value =
-            serde_json::from_str(&webauthn_auth.webauthn_data.client_data)
-                .map_err(|_| "Invalid client data JSON")?;
-
-        let client_challenge = client_data["challenge"]
-            .as_str()
-            .ok_or("Missing challenge in client data")?;
-
-        let canonical = serde_json_canonicalizer::to_string(&user_op.transaction)
-            .map_err(|_| "Failed to canonicalize transaction")?;
-        let transaction_hash = URL_SAFE_NO_PAD.encode(env::sha256(canonical.as_bytes()));
-
-        require!(
-            client_challenge == transaction_hash,
-            format!(
-                "Challenge mismatch - Expected: {}, Got: {}",
-                transaction_hash, client_challenge
-            )
-        );
-
-        let webauthn_data = WebAuthnData {
-            signature: webauthn_auth.webauthn_data.signature,
-            authenticator_data: webauthn_auth.webauthn_data.authenticator_data,
-            client_data: webauthn_auth.webauthn_data.client_data,
-        };
-
-        let webauthn_contract = self
-            .auth_contracts
-            .get("webauthn")
-            .ok_or("WebAuthn contract not configured")?;
-
-        Ok(
-            mods::external_contracts::webauthn_auth::ext(webauthn_contract.clone())
-                .with_static_gas(VALIDATE_P256_SIGNATURE_GAS)
-                .validate_p256_signature(webauthn_data, compressed_public_key)
-                .then(Self::ext(env::current_account_id()).auth_callback(user_op.transaction)),
-        )
-    }
-
     #[private]
     pub fn auth_callback(
         &mut self,
@@ -150,41 +98,5 @@ impl AbstractAccountContract {
             Ok(false) => env::panic_str("Authentication failed"),
             Err(_) => env::panic_str("Error validating authentication"),
         }
-    }
-
-    fn execute_transaction(&self, transaction: Transaction) -> Result<Promise, String> {
-        let receiver_id = AccountId::from_str(&transaction.receiver_id)
-            .map_err(|_| "Invalid receiver account ID")?;
-
-        let mut promise = Promise::new(receiver_id);
-
-        for action in transaction.actions {
-            match action {
-                Action::Transfer(transfer) => {
-                    let amount = transfer
-                        .deposit
-                        .parse::<u128>()
-                        .map_err(|_| "Invalid transfer amount")?;
-                    promise = promise.transfer(NearToken::from_yoctonear(amount));
-                }
-                Action::FunctionCall(function_call) => {
-                    let deposit = function_call
-                        .deposit
-                        .parse::<u128>()
-                        .map_err(|_| "Invalid function call deposit")?;
-                    let gas = function_call
-                        .gas
-                        .parse::<u64>()
-                        .map_err(|_| "Invalid gas amount")?;
-                    promise = promise.function_call(
-                        function_call.method_name,
-                        function_call.args.as_bytes().to_vec(),
-                        NearToken::from_yoctonear(deposit),
-                        Gas::from_gas(gas),
-                    );
-                }
-            }
-        }
-        Ok(promise)
     }
 }

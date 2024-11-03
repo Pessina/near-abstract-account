@@ -38,30 +38,3 @@ export function parseSignature(signature: Uint8Array): P256Signature {
     s: toHex(finalSignature.slice(32)),
   };
 }
-
-// Helper functions
-
-export function hexStringToUint8Array(hexString: string): Uint8Array {
-  if (hexString.startsWith("0x") || hexString.startsWith("0X")) {
-    hexString = hexString.slice(2);
-  }
-  if (hexString.length % 2 !== 0) {
-    hexString = "0" + hexString;
-  }
-  const byteArray = new Uint8Array(hexString.length / 2);
-  for (let i = 0; i < byteArray.length; i++) {
-    byteArray[i] = parseInt(hexString.substr(i * 2, 2), 16);
-  }
-  return byteArray;
-}
-
-export function hexToBase64Url(hexString: string): string {
-  const byteArray = hexStringToUint8Array(hexString);
-  const binaryString = String.fromCharCode(...byteArray);
-  const base64String = btoa(binaryString);
-  const base64UrlString = base64String
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-  return base64UrlString;
-}
