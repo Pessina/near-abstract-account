@@ -13,6 +13,7 @@ import { handlePasskeyAuthenticate } from "./_utils/webauthn"
 import { handlePasskeyRegister } from "./_utils/webauthn"
 import { handleEthereumAuthenticate } from "./_utils/ethereum"
 import { handleEthereumRegister } from "./_utils/ethereum"
+import { handleSolanaAuthenticate, handleSolanaRegister } from "./_utils/solana"
 
 export default function AuthDemo() {
   const [contract, setContract] = useState<AbstractAccountContract | null>(null)
@@ -32,6 +33,7 @@ export default function AuthDemo() {
         // Initialize the auth contracts
         await contractInstance.setAuthContract('webauthn', "felipe-webauthn.testnet")
         await contractInstance.setAuthContract('ethereum', "felipe-ethereum.testnet")
+        await contractInstance.setAuthContract('solana', "felipe-solana.testnet")
 
         setContract(contractInstance)
       } catch (error) {
@@ -125,51 +127,146 @@ export default function AuthDemo() {
             <div className="space-y-4 md:col-span-2">
               <h3 className="text-lg font-semibold">Wallet Authentication</h3>
               <div className="flex flex-wrap gap-4">
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => {
+                      if (!contract) return;
+                      handleEthereumRegister({
+                        contract,
+                        setStatus,
+                        setIsPending,
+                        wallet: 'metamask'
+                      });
+                    }}
+                    className="flex items-center justify-center gap-2"
+                    variant="outline"
+                    disabled={isPending}
+                  >
+                    <Image
+                      src="/metamask.svg"
+                      alt="MetaMask logo"
+                      width={24}
+                      height={24}
+                    />
+                    <span>Register</span>
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (!contract) return;
+                      handleEthereumAuthenticate({
+                        contract,
+                        setStatus,
+                        setIsPending,
+                        wallet: 'metamask'
+                      });
+                    }}
+                    className="flex items-center justify-center gap-2"
+                    variant="outline"
+                    disabled={isPending}
+                  >
+                    <Image
+                      src="/metamask.svg"
+                      alt="MetaMask logo"
+                      width={24}
+                      height={24}
+                    />
+                    <span>Authenticate</span>
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => {
+                      if (!contract) return;
+                      handleEthereumRegister({
+                        contract,
+                        setStatus,
+                        setIsPending,
+                        wallet: 'okx'
+                      });
+                    }}
+                    className="flex items-center justify-center gap-2"
+                    variant="outline"
+                    disabled={isPending}
+                  >
+                    <Image
+                      src="/okx.svg"
+                      alt="OKX logo"
+                      width={24}
+                      height={24}
+                    />
+                    <span>Register</span>
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (!contract) return;
+                      handleEthereumAuthenticate({
+                        contract,
+                        setStatus,
+                        setIsPending,
+                        wallet: 'okx'
+                      });
+                    }}
+                    className="flex items-center justify-center gap-2"
+                    variant="outline"
+                    disabled={isPending}
+                  >
+                    <Image
+                      src="/okx.svg"
+                      alt="OKX logo"
+                      width={24}
+                      height={24}
+                    />
+                    <span>Authenticate</span>
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => {
+                      if (!contract) return;
+                      handleSolanaRegister({
+                        contract,
+                        setStatus,
+                        setIsPending,
+                        wallet: 'phantom'
+                      });
+                    }}
+                    className="flex items-center justify-center gap-2"
+                    variant="outline"
+                    disabled={isPending}
+                  >
+                    <Image
+                      src="/sol.svg"
+                      alt="Phantom logo"
+                      width={24}
+                      height={24}
+                    />
+                    <span>Register</span>
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (!contract) return;
+                      handleSolanaAuthenticate({
+                        contract,
+                        setStatus,
+                        setIsPending,
+                        wallet: 'phantom'
+                      });
+                    }}
+                    className="flex items-center justify-center gap-2"
+                    variant="outline"
+                    disabled={isPending}
+                  >
+                    <Image
+                      src="/sol.svg"
+                      alt="Phantom logo"
+                      width={24}
+                      height={24}
+                    />
+                    <span>Authenticate</span>
+                  </Button>
+                </div>
                 <Button
-                  onClick={() => {
-                    if (!contract) return;
-                    handleEthereumRegister({
-                      contract,
-                      setStatus,
-                      setIsPending,
-                      wallet: 'okx'
-                    });
-                  }}
-                  className="flex items-center justify-center gap-2"
-                  variant="outline"
-                  disabled={isPending}
-                >
-                  <Image
-                    src="/metamask.svg"
-                    alt="MetaMask logo"
-                    width={24}
-                    height={24}
-                  />
-                  <span>Register MetaMask</span>
-                </Button>
-                <Button
-                  onClick={() => {
-                    if (!contract) return;
-                    handleEthereumAuthenticate({
-                      contract,
-                      setStatus,
-                      setIsPending,
-                      wallet: 'okx'
-                    });
-                  }}
-                  className="flex items-center justify-center gap-2"
-                  variant="outline"
-                  disabled={isPending}
-                >
-                  <Image
-                    src="/metamask.svg"
-                    alt="MetaMask logo"
-                    width={24}
-                    height={24}
-                  />
-                  <span>Authenticate with MetaMask</span>
-                </Button>
-                <Button
+                  disabled
                   onClick={() => console.log("Connect BTC Wallet")}
                   className="flex items-center justify-center gap-2"
                   variant="outline"

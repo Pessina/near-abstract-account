@@ -1,5 +1,5 @@
 import { type WalletClient,type EIP1193Provider,  custom, createWalletClient } from "viem";
-import { EthereumData } from "./types";
+import { EthereumAuthData } from "./types";
 
 export type WalletType = 'metamask' | 'okx';
 
@@ -67,7 +67,7 @@ export class Ethereum {
   public static async signMessage(
     message: string,
     address: `0x${string}`
-  ): Promise<EthereumData | null> {
+  ): Promise<EthereumAuthData | null> {
     if (!this.isSupportedByBrowser()) {
       return null;
     }

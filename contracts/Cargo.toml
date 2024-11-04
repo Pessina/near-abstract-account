@@ -4,6 +4,7 @@ members = [
   "interfaces",
   "auth/webauthn-auth",
   "auth/ethereum-auth",
+  "auth/solana-auth",
 ]
 
 [workspace.dependencies]
@@ -14,3 +15,4 @@ hex = "0.4.3"
 schemars = "0.8.21"
 sha3 = "0.10.8"
 k256 = "0.13.4"
+bs58 = "0.5.1"

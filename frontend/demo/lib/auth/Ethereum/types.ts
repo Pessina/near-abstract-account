@@ -5,7 +5,7 @@ export interface Signature {
   v: string;
 }
 
-export interface EthereumData {
+export interface EthereumAuthData {
   message: string;
   signature: Signature;
 }

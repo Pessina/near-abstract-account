@@ -25,7 +25,7 @@ export type ClientData = {
 };
 
 
-export interface WebAuthnData {
+export interface WebAutahnAuthData {
   signature: P256Signature;
   authenticator_data: string;
   client_data: string;

@@ -1,6 +1,7 @@
 import { Contract, Account } from "near-api-js";
-import { WebAuthnData } from "../auth/WebAuthn/types";
-import { EthereumData } from "../auth/Ethereum/types";
+import { WebAutahnAuthData } from "../auth/WebAuthn/types";
+import { EthereumAuthData } from "../auth/Ethereum/types";
+import { SolanaAuthData } from "../auth/Solana/types";
 
 
 export interface FunctionCallAction {
@@ -29,7 +30,7 @@ export interface Transaction {
 export interface Auth {
   auth_type: string;
   auth_key_id: string;
-  auth_data: WebAuthnData | EthereumData;
+  auth_data: WebAutahnAuthData | EthereumAuthData | SolanaAuthData;
 }
 
 export interface UserOperation {
