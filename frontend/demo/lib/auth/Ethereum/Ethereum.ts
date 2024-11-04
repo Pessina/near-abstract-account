@@ -1,21 +1,41 @@
-import { type WalletClient, custom, createWalletClient } from "viem";
+import { type WalletClient,type EIP1193Provider,  custom, createWalletClient } from "viem";
 import { EthereumData } from "./types";
 
+export type WalletType = 'metamask' | 'okx';
 
 export class Ethereum {
   private static walletClient: WalletClient | null = null;
+  private static selectedWallet: WalletType | null = null;
 
-  private static async getWalletClient(): Promise<WalletClient> {
-    if (!window.ethereum) {
-      throw new Error("Ethereum is not available in this browser");
+  public static setWallet(wallet: WalletType) {
+    this.selectedWallet = wallet;
+  }
+
+  private static getProvider(): EIP1193Provider {
+    if (!this.selectedWallet) {
+      throw new Error("Please select a wallet using setWallet() before proceeding");
+    }
+    
+    if (this.selectedWallet === 'okx' && window.okxwallet) {
+      return window.okxwallet;
+    }
+    
+    if (this.selectedWallet === 'metamask' && window.ethereum) {
+      return window.ethereum;
     }
 
+    throw new Error(`${this.selectedWallet} wallet not found. Please install the wallet first`);
+  }
+
+  private static async getWalletClient(): Promise<WalletClient> {
+    const provider = this.getProvider();
+    
     // Request permission to access accounts first
-    await window.ethereum.request({ method: 'eth_requestAccounts' });
+    await provider.request({ method: 'eth_requestAccounts' });
     
     if (!this.walletClient) {
       this.walletClient = createWalletClient({
-        transport: custom(window.ethereum)
+        transport: custom(provider)
       });
     }
 
@@ -23,12 +43,16 @@ export class Ethereum {
   }
 
   public static isSupportedByBrowser(): boolean {
-    return typeof window !== "undefined" && window.ethereum !== undefined;
+    return typeof window !== "undefined" && (
+      window.ethereum !== undefined || 
+      window.okxwallet !== undefined
+    );
   }
 
+  // Rest of the methods remain the same
   public static async requestAccounts(): Promise<`0x${string}`[]> {
     if (!this.isSupportedByBrowser()) {
-      throw new Error("Ethereum is not supported by this browser");
+      throw new Error("No supported Ethereum wallet found");
     }
 
     try {
