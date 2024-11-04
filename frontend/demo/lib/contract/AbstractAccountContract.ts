@@ -31,6 +31,7 @@ export interface Transaction {
 
 export interface Auth {
   auth_type: string;
+  auth_key_id: string;
   auth_data: Record<string, unknown>;
 }
 
@@ -45,8 +46,8 @@ export interface WebAuthnAuth {
 }
 
 type AbstractContract = Contract & {
-  add_public_key: (args: { key_id: string, compressed_public_key: string }) => Promise<void>;
-  get_public_key: (args: { key_id: string }) => Promise<string | null>;
+  add_auth_key: (args: { key_id: string, auth_key: string }) => Promise<void>;
+  get_auth_key: (args: { key_id: string }) => Promise<string | null>;
   get_nonce: () => Promise<number>;
   set_auth_contract: (args: { auth_type: string, auth_contract_account_id: string }) => Promise<void>;
   auth: (args: { user_op: UserOperation }, gas?: string) => Promise<void>;
@@ -66,22 +67,22 @@ export class AbstractAccountContract {
       account,
       contractId,
       {
-        viewMethods: ['get_public_key', 'get_nonce'],
-        changeMethods: ['add_public_key', 'set_auth_contract', 'auth'],
+        viewMethods: ['get_auth_key', 'get_nonce'],
+        changeMethods: ['add_auth_key', 'set_auth_contract', 'auth'],
         useLocalViewExecution: false
       }
     ) as unknown as AbstractContract;
   }
 
-  async addPublicKey(keyId: string, compressedPublicKey: string): Promise<void> {
-    return await this.contract.add_public_key({
+  async addAuthKey(keyId: string, authKey: string): Promise<void> {
+    return await this.contract.add_auth_key({
       key_id: keyId,
-      compressed_public_key: compressedPublicKey
+      auth_key: authKey
     });
   }
 
-  async getPublicKey(keyId: string): Promise<string | null> {
-    return await this.contract.get_public_key({ key_id: keyId });
+  async getAuthKey(keyId: string): Promise<string | null> {
+    return await this.contract.get_auth_key({ key_id: keyId });
   }
 
   async getNonce(): Promise<number> {

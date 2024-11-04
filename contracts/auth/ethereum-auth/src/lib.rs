@@ -1,10 +1,7 @@
 use hex;
 use interfaces::ethereum_auth::{EthereumData, Signature};
+use k256::ecdsa::{RecoveryId, Signature as K256Signature, VerifyingKey};
 use near_sdk::{log, near};
-use secp256k1::{
-    ecdsa::{RecoverableSignature, RecoveryId},
-    Message, PublicKey, Secp256k1,
-};
 use sha3::{Digest, Keccak256};
 
 #[near(contract_state)]
@@ -18,13 +15,13 @@ impl Default for EthereumAuthContract {
 
 #[near]
 impl EthereumAuthContract {
-    /// Validates an Ethereum signature using secp256k1 curve
+    /// Validates an Ethereum signature using k256 (secp256k1) curve
     pub fn validate_eth_signature(&self, eth_data: EthereumData, eth_address: String) -> bool {
-        let (message, signature) = match (
+        let (message_digest, signature, recovery_id) = match (
             self.prepare_message(&eth_data),
             self.create_signature(&eth_data.signature),
         ) {
-            (Ok(msg), Ok(sig)) => (msg, sig),
+            (Ok(msg), Ok((sig, rec_id))) => (msg, sig, rec_id),
             (Err(e), _) => {
                 log!("Failed to prepare message: {}", e);
                 return false;
@@ -35,7 +32,8 @@ impl EthereumAuthContract {
             }
         };
 
-        let recovered_address = match self.recover_signer(&message, &signature) {
+        let recovered_address = match self.recover_signer(&message_digest, &signature, recovery_id)
+        {
             Ok(addr) => addr,
             Err(e) => {
                 log!("Failed to recover signer: {}", e);
@@ -47,7 +45,7 @@ impl EthereumAuthContract {
     }
 
     #[inline(always)]
-    fn prepare_message(&self, eth_data: &EthereumData) -> Result<Message, String> {
+    fn prepare_message(&self, eth_data: &EthereumData) -> Result<Keccak256, String> {
         let mut hasher = Keccak256::new();
         hasher.update(eth_data.message.as_bytes());
         let message_hash = hasher.finalize();
@@ -60,13 +58,14 @@ impl EthereumAuthContract {
 
         let mut final_hasher = Keccak256::new();
         final_hasher.update(&prefix_msg);
-        let final_hash = final_hasher.finalize();
-
-        Message::from_slice(&final_hash).map_err(|_| String::from("Invalid message format"))
+        Ok(final_hasher)
     }
 
     #[inline(always)]
-    fn create_signature(&self, signature: &Signature) -> Result<RecoverableSignature, String> {
+    fn create_signature(
+        &self,
+        signature: &Signature,
+    ) -> Result<(K256Signature, RecoveryId), String> {
         let r = hex::decode(signature.r.strip_prefix("0x").unwrap_or(&signature.r))
             .map_err(|_| "Invalid hex encoding in r")?;
         let s = hex::decode(signature.s.strip_prefix("0x").unwrap_or(&signature.s))
@@ -88,35 +87,39 @@ impl EthereumAuthContract {
 
         // Adjust v for modern Ethereum signatures
         let recovery_id = if v >= 27 { v - 27 } else { v };
+        let recovery_id =
+            RecoveryId::try_from(recovery_id).map_err(|_| String::from("Invalid recovery ID"))?;
 
-        let recovery_id = RecoveryId::try_from(recovery_id as i32)
-            .map_err(|_| String::from("Invalid recovery ID"))?;
+        let signature = K256Signature::try_from(sig_bytes.as_slice())
+            .map_err(|_| String::from("Invalid signature format"))?;
 
-        RecoverableSignature::from_compact(&sig_bytes, recovery_id)
-            .map_err(|_| String::from("Invalid signature format"))
+        Ok((signature, recovery_id))
     }
 
     #[inline(always)]
     fn recover_signer(
         &self,
-        message: &Message,
-        signature: &RecoverableSignature,
+        message: &Keccak256,
+        signature: &K256Signature,
+        recovery_id: RecoveryId,
     ) -> Result<String, String> {
-        let secp = Secp256k1::verification_only();
-        let public_key = secp
-            .recover_ecdsa(message, signature)
-            .map_err(|_| String::from("Failed to recover public key"))?;
+        let verifying_key =
+            VerifyingKey::recover_from_digest(message.clone(), signature, recovery_id)
+                .map_err(|_| String::from("Failed to recover public key"))?;
 
-        Ok(self.public_key_to_address(&public_key))
+        Ok(self.public_key_to_address(&verifying_key))
     }
 
     #[inline(always)]
-    fn public_key_to_address(&self, public_key: &PublicKey) -> String {
-        let pub_key = public_key.serialize_uncompressed();
+    fn public_key_to_address(&self, public_key: &VerifyingKey) -> String {
+        let pub_key = public_key.to_encoded_point(false);
+        let pub_key_bytes = pub_key.as_bytes();
+
         let mut hasher = Keccak256::new();
         // Skip the first byte (0x04) which indicates uncompressed public key
-        hasher.update(&pub_key[1..]);
+        hasher.update(&pub_key_bytes[1..]);
         let hash = hasher.finalize();
+
         // Take last 20 bytes for address
         format!("0x{}", hex::encode(&hash[12..]))
     }

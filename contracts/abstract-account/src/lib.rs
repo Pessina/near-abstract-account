@@ -15,9 +15,9 @@ pub struct AbstractAccountContract {
 impl Default for AbstractAccountContract {
     fn default() -> Self {
         Self {
-            auth_keys: LookupMap::new(b"c"),
+            auth_keys: LookupMap::new(b"a"),
             owner: env::predecessor_account_id(),
-            auth_contracts: LookupMap::new(b"d"),
+            auth_contracts: LookupMap::new(b"b"),
             nonce: 0,
         }
     }
