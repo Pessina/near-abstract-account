@@ -2,7 +2,7 @@ use crate::mods::external_contracts::{solana_auth, VALIDATE_ETH_SIGNATURE_GAS};
 use crate::types::UserOp;
 use crate::AbstractAccountContract;
 use interfaces::solana_auth::SolanaData;
-use near_sdk::{env, require, Promise};
+use near_sdk::{env, Promise};
 
 impl AbstractAccountContract {
     pub fn handle_solana_auth(&self, user_op: UserOp) -> Result<Promise, String> {
@@ -16,16 +16,8 @@ impl AbstractAccountContract {
         let message = serde_json_canonicalizer::to_string(&user_op.transaction)
             .map_err(|_| "Failed to canonicalize transaction")?;
 
-        require!(
-            solana_auth.message == message,
-            format!(
-                "Message mismatch - Expected: {}, Got: {}",
-                message, solana_auth.message
-            )
-        );
-
         let solana_data = SolanaData {
-            message: solana_auth.message,
+            message,
             signature: solana_auth.signature,
         };
 

@@ -14,12 +14,11 @@ impl AbstractAccountContract {
             .get_auth_key(user_op.auth.auth_key_id.clone())
             .ok_or("Auth key not found")?;
 
-        // Canonicalize the transaction for consistent hashing
-        let canonical = serde_json_canonicalizer::to_string(&user_op.transaction)
+        let message = serde_json_canonicalizer::to_string(&user_op.transaction)
             .map_err(|_| "Failed to canonicalize transaction")?;
 
         let ethereum_data = EthereumData {
-            message: canonical,
+            message,
             signature: ethereum_auth.signature,
         };
 
