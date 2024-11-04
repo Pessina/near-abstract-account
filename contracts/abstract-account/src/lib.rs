@@ -84,6 +84,10 @@ impl AbstractAccountContract {
                 Ok(promise) => promise,
                 Err(e) => env::panic_str(&e),
             },
+            "solana" => match self.handle_solana_auth(user_op) {
+                Ok(promise) => promise,
+                Err(e) => env::panic_str(&e),
+            },
             _ => env::panic_str("Unsupported auth type"),
         }
     }

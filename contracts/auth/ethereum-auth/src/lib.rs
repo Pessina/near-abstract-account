@@ -5,13 +5,8 @@ use near_sdk::{log, near};
 use sha3::{Digest, Keccak256};
 
 #[near(contract_state)]
+#[derive(Default)]
 pub struct EthereumAuthContract {}
-
-impl Default for EthereumAuthContract {
-    fn default() -> Self {
-        Self {}
-    }
-}
 
 #[near]
 impl EthereumAuthContract {

@@ -9,13 +9,8 @@ use p256::{
 use sha2::{Digest, Sha256};
 
 #[near(contract_state)]
+#[derive(Default)]
 pub struct WebAuthnAuthContract {}
-
-impl Default for WebAuthnAuthContract {
-    fn default() -> Self {
-        Self {}
-    }
-}
 
 #[near]
 impl WebAuthnAuthContract {

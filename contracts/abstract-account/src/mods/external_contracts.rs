@@ -1,4 +1,5 @@
 use interfaces::ethereum_auth::EthereumData;
+use interfaces::solana_auth::SolanaData;
 use interfaces::webauthn_auth::WebAuthnData;
 use near_sdk::ext_contract;
 use near_sdk::Gas;
@@ -18,4 +19,9 @@ pub trait WebAuthnAuth {
 #[ext_contract(ethereum_auth)]
 pub trait EthereumAuth {
     fn validate_eth_signature(&self, eth_data: EthereumData, eth_address: String) -> bool;
+}
+
+#[ext_contract(solana_auth)]
+pub trait SolanaAuth {
+    fn validate_solana_signature(&self, solana_data: SolanaData, public_key: String) -> bool;
 }

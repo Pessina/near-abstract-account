@@ -1,13 +1,13 @@
 use bs58;
 use ed25519_dalek::{Signature, VerifyingKey};
 use interfaces::solana_auth::SolanaData;
-use near_sdk::{env, near_bindgen};
+use near_sdk::{env, near};
 
-#[near_bindgen]
+#[near(contract_state)]
 #[derive(Default)]
 pub struct SolanaAuthContract {}
 
-#[near_bindgen]
+#[near]
 impl SolanaAuthContract {
     /// Validates a Solana signature using ed25519 curve
     pub fn validate_solana_signature(&self, solana_data: SolanaData, public_key: String) -> bool {
