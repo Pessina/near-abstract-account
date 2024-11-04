@@ -6617,6 +6617,7 @@ name = "webauthn-auth"
 version = "0.1.0"
 dependencies = [
  "getrandom 0.2.15",
+ "hex 0.4.3",
  "interfaces",
  "near-sdk",
  "near-workspaces 0.14.1",

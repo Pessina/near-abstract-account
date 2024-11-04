@@ -80,6 +80,10 @@ impl AbstractAccountContract {
                 Ok(promise) => promise,
                 Err(e) => env::panic_str(&e),
             },
+            "ethereum" => match self.handle_ethereum_auth(user_op) {
+                Ok(promise) => promise,
+                Err(e) => env::panic_str(&e),
+            },
             _ => env::panic_str("Unsupported auth type"),
         }
     }
