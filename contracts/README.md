@@ -17,3 +17,4 @@
 - Include factory contract for Abstract Account generation
 - Create relayer project to sponsor Near transactions
 - Update multichain-tools package to support near browser wallets
+- Review nonce and message signed validation for ETH/SOl
