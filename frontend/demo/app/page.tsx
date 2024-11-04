@@ -131,7 +131,8 @@ export default function AuthDemo() {
                     handleEthereumRegister({
                       contract,
                       setStatus,
-                      setIsPending
+                      setIsPending,
+                      wallet: 'okx'
                     });
                   }}
                   className="flex items-center justify-center gap-2"
@@ -152,7 +153,8 @@ export default function AuthDemo() {
                     handleEthereumAuthenticate({
                       contract,
                       setStatus,
-                      setIsPending
+                      setIsPending,
+                      wallet: 'okx'
                     });
                   }}
                   className="flex items-center justify-center gap-2"

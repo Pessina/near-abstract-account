@@ -1,15 +1,17 @@
 import { AbstractAccountContract } from "@/lib/contract/AbstractAccountContract"
 import canonicalize from "canonicalize"
-import { Ethereum } from "@/lib/auth/Ethereum/Ethereum"
+import { Ethereum, WalletType } from "@/lib/auth/Ethereum/Ethereum"
 
 export const handleEthereumRegister = async ({
   contract,
   setStatus,
-  setIsPending
+  setIsPending,
+  wallet
 }: {
   contract: AbstractAccountContract,
   setStatus: (status: string) => void,
-  setIsPending: (isPending: boolean) => void
+  setIsPending: (isPending: boolean) => void,
+  wallet: WalletType
 }) => {
   setIsPending(true)
   try {
@@ -17,6 +19,8 @@ export const handleEthereumRegister = async ({
       setStatus("Ethereum wallet is not supported by this browser")
       return
     }
+
+    Ethereum.setWallet(wallet)
 
     const ethAddress = await Ethereum.getCurrentAddress()
     if (!ethAddress || !contract) {
@@ -37,14 +41,18 @@ export const handleEthereumRegister = async ({
 export const handleEthereumAuthenticate = async ({
   contract,
   setStatus, 
-  setIsPending
+  setIsPending,
+  wallet
 }: {
   contract: AbstractAccountContract,
   setStatus: (status: string) => void,
-  setIsPending: (isPending: boolean) => void
+  setIsPending: (isPending: boolean) => void,
+  wallet: WalletType
 }) => {
   setIsPending(true)
   try {
+    Ethereum.setWallet(wallet)
+
     const nonce = await contract?.getNonce()
     if (nonce === undefined || !contract) {
       setStatus("Failed to get nonce or initialize contract")
