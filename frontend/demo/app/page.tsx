@@ -139,7 +139,7 @@ export default function AuthDemo() {
                   disabled={isPending}
                 >
                   <Image
-                    src="/metamask-fox.svg"
+                    src="/metamask.svg"
                     alt="MetaMask logo"
                     width={24}
                     height={24}
@@ -160,7 +160,7 @@ export default function AuthDemo() {
                   disabled={isPending}
                 >
                   <Image
-                    src="/metamask-fox.svg"
+                    src="/metamask.svg"
                     alt="MetaMask logo"
                     width={24}
                     height={24}
