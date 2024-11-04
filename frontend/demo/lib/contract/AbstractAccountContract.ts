@@ -1,10 +1,7 @@
 import { Contract, Account } from "near-api-js";
+import { WebAuthnData } from "../auth/WebAuthn/types";
+import { EthereumData } from "../auth/Ethereum/types";
 
-export interface WebAuthnData {
-  signature: string;
-  authenticator_data: string;
-  client_data: string;
-}
 
 export interface FunctionCallAction {
   FunctionCall: {
@@ -32,17 +29,12 @@ export interface Transaction {
 export interface Auth {
   auth_type: string;
   auth_key_id: string;
-  auth_data: Record<string, unknown>;
+  auth_data: WebAuthnData | EthereumData;
 }
 
 export interface UserOperation {
   auth: Auth;
   transaction: Transaction;
-}
-
-export interface WebAuthnAuth {
-  public_key_id: string;
-  webauthn_data: WebAuthnData;
 }
 
 type AbstractContract = Contract & {

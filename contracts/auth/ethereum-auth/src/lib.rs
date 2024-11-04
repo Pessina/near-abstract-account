@@ -48,13 +48,12 @@ impl EthereumAuthContract {
     fn prepare_message(&self, eth_data: &EthereumData) -> Result<Keccak256, String> {
         let mut hasher = Keccak256::new();
         hasher.update(eth_data.message.as_bytes());
-        let message_hash = hasher.finalize();
 
         // Prefix and hash again (Ethereum signed message format)
-        let mut prefix_msg = format!("\x19Ethereum Signed Message:\n{}", eth_data.message.len())
-            .as_bytes()
-            .to_vec();
-        prefix_msg.extend_from_slice(&message_hash);
+        let prefix = format!("\x19Ethereum Signed Message:\n{}", eth_data.message.len());
+
+        let mut prefix_msg = prefix.as_bytes().to_vec();
+        prefix_msg.extend_from_slice(eth_data.message.as_bytes());
 
         let mut final_hasher = Keccak256::new();
         final_hasher.update(&prefix_msg);
@@ -70,11 +69,7 @@ impl EthereumAuthContract {
             .map_err(|_| "Invalid hex encoding in r")?;
         let s = hex::decode(signature.s.strip_prefix("0x").unwrap_or(&signature.s))
             .map_err(|_| "Invalid hex encoding in s")?;
-        let v = signature
-            .v
-            .strip_prefix("0x")
-            .unwrap_or(&signature.v)
-            .parse::<u8>()
+        let v = u8::from_str_radix(signature.v.strip_prefix("0x").unwrap_or(&signature.v), 16)
             .map_err(|_| "Invalid v value")?;
 
         if r.len() != 32 || s.len() != 32 {
@@ -126,6 +121,68 @@ impl EthereumAuthContract {
 
     #[inline(always)]
     fn normalize_address(&self, address: &str) -> String {
-        address.to_lowercase()
+        let addr = address.trim_start_matches("0x").to_lowercase();
+        format!("0x{}", addr)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use interfaces::ethereum_auth::{EthereumData, Signature};
+
+    fn get_test_address() -> String {
+        "0x4174678c78feafd778c1ff319d5d326701449b25".to_string()
+    }
+
+    #[test]
+    fn validate_signature_should_succeed() {
+        let contract = EthereumAuthContract::default();
+        let address = get_test_address();
+
+        let ethereum_data = EthereumData {
+            message: r#"{"actions":[{"Transfer":{"deposit":"1000000000000000000000"}},{"FunctionCall":{"args":"{\"request\":{\"path\":\"ethereum,1\",\"payload\":[0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1],\"key_version\":0}}","deposit":"250000000000000000000000","gas":"50000000000000","method_name":"sign"}}],"nonce":"3","receiver_id":"v1.signer-prod.testnet"}"#.to_string(),
+            signature: Signature {
+                r: "0xb0f8a31ec318104d5545d3ae4f46e1ccb1987e308849f1ed7cfb3847767d1892".to_string(),
+                s: "0x7c5bd89fcf288ed7e5b671824af4684297b7884f9dcbf31251d6beb0a4aeca4b".to_string(),
+                v: "0x1c".to_string(),
+            },
+        };
+
+        assert!(contract.validate_eth_signature(ethereum_data, address));
+    }
+
+    #[test]
+    fn validate_signature_should_fail_with_wrong_address() {
+        let contract = EthereumAuthContract::default();
+        let wrong_address = "0x1234567890123456789012345678901234567890".to_string();
+
+        let ethereum_data = EthereumData {
+            message: r#"{"actions":[{"Transfer":{"deposit":"1000000000000000000000"}},{"FunctionCall":{"args":"{\"request\":{\"path\":\"ethereum,1\",\"payload\":[0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1],\"key_version\":0}}","deposit":"250000000000000000000000","gas":"50000000000000","method_name":"sign"}}],"nonce":"3","receiver_id":"v1.signer-prod.testnet"}"#.to_string(),
+            signature: Signature {
+                r: "0xb0f8a31ec318104d5545d3ae4f46e1ccb1987e308849f1ed7cfb3847767d1892".to_string(),
+                s: "0x7c5bd89fcf288ed7e5b671824af4684297b7884f9dcbf31251d6beb0a4aeca4b".to_string(),
+                v: "0x1c".to_string(),
+            },
+        };
+
+        assert!(!contract.validate_eth_signature(ethereum_data, wrong_address));
+    }
+
+    #[test]
+    fn validate_signature_should_fail_with_tampered_message() {
+        let contract = EthereumAuthContract::default();
+        let address = get_test_address();
+
+        let ethereum_data = EthereumData {
+            message: r#"{"actions":[{"Transfer":{"deposit":"2000000000000000000000"}},{"FunctionCall":{"args":"{\"request\":{\"path\":\"ethereum,1\",\"payload\":[0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1],\"key_version\":0}}","deposit":"250000000000000000000000","gas":"50000000000000","method_name":"sign"}}],"nonce":"3","receiver_id":"v1.signer-prod.testnet"}"#.to_string(),
+            signature: Signature {
+                r: "0xb0f8a31ec318104d5545d3ae4f46e1ccb1987e308849f1ed7cfb3847767d1892".to_string(),
+                s: "0x7c5bd89fcf288ed7e5b671824af4684297b7884f9dcbf31251d6beb0a4aeca4b".to_string(),
+                v: "0x1c".to_string(),
+            },
+        };
+
+        assert!(!contract.validate_eth_signature(ethereum_data, address));
     }
 }

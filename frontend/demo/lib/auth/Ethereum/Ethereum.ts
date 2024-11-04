@@ -1,24 +1,17 @@
 import { type WalletClient, custom, createWalletClient } from "viem";
+import { EthereumData } from "./types";
 
-// Define types locally that mirror the Rust structs
-interface Signature {
-  r: string;
-  s: string; 
-  v: string;
-}
-
-interface EthereumData {
-  message: string;
-  signature: Signature;
-}
 
 export class Ethereum {
   private static walletClient: WalletClient | null = null;
 
-  private static getWalletClient(): WalletClient {
+  private static async getWalletClient(): Promise<WalletClient> {
     if (!window.ethereum) {
       throw new Error("Ethereum is not available in this browser");
     }
+
+    // Request permission to access accounts first
+    await window.ethereum.request({ method: 'eth_requestAccounts' });
     
     if (!this.walletClient) {
       this.walletClient = createWalletClient({
@@ -39,7 +32,7 @@ export class Ethereum {
     }
 
     try {
-      const client = this.getWalletClient();
+      const client = await this.getWalletClient();
       return await client.requestAddresses();
     } catch (error) {
       console.error("Error requesting accounts:", error);
@@ -56,7 +49,7 @@ export class Ethereum {
     }
 
     try {
-      const client = this.getWalletClient();
+      const client = await this.getWalletClient();
       const signature = await client.signMessage({
         account: address,
         message
@@ -91,7 +84,7 @@ export class Ethereum {
     }
 
     try {
-      const client = this.getWalletClient();
+      const client = await this.getWalletClient();
       const [address] = await client.getAddresses();
       return address || null;
     } catch (error) {
@@ -100,5 +93,3 @@ export class Ethereum {
     }
   }
 }
-
-

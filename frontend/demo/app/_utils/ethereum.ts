@@ -91,14 +91,12 @@ export const handleEthereumAuthenticate = async ({
       return
     }
 
+
     await contract.auth({
       auth: {
         auth_type: "ethereum",
         auth_key_id: ethAddress,
-        auth_data: {
-          eth_address: ethAddress,
-          ethereum_data: ethereumData
-        }
+        auth_data: ethereumData
       },
       transaction
     })
