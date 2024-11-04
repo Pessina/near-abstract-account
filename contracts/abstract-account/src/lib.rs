@@ -7,7 +7,7 @@ use types::UserOp;
 #[near(contract_state)]
 pub struct AbstractAccountContract {
     owner: AccountId,
-    public_keys: LookupMap<String, String>, // key_id -> compressed_public_key
+    auth_keys: LookupMap<String, String>, // key_id -> auth_key (compressed public key, eth address, etc)
     auth_contracts: LookupMap<String, AccountId>,
     nonce: u64,
 }
@@ -15,9 +15,9 @@ pub struct AbstractAccountContract {
 impl Default for AbstractAccountContract {
     fn default() -> Self {
         Self {
-            public_keys: LookupMap::new(b"c"),
+            auth_keys: LookupMap::new(b"a"),
             owner: env::predecessor_account_id(),
-            auth_contracts: LookupMap::new(b"d"),
+            auth_contracts: LookupMap::new(b"b"),
             nonce: 0,
         }
     }
@@ -38,13 +38,13 @@ impl AbstractAccountContract {
         );
     }
 
-    pub fn add_public_key(&mut self, key_id: String, compressed_public_key: String) {
+    pub fn add_auth_key(&mut self, key_id: String, auth_key: String) {
         self.assert_owner();
-        self.public_keys.insert(key_id, compressed_public_key);
+        self.auth_keys.insert(key_id, auth_key);
     }
 
-    pub fn get_public_key(&self, key_id: String) -> Option<String> {
-        self.public_keys.get(&key_id).cloned()
+    pub fn get_auth_key(&self, key_id: String) -> Option<String> {
+        self.auth_keys.get(&key_id).cloned()
     }
 
     pub fn set_auth_contract(&mut self, auth_type: String, auth_contract_account_id: AccountId) {
@@ -77,6 +77,10 @@ impl AbstractAccountContract {
 
         match user_op.auth.auth_type.as_str() {
             "webauthn" => match self.handle_webauthn_auth(user_op) {
+                Ok(promise) => promise,
+                Err(e) => env::panic_str(&e),
+            },
+            "ethereum" => match self.handle_ethereum_auth(user_op) {
                 Ok(promise) => promise,
                 Err(e) => env::panic_str(&e),
             },

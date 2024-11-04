@@ -7,10 +7,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { AbstractAccountContract } from "@/lib/contract/AbstractAccountContract"
 import initNear from "@/lib/near"
-import { WebAuthn } from "@/lib/auth"
 import { FaGoogle, FaFacebook, FaTwitter, FaBitcoin } from "react-icons/fa"
 import Image from "next/image"
-import canonicalize from 'canonicalize'
+import { handlePasskeyAuthenticate } from "./_utils/webauthn"
+import { handlePasskeyRegister } from "./_utils/webauthn"
+import { handleEthereumAuthenticate } from "./_utils/ethereum"
+import { handleEthereumRegister } from "./_utils/ethereum"
 
 export default function AuthDemo() {
   const [contract, setContract] = useState<AbstractAccountContract | null>(null)
@@ -27,8 +29,9 @@ export default function AuthDemo() {
           contractId: process.env.NEXT_PUBLIC_ABSTRACT_ACCOUNT_CONTRACT as string
         })
 
-        // Initialize the auth contract
+        // Initialize the auth contracts
         await contractInstance.setAuthContract('webauthn', "felipe-webauthn.testnet")
+        await contractInstance.setAuthContract('ethereum', "felipe-ethereum.testnet")
 
         setContract(contractInstance)
       } catch (error) {
@@ -39,98 +42,6 @@ export default function AuthDemo() {
 
     setupContract()
   }, [])
-
-  const handlePasskeyRegister = async () => {
-    setIsPending(true)
-    try {
-      if (!WebAuthn.isSupportedByBrowser()) {
-        setStatus("WebAuthn is not supported by this browser")
-        return
-      }
-
-      const credential = await WebAuthn.create({ username })
-      if (!credential || !contract) {
-        setStatus("Failed to create credential or initialize contract")
-        return
-      }
-
-      await contract.addPublicKey(credential.rawId, credential.compressedPublicKey)
-      setStatus("Passkey registration successful!")
-    } catch (error) {
-      console.error(error)
-      setStatus(`Error during registration: ${(error as Error).message}`)
-    } finally {
-      setIsPending(false)
-    }
-  }
-
-  const handlePasskeyAuthenticate = async () => {
-    setIsPending(true)
-    try {
-      const nonce = await contract?.getNonce()
-      if (nonce === undefined || !contract) {
-        setStatus("Failed to get nonce or initialize contract")
-        return
-      }
-
-      const transaction = {
-        receiver_id: "v1.signer-prod.testnet",
-        nonce: nonce.toString(),
-        actions: [
-          { Transfer: { deposit: "1000000000000000000000" } },
-          {
-            FunctionCall: {
-              method_name: "sign",
-              args: JSON.stringify({
-                request: {
-                  path: "ethereum,1",
-                  payload: Array(32).fill(0).map((_, i) => i % 10),
-                  key_version: 0
-                }
-              }),
-              gas: "50000000000000",
-              deposit: "250000000000000000000000"
-            }
-          }
-        ]
-      }
-
-      const canonical = canonicalize(transaction)
-      const challenge = new TextEncoder().encode(canonical)
-      const challengeHash = await crypto.subtle.digest('SHA-256', challenge)
-
-      const credential = await WebAuthn.get(new Uint8Array(challengeHash))
-      if (!credential) {
-        setStatus("Failed to get credential")
-        return
-      }
-
-      // Test code for signature
-      // credential.signature.r = "0x573a2aba62db8a60c0877a87a2c6db9637bba0b7d8fd505628947e763371c016"
-
-      await contract.auth({
-        auth: {
-          auth_type: "webauthn",
-          auth_data: {
-            public_key_id: credential.rawId,
-            webauthn_data: {
-              signature: credential.signature,
-              authenticator_data: credential.authenticatorData,
-              client_data: JSON.stringify(credential.clientData)
-            }
-          }
-        },
-        transaction
-      })
-
-      setStatus("Passkey authentication successful!")
-    } catch (error) {
-      console.error(error)
-      setStatus(`Error during authentication: ${(error as Error).message}`)
-    } finally {
-      setIsPending(false)
-    }
-  }
 
   return (
     <div className="flex justify-center items-center h-full">
@@ -154,10 +65,32 @@ export default function AuthDemo() {
                 />
               </div>
               <div className="flex space-x-4">
-                <Button onClick={handlePasskeyRegister} disabled={isPending}>
+                <Button
+                  onClick={() => {
+                    if (!contract) return;
+                    handlePasskeyRegister({
+                      username,
+                      contract,
+                      setStatus,
+                      setIsPending
+                    });
+                  }}
+                  disabled={isPending}
+                >
                   Register Passkey
                 </Button>
-                <Button onClick={handlePasskeyAuthenticate} variant="secondary" disabled={isPending}>
+                <Button
+                  onClick={() => {
+                    if (!contract) return;
+                    handlePasskeyAuthenticate({
+                      contract,
+                      setStatus,
+                      setIsPending
+                    });
+                  }}
+                  variant="secondary"
+                  disabled={isPending}
+                >
                   Authenticate with Passkey
                 </Button>
               </div>
@@ -193,17 +126,46 @@ export default function AuthDemo() {
               <h3 className="text-lg font-semibold">Wallet Authentication</h3>
               <div className="flex flex-wrap gap-4">
                 <Button
-                  onClick={() => console.log("Connect MetaMask")}
+                  onClick={() => {
+                    if (!contract) return;
+                    handleEthereumRegister({
+                      contract,
+                      setStatus,
+                      setIsPending
+                    });
+                  }}
                   className="flex items-center justify-center gap-2"
                   variant="outline"
+                  disabled={isPending}
                 >
                   <Image
-                    src="/metamask-fox.svg"
+                    src="/metamask.svg"
                     alt="MetaMask logo"
                     width={24}
                     height={24}
                   />
-                  <span>Connect MetaMask</span>
+                  <span>Register MetaMask</span>
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (!contract) return;
+                    handleEthereumAuthenticate({
+                      contract,
+                      setStatus,
+                      setIsPending
+                    });
+                  }}
+                  className="flex items-center justify-center gap-2"
+                  variant="outline"
+                  disabled={isPending}
+                >
+                  <Image
+                    src="/metamask.svg"
+                    alt="MetaMask logo"
+                    width={24}
+                    height={24}
+                  />
+                  <span>Authenticate with MetaMask</span>
                 </Button>
                 <Button
                   onClick={() => console.log("Connect BTC Wallet")}

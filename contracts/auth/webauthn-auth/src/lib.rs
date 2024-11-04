@@ -1,3 +1,4 @@
+use hex;
 use interfaces::webauthn_auth::WebAuthnData;
 use near_sdk::{log, near};
 use p256::{

@@ -23,3 +23,10 @@ export type ClientData = {
   origin: string;
   crossOrigin?: boolean;
 };
+
+
+export interface WebAuthnData {
+  signature: P256Signature;
+  authenticator_data: string;
+  client_data: string;
+}

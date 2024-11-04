@@ -1,5 +1,5 @@
 use crate::mods::external_contracts::{webauthn_auth, VALIDATE_P256_SIGNATURE_GAS};
-use crate::types::{UserOp, WebAuthnAuth};
+use crate::types::UserOp;
 use crate::AbstractAccountContract;
 use base64::engine::{general_purpose::URL_SAFE_NO_PAD, Engine};
 use interfaces::webauthn_auth::WebAuthnData;
@@ -7,16 +7,15 @@ use near_sdk::{env, require, Promise};
 
 impl AbstractAccountContract {
     pub fn handle_webauthn_auth(&self, user_op: UserOp) -> Result<Promise, String> {
-        let webauthn_auth: WebAuthnAuth = serde_json::from_str(&user_op.auth.auth_data.to_string())
+        let webauthn_auth: WebAuthnData = serde_json::from_str(&user_op.auth.auth_data.to_string())
             .map_err(|_| "Invalid WebAuthn auth data")?;
 
-        let compressed_public_key = self
-            .get_public_key(webauthn_auth.public_key_id.clone())
-            .ok_or("Public key not found")?;
+        let auth_key = self
+            .get_auth_key(user_op.auth.auth_key_id.clone())
+            .ok_or("Auth key not found")?;
 
-        let client_data: serde_json::Value =
-            serde_json::from_str(&webauthn_auth.webauthn_data.client_data)
-                .map_err(|_| "Invalid client data JSON")?;
+        let client_data: serde_json::Value = serde_json::from_str(&webauthn_auth.client_data)
+            .map_err(|_| "Invalid client data JSON")?;
 
         let client_challenge = client_data["challenge"]
             .as_str()
@@ -35,9 +34,9 @@ impl AbstractAccountContract {
         );
 
         let webauthn_data = WebAuthnData {
-            signature: webauthn_auth.webauthn_data.signature,
-            authenticator_data: webauthn_auth.webauthn_data.authenticator_data,
-            client_data: webauthn_auth.webauthn_data.client_data,
+            signature: webauthn_auth.signature,
+            authenticator_data: webauthn_auth.authenticator_data,
+            client_data: webauthn_auth.client_data,
         };
 
         let webauthn_contract = self
@@ -47,7 +46,7 @@ impl AbstractAccountContract {
 
         Ok(webauthn_auth::ext(webauthn_contract.clone())
             .with_static_gas(VALIDATE_P256_SIGNATURE_GAS)
-            .validate_p256_signature(webauthn_data, compressed_public_key)
+            .validate_p256_signature(webauthn_data, auth_key)
             .then(Self::ext(env::current_account_id()).auth_callback(user_op.transaction)))
     }
 }
