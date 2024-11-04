@@ -10,9 +10,9 @@ impl AbstractAccountContract {
         let webauthn_auth: WebAuthnAuth = serde_json::from_str(&user_op.auth.auth_data.to_string())
             .map_err(|_| "Invalid WebAuthn auth data")?;
 
-        let compressed_public_key = self
-            .get_public_key(webauthn_auth.public_key_id.clone())
-            .ok_or("Public key not found")?;
+        let auth_key = self
+            .get_auth_key(webauthn_auth.public_key_id.clone())
+            .ok_or("Auth key not found")?;
 
         let client_data: serde_json::Value =
             serde_json::from_str(&webauthn_auth.webauthn_data.client_data)
@@ -47,7 +47,7 @@ impl AbstractAccountContract {
 
         Ok(webauthn_auth::ext(webauthn_contract.clone())
             .with_static_gas(VALIDATE_P256_SIGNATURE_GAS)
-            .validate_p256_signature(webauthn_data, compressed_public_key)
+            .validate_p256_signature(webauthn_data, auth_key)
             .then(Self::ext(env::current_account_id()).auth_callback(user_op.transaction)))
     }
 }
