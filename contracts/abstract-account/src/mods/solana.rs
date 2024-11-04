@@ -1,7 +1,6 @@
 use crate::mods::external_contracts::{solana_auth, VALIDATE_ETH_SIGNATURE_GAS};
 use crate::types::UserOp;
 use crate::AbstractAccountContract;
-use base64::engine::{general_purpose::URL_SAFE_NO_PAD, Engine};
 use interfaces::solana_auth::SolanaData;
 use near_sdk::{env, require, Promise};
 
@@ -14,10 +13,8 @@ impl AbstractAccountContract {
             .get_auth_key(user_op.auth.auth_key_id.clone())
             .ok_or("Auth key not found")?;
 
-        let canonical = serde_json_canonicalizer::to_string(&user_op.transaction)
+        let message = serde_json_canonicalizer::to_string(&user_op.transaction)
             .map_err(|_| "Failed to canonicalize transaction")?;
-
-        let message = URL_SAFE_NO_PAD.encode(env::sha256(canonical.as_bytes()));
 
         require!(
             solana_auth.message == message,

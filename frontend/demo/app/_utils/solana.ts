@@ -16,12 +16,12 @@ export const handleSolanaRegister = async ({
 }) => {
   setIsPending(true)
   try {
+    Solana.setWallet(wallet)
+
     if (!Solana.isAvailable()) {
       setStatus("Solana wallet is not supported by this browser")
       return
     }
-
-    Solana.setWallet(wallet)
 
     const publicKey = await Solana.getPublicKey()
     if (!publicKey || !contract) {

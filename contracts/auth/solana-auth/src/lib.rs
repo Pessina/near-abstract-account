@@ -1,3 +1,5 @@
+use base64::engine::general_purpose::STANDARD;
+use base64::Engine;
 use bs58;
 use ed25519_dalek::{Signature, VerifyingKey};
 use interfaces::solana_auth::SolanaData;
@@ -56,9 +58,9 @@ impl SolanaAuthContract {
 
     #[inline(always)]
     fn create_signature(&self, signature: &str) -> Result<Signature, String> {
-        let sig_bytes = bs58::decode(signature)
-            .into_vec()
-            .map_err(|_| "Invalid base58 encoding in signature")?;
+        let sig_bytes = STANDARD
+            .decode(signature)
+            .map_err(|_| "Invalid base64 encoding in signature")?;
 
         Ok(Signature::from_bytes(
             sig_bytes
@@ -75,7 +77,7 @@ mod tests {
     use interfaces::solana_auth::SolanaData;
 
     fn get_test_public_key() -> String {
-        "DxPv2QMA5cW8TV8tGwwAT5Ty3JBwvp6P5HKSiduoUQBB".to_string()
+        "4yrrTFWWVUdbr1AZz9o7D4CfRmZThTqtfzyQ7KojUb8u".to_string()
     }
 
     #[test]
@@ -84,8 +86,8 @@ mod tests {
         let public_key = get_test_public_key();
 
         let solana_data = SolanaData {
-            message: "Test message".to_string(),
-            signature: "4vV3MkdgmaCHQZvdqFiAtvhQk8GCLjNBgz9mw9PYaGBqTZ9hZiHBvbKQk9ZaX8HB3nF2kzSbVXgL2uVyiuZ6MpZc".to_string(),
+            message: "{\"actions\":[{\"Transfer\":{\"deposit\":\"1000000000000000000000\"}},{\"FunctionCall\":{\"args\":\"{\\\"request\\\":{\\\"path\\\":\\\"ethereum,1\\\",\\\"payload\\\":[0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1],\\\"key_version\\\":0}}\",\"deposit\":\"250000000000000000000000\",\"gas\":\"50000000000000\",\"method_name\":\"sign\"}}],\"nonce\":\"9\",\"receiver_id\":\"v1.signer-prod.testnet\"}".to_string(),
+            signature: "hMqxC3gElo4ZvXrk/k24qoTO2fLVF6Vr1lMoCI8l/SucxAt82TgYBfbYu1ovYKtYxY9GTwH1+168oZMTLGjBBw==".to_string(),
         };
 
         assert!(contract.validate_solana_signature(solana_data, public_key));
@@ -97,8 +99,8 @@ mod tests {
         let wrong_public_key = "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin".to_string();
 
         let solana_data = SolanaData {
-            message: "Test message".to_string(),
-            signature: "4vV3MkdgmaCHQZvdqFiAtvhQk8GCLjNBgz9mw9PYaGBqTZ9hZiHBvbKQk9ZaX8HB3nF2kzSbVXgL2uVyiuZ6MpZc".to_string(),
+            message: "{\"actions\":[{\"Transfer\":{\"deposit\":\"1000000000000000000000\"}},{\"FunctionCall\":{\"args\":\"{\\\"request\\\":{\\\"path\\\":\\\"ethereum,1\\\",\\\"payload\\\":[0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1],\\\"key_version\\\":0}}\",\"deposit\":\"250000000000000000000000\",\"gas\":\"50000000000000\",\"method_name\":\"sign\"}}],\"nonce\":\"9\",\"receiver_id\":\"v1.signer-prod.testnet\"}".to_string(),
+            signature: "hMqxC3gElo4ZvXrk/k24qoTO2fLVF6Vr1lMoCI8l/SucxAt82TgYBfbYu1ovYKtYxY9GTwH1+168oZMTLGjBBw==".to_string(),
         };
 
         assert!(!contract.validate_solana_signature(solana_data, wrong_public_key));
@@ -111,7 +113,7 @@ mod tests {
 
         let solana_data = SolanaData {
             message: "Tampered message".to_string(),
-            signature: "4vV3MkdgmaCHQZvdqFiAtvhQk8GCLjNBgz9mw9PYaGBqTZ9hZiHBvbKQk9ZaX8HB3nF2kzSbVXgL2uVyiuZ6MpZc".to_string(),
+            signature: "hMqxC3gElo4ZvXrk/k24qoTO2fLVF6Vr1lMoCI8l/SucxAt82TgYBfbYu1ovYKtYxY9GTwH1+168oZMTLGjBBw==".to_string(),
         };
 
         assert!(!contract.validate_solana_signature(solana_data, public_key));

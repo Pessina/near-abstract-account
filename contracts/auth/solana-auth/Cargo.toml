@@ -15,6 +15,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 near-sdk = { workspace = true }
 hex = { workspace = true }
+base64 = { workspace = true }
 bs58 = { workspace = true }
 interfaces = { path = "../../interfaces" }
 ed25519-dalek = "2.1.1"
