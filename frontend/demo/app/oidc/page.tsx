@@ -6,8 +6,12 @@ const OIDCPage = () => {
   return (
     <div>
       <h1>OIDC</h1>
-      <GoogleOAuthProvider clientId="876834174282-6ce99dphnb5ls945b783kfjkr5uh7e03.apps.googleusercontent.com">
+      <GoogleOAuthProvider
+        nonce='felipe-1000'
+        clientId="876834174282-6ce99dphnb5ls945b783kfjkr5uh7e03.apps.googleusercontent.com">
         <GoogleLogin
+          useOneTap
+          nonce='felipe-1000'
           onSuccess={credentialResponse => {
             console.log(credentialResponse);
           }}

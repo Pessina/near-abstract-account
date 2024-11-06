@@ -10,8 +10,6 @@ declare global {
     // Solana wallets
     solana?: Wallet;
     solflare?: Wallet;
-    backpack?: Wallet;
-    glow?: Wallet;
   }
 }
 
