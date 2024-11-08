@@ -7,15 +7,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { AbstractAccountContract } from "@/lib/contract/AbstractAccountContract"
 import initNear from "@/lib/near"
-import { FaGoogle, FaFacebook, FaTwitter, FaBitcoin } from "react-icons/fa"
+import { FaTwitter, FaBitcoin } from "react-icons/fa"
 import Image from "next/image"
 import { handlePasskeyAuthenticate } from "./_utils/webauthn"
 import { handlePasskeyRegister } from "./_utils/webauthn"
 import { handleEthereumAuthenticate } from "./_utils/ethereum"
 import { handleEthereumRegister } from "./_utils/ethereum"
 import { handleSolanaAuthenticate, handleSolanaRegister } from "./_utils/solana"
-import { GoogleOAuthProvider } from '@react-oauth/google';
 import GoogleButton from "./_components/GoogleButton"
+import FacebookButton from "./_components/FacebookButton"
 import Providers from "./_components/Providers"
 
 export default function AuthDemo() {
@@ -104,14 +104,7 @@ export default function AuthDemo() {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Social Login</h3>
                 <GoogleButton />
-                <Button
-                  onClick={() => console.log("Facebook Auth")}
-                  className="w-full flex items-center justify-center gap-2"
-                  variant="outline"
-                >
-                  <FaFacebook className="w-5 h-5" />
-                  <span>Sign in with Facebook</span>
-                </Button>
+                <FacebookButton />
                 <Button
                   onClick={() => console.log("Twitter Auth")}
                   className="w-full flex items-center justify-center gap-2"
