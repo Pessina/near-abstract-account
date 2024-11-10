@@ -105,7 +105,7 @@ export default function AuthDemo() {
               <div className="flex flex-col gap-4">
                 <h3 className="text-lg font-semibold">Social Login</h3>
                 <GoogleButton />
-                <FacebookButton />
+                {/* <FacebookButton /> */}
                 <XLoginButton />
               </div>
               <div className="space-y-4 md:col-span-2">
