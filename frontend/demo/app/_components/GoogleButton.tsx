@@ -6,10 +6,9 @@ import { CredentialResponse } from '@react-oauth/google';
 interface GoogleButtonProps {
   onSuccess?: (response: CredentialResponse) => void;
   onError?: () => void;
-  disabled?: boolean;
 }
 
-const GoogleButton = ({ onSuccess, onError, disabled }: GoogleButtonProps) => {
+const GoogleButton = ({ onSuccess, onError }: GoogleButtonProps) => {
   return (
     <div className="w-full">
       <GoogleLogin
