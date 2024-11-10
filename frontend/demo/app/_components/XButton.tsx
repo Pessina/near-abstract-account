@@ -35,3 +35,5 @@ export const XLoginButton = () => {
         </Button>
     )
 }
+
+export default XLoginButton

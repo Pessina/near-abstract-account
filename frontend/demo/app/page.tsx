@@ -17,7 +17,7 @@ import { handleSolanaAuthenticate, handleSolanaRegister } from "./_utils/solana"
 import GoogleButton from "./_components/GoogleButton"
 import FacebookButton from "./_components/FacebookButton"
 import Providers from "./_components/Providers"
-import { XLoginButton } from "./_components/XButton"
+// import XLoginButton from "./_components/XButton"
 
 export default function AuthDemo() {
   const [contract, setContract] = useState<AbstractAccountContract | null>(null)
@@ -105,8 +105,8 @@ export default function AuthDemo() {
               <div className="flex flex-col gap-4">
                 <h3 className="text-lg font-semibold">Social Login</h3>
                 <GoogleButton />
-                {/* <FacebookButton /> */}
-                <XLoginButton />
+                <FacebookButton />
+                {/* <XLoginButton /> */}
               </div>
               <div className="space-y-4 md:col-span-2">
                 <h3 className="text-lg font-semibold">Wallet Authentication</h3>
