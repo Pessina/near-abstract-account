@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { AbstractAccountContract } from "@/lib/contract/AbstractAccountContract"
 import initNear from "@/lib/near"
-import { FaTwitter, FaBitcoin } from "react-icons/fa"
+import { FaBitcoin } from "react-icons/fa"
 import Image from "next/image"
 import { handlePasskeyAuthenticate } from "./_utils/webauthn"
 import { handlePasskeyRegister } from "./_utils/webauthn"
@@ -17,6 +17,7 @@ import { handleSolanaAuthenticate, handleSolanaRegister } from "./_utils/solana"
 import GoogleButton from "./_components/GoogleButton"
 import FacebookButton from "./_components/FacebookButton"
 import Providers from "./_components/Providers"
+import { XLoginButton } from "./_components/XButton"
 
 export default function AuthDemo() {
   const [contract, setContract] = useState<AbstractAccountContract | null>(null)
@@ -101,18 +102,11 @@ export default function AuthDemo() {
                   </Button>
                 </div>
               </div>
-              <div className="space-y-4">
+              <div className="flex flex-col gap-4">
                 <h3 className="text-lg font-semibold">Social Login</h3>
                 <GoogleButton />
                 <FacebookButton />
-                <Button
-                  onClick={() => console.log("Twitter Auth")}
-                  className="w-full flex items-center justify-center gap-2"
-                  variant="outline"
-                >
-                  <FaTwitter className="w-5 h-5" />
-                  <span>Sign in with Twitter</span>
-                </Button>
+                <XLoginButton />
               </div>
               <div className="space-y-4 md:col-span-2">
                 <h3 className="text-lg font-semibold">Wallet Authentication</h3>

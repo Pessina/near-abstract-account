@@ -7,6 +7,7 @@ import { useState } from "react";
 export default function FacebookButton() {
     const [isLoading, setIsLoading] = useState(false);
     const { initiateLogin } = useFacebookAuth({
+        scope: 'email',
         appId: process.env.NEXT_PUBLIC_FACEBOOK_APP_ID || '',
         onSuccess: (idToken) => {
             console.log('Successfully logged in with Facebook', idToken);

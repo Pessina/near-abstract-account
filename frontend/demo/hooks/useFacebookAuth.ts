@@ -1,4 +1,6 @@
+import { generatePKCEVerifier, generatePKCEChallenge } from "@/lib/pkce";
 import { useEffect, useCallback } from "react";
+import { getCurrentCleanUrl } from "@/lib/url";
 
 // Constants for OAuth configuration
 const OAUTH_CONFIG = {
@@ -27,15 +29,6 @@ interface FacebookAuthConfig {
 }
 
 /**
- * Gets the clean current URL without search params or hash
- */
-function getCurrentCleanUrl(): string {
-  const url = new URL(window.location.href);
-  // Keep only origin and pathname
-  return `${url.origin}${url.pathname}`;
-}
-
-/**
  * Cleans up URL search params and hash fragments after auth flow completes
  */
 function cleanupSearchParams() {
@@ -43,41 +36,6 @@ function cleanupSearchParams() {
   url.search = "";
   url.hash = "";
   window.history.replaceState({}, "", url.toString());
-}
-
-/**
- * Generates a cryptographically secure code verifier for PKCE
- * @returns A random code verifier string with 256 bits of entropy
- */
-function generatePKCEVerifier(): string {
-  // Generate 32 bytes of random data (256 bits of entropy)
-  const buffer = new Uint8Array(32);
-  crypto.getRandomValues(buffer);
-
-  // Convert to base64url encoding and remove padding
-  return btoa(String.fromCharCode(...buffer))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=/g, "");
-}
-
-/**
- * Creates a code challenge from a code verifier using SHA-256
- * @param codeVerifier The code verifier to hash
- * @returns Base64url encoded code challenge
- */
-async function generatePKCEChallenge(codeVerifier: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(codeVerifier);
-
-  // Hash the code verifier with SHA-256
-  const hash = await crypto.subtle.digest("SHA-256", data);
-
-  // Convert hash to base64url string
-  return btoa(String.fromCharCode(...new Uint8Array(hash)))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=/g, "");
 }
 
 /**
