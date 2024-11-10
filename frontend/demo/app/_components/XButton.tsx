@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useXAuth } from '../../hooks/useXAuth'
 
+// Not usable due to X's not supporting CORS
 export const XLoginButton = () => {
     const [isLoading, setIsLoading] = useState(false)
     const { initiateLogin } = useXAuth({
