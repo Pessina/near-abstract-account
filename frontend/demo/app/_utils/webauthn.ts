@@ -5,11 +5,13 @@ import { mockTransaction } from "@/lib/constants";
 
 export const handlePasskeyRegister = async ({
   username,
+  accountId,
   contract,
   setStatus,
   setIsPending,
 }: {
   username: string;
+  accountId: string;
   contract: AbstractAccountContract;
   setStatus: (status: string) => void;
   setIsPending: (isPending: boolean) => void;
@@ -27,7 +29,14 @@ export const handlePasskeyRegister = async ({
       return;
     }
 
-    await contract.addAuthKey(credential.rawId, credential.compressedPublicKey);
+    console.log("credential", credential);
+
+    await contract.addAccount(accountId, {
+      WebAuthn: {
+        key_id: credential.rawId,
+        compressed_public_key: credential.compressedPublicKey,
+      },
+    });
     setStatus("Passkey registration successful!");
   } catch (error) {
     console.error(error);
@@ -38,25 +47,32 @@ export const handlePasskeyRegister = async ({
 };
 
 export const handlePasskeyAuthenticate = async ({
+  accountId,
   contract,
   setStatus,
   setIsPending,
 }: {
+  accountId: string;
   contract: AbstractAccountContract;
   setStatus: (status: string) => void;
   setIsPending: (isPending: boolean) => void;
 }) => {
   setIsPending(true);
   try {
-    const nonce = await contract?.getNonce();
-    if (nonce === undefined || !contract) {
-      setStatus("Failed to get nonce or initialize contract");
+    const account = await contract.getAccountById(accountId);
+    if (!account || !contract) {
+      setStatus("Failed to get account or initialize contract");
       return;
     }
 
-    const transaction = mockTransaction(nonce);
+    const transaction = mockTransaction(account.nonce);
 
     const canonical = canonicalize(transaction);
+    if (!canonical) {
+      setStatus("Failed to canonicalize transaction");
+      return;
+    }
+
     const challenge = new TextEncoder().encode(canonical);
     const challengeHash = await crypto.subtle.digest("SHA-256", challenge);
 
@@ -66,13 +82,16 @@ export const handlePasskeyAuthenticate = async ({
       return;
     }
 
-    // Test code for signature
-    // credential.signature.r = "0x573a2aba62db8a60c0877a87a2c6db9637bba0b7d8fd505628947e763371c016"
+    console.log("credential", credential);
 
     await contract.auth({
+      account_id: accountId,
       auth: {
-        auth_type: "webauthn",
-        auth_key_id: credential.rawId,
+        auth_identity: {
+          WebAuthn: {
+            key_id: credential.rawId,
+          },
+        },
         auth_data: {
           signature: credential.signature,
           authenticator_data: credential.authenticatorData,

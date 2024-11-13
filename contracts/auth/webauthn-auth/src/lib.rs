@@ -106,7 +106,7 @@ mod tests {
     use interfaces::webauthn_auth::Signature;
 
     fn get_compressed_public_key() -> String {
-        "039f6ceec855f5ef57984863418d948070d1c384d0c02295c1a84c7cad427869f5".to_string()
+        "0x036f286c2714176ec1727be93dab3a1808053dd9c6481ee5f6503fb0222bc984d5".to_string()
     }
 
     #[test]
@@ -115,11 +115,11 @@ mod tests {
         let compressed_public_key = get_compressed_public_key();
         let webauthn_data = WebAuthnData {
             signature: Signature {
-                r: "573a2aba62db8a60c0877a87a2c6db9637bba0b7d8fd505628947e763371c016".to_string(),
-                s: "69ac141b8bc054d27a5cee9438ac7f6f11537523a6ab8affc0557b634f082cea".to_string(),
+                r: "0x13b7e2434876d36fd338053fef482cc0123342cb325177d3b7747f39757ad8ba".to_string(),
+                s: "0x028265fc14ee5cf662fdd5a3002c3199a783b6d81018aa6af429fb32ade40103".to_string(),
             },
-            authenticator_data: "49960de5880e8c687434170f6476605b8fe4aeb9a28632c7995cf3ba831d97631d00000000".to_string(),
-            client_data: r#"{"type":"webauthn.get","challenge":"cmFuZG9tLWNoYWxsZW5nZQ","origin":"http://localhost:3000","crossOrigin":false}"#.to_string(),
+            authenticator_data: "0x49960de5880e8c687434170f6476605b8fe4aeb9a28632c7995cf3ba831d97631900000000".to_string(),
+            client_data: r#"{\"type\":\"webauthn.get\",\"challenge\":\"tAuyPmQcczI8CFoTekJz5iITeP80zcJ60VTC4sYz5s8\",\"origin\":\"http://localhost:3000\",\"crossOrigin\":false}"}"#.to_string(),
         };
 
         assert!(contract.validate_p256_signature(webauthn_data, compressed_public_key));

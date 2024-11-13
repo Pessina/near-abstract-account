@@ -9,11 +9,13 @@ export const handleSolanaRegister = async ({
   setStatus,
   setIsPending,
   wallet,
+  accountId,
 }: {
   contract: AbstractAccountContract;
   setStatus: (status: string) => void;
   setIsPending: (isPending: boolean) => void;
   wallet: SolanaWalletType;
+  accountId: string;
 }) => {
   setIsPending(true);
   try {
@@ -30,7 +32,12 @@ export const handleSolanaRegister = async ({
       return;
     }
 
-    await contract.addAuthKey(publicKey, publicKey);
+    await contract.addAccount(accountId, {
+      Wallet: {
+        chain: "Solana",
+        compressed_public_key: publicKey,
+      },
+    });
     setStatus("Solana address registration successful!");
   } catch (error) {
     console.error(error);
@@ -45,19 +52,21 @@ export const handleSolanaAuthenticate = async ({
   setStatus,
   setIsPending,
   wallet,
+  accountId,
 }: {
   contract: AbstractAccountContract;
   setStatus: (status: string) => void;
   setIsPending: (isPending: boolean) => void;
   wallet: SolanaWalletType;
+  accountId: string;
 }) => {
   setIsPending(true);
   try {
     Solana.setWallet(wallet);
 
-    const nonce = await contract?.getNonce();
-    if (nonce === undefined || !contract) {
-      setStatus("Failed to get nonce or initialize contract");
+    const account = await contract.getAccountById(accountId);
+    if (!account || !contract) {
+      setStatus("Failed to get account or initialize contract");
       return;
     }
 
@@ -67,7 +76,7 @@ export const handleSolanaAuthenticate = async ({
       return;
     }
 
-    const transaction = mockTransaction(nonce);
+    const transaction = mockTransaction(account.nonce);
 
     const canonical = canonicalize(transaction);
     if (!canonical) {
@@ -82,9 +91,14 @@ export const handleSolanaAuthenticate = async ({
     }
 
     await contract.auth({
+      account_id: accountId,
       auth: {
-        auth_type: "solana",
-        auth_key_id: publicKey,
+        auth_identity: {
+          Wallet: {
+            chain: "Solana",
+            compressed_public_key: publicKey,
+          },
+        },
         auth_data: solanaData,
       },
       transaction,

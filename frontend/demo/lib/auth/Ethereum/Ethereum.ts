@@ -1,7 +1,15 @@
-import { type WalletClient,type EIP1193Provider,  custom, createWalletClient } from "viem";
+import {
+  type WalletClient,
+  type EIP1193Provider,
+  custom,
+  createWalletClient,
+  Hex,
+  hashMessage,
+  recoverPublicKey,
+} from "viem";
 import { EthereumAuthData } from "./types";
 
-export type WalletType = 'metamask' | 'okx';
+export type WalletType = "metamask" | "okx";
 
 export class Ethereum {
   private static walletClient: WalletClient | null = null;
@@ -13,29 +21,33 @@ export class Ethereum {
 
   private static getProvider(): EIP1193Provider {
     if (!this.selectedWallet) {
-      throw new Error("Please select a wallet using setWallet() before proceeding");
+      throw new Error(
+        "Please select a wallet using setWallet() before proceeding"
+      );
     }
-    
-    if (this.selectedWallet === 'okx' && window.okxwallet) {
+
+    if (this.selectedWallet === "okx" && window.okxwallet) {
       return window.okxwallet;
     }
-    
-    if (this.selectedWallet === 'metamask' && window.ethereum) {
+
+    if (this.selectedWallet === "metamask" && window.ethereum) {
       return window.ethereum;
     }
 
-    throw new Error(`${this.selectedWallet} wallet not found. Please install the wallet first`);
+    throw new Error(
+      `${this.selectedWallet} wallet not found. Please install the wallet first`
+    );
   }
 
   private static async getWalletClient(): Promise<WalletClient> {
     const provider = this.getProvider();
-    
+
     // Request permission to access accounts first
-    await provider.request({ method: 'eth_requestAccounts' });
-    
+    await provider.request({ method: "eth_requestAccounts" });
+
     if (!this.walletClient) {
       this.walletClient = createWalletClient({
-        transport: custom(provider)
+        transport: custom(provider),
       });
     }
 
@@ -43,9 +55,9 @@ export class Ethereum {
   }
 
   public static isSupportedByBrowser(): boolean {
-    return typeof window !== "undefined" && (
-      window.ethereum !== undefined || 
-      window.okxwallet !== undefined
+    return (
+      typeof window !== "undefined" &&
+      (window.ethereum !== undefined || window.okxwallet !== undefined)
     );
   }
 
@@ -76,7 +88,7 @@ export class Ethereum {
       const client = await this.getWalletClient();
       const signature = await client.signMessage({
         account: address,
-        message
+        message,
       });
 
       if (!signature) {
@@ -113,6 +125,52 @@ export class Ethereum {
       return address || null;
     } catch (error) {
       console.error("Error getting current address:", error);
+      return null;
+    }
+  }
+
+  public static async getCompressedPublicKey(): Promise<string | null> {
+    if (!this.isSupportedByBrowser()) {
+      return null;
+    }
+
+    try {
+      const client = await this.getWalletClient();
+      const [address] = await client.getAddresses();
+
+      if (!address) {
+        return null;
+      }
+
+      // For Ethereum, we use the compressed public key format
+      // This matches the format expected by the contract
+      const message = "Get public key";
+      const signature = await client.signMessage({
+        account: address,
+        message,
+      });
+
+      if (!signature) {
+        return null;
+      }
+
+      // Recover public key from signature
+      const msgHash = hashMessage(message);
+      const uncompressedKey = await recoverPublicKey({
+        hash: msgHash,
+        signature: signature as Hex,
+      });
+
+      // Convert to compressed format by taking first 66 chars (0x + 32 bytes)
+      // and setting the first byte after 0x to either 02 or 03 depending on y value
+      const yValue = uncompressedKey.slice(-64); // Last 32 bytes
+      const yLastByte = parseInt(yValue.slice(-2), 16);
+      const prefix = yLastByte % 2 === 0 ? "02" : "03";
+      const compressedKey = "0x" + prefix + uncompressedKey.slice(4, 68);
+
+      return compressedKey;
+    } catch (error) {
+      console.error("Error getting public key:", error);
       return null;
     }
   }

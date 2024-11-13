@@ -8,11 +8,13 @@ export const handleEthereumRegister = async ({
   setStatus,
   setIsPending,
   wallet,
+  accountId,
 }: {
   contract: AbstractAccountContract;
   setStatus: (status: string) => void;
   setIsPending: (isPending: boolean) => void;
   wallet: WalletType;
+  accountId: string;
 }) => {
   setIsPending(true);
   try {
@@ -29,7 +31,18 @@ export const handleEthereumRegister = async ({
       return;
     }
 
-    await contract.addAuthKey(ethAddress, ethAddress);
+    const compressedPublicKey = await Ethereum.getCompressedPublicKey();
+    if (!compressedPublicKey) {
+      setStatus("Failed to get compressed public key");
+      return;
+    }
+
+    await contract.addAccount(accountId, {
+      Wallet: {
+        chain: "Ethereum",
+        compressed_public_key: compressedPublicKey,
+      },
+    });
     setStatus("Ethereum address registration successful!");
   } catch (error) {
     console.error(error);
@@ -44,29 +57,31 @@ export const handleEthereumAuthenticate = async ({
   setStatus,
   setIsPending,
   wallet,
+  accountId,
 }: {
   contract: AbstractAccountContract;
   setStatus: (status: string) => void;
   setIsPending: (isPending: boolean) => void;
   wallet: WalletType;
+  accountId: string;
 }) => {
   setIsPending(true);
   try {
     Ethereum.setWallet(wallet);
 
-    const nonce = await contract?.getNonce();
-    if (nonce === undefined || !contract) {
-      setStatus("Failed to get nonce or initialize contract");
-      return;
-    }
-
     const ethAddress = await Ethereum.getCurrentAddress();
-    if (!ethAddress) {
+    if (!ethAddress || !contract) {
       setStatus("Failed to get Ethereum address");
       return;
     }
 
-    const transaction = mockTransaction(nonce);
+    const account = await contract.getAccountById(accountId);
+    if (!account) {
+      setStatus("Failed to get account");
+      return;
+    }
+
+    const transaction = mockTransaction(account.nonce);
 
     const canonical = canonicalize(transaction);
     if (!canonical) {
@@ -80,10 +95,21 @@ export const handleEthereumAuthenticate = async ({
       return;
     }
 
+    const compressedPublicKey = await Ethereum.getCompressedPublicKey();
+    if (!compressedPublicKey) {
+      setStatus("Failed to get compressed public key");
+      return;
+    }
+
     await contract.auth({
+      account_id: accountId,
       auth: {
-        auth_type: "ethereum",
-        auth_key_id: ethAddress,
+        auth_identity: {
+          Wallet: {
+            chain: "Ethereum",
+            compressed_public_key: compressedPublicKey,
+          },
+        },
         auth_data: ethereumData,
       },
       transaction,

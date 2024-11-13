@@ -78,7 +78,8 @@ export default function AuthDemo() {
                         username,
                         contract,
                         setStatus,
-                        setIsPending
+                        setIsPending,
+                        accountId: "felipe"
                       });
                     }}
                     disabled={isPending}
@@ -91,7 +92,8 @@ export default function AuthDemo() {
                       handlePasskeyAuthenticate({
                         contract,
                         setStatus,
-                        setIsPending
+                        setIsPending,
+                        accountId: "felipe"
                       });
                     }}
                     variant="secondary"
@@ -118,7 +120,8 @@ export default function AuthDemo() {
                           contract,
                           setStatus,
                           setIsPending,
-                          wallet: 'metamask'
+                          wallet: 'metamask',
+                          accountId: "felipe"
                         });
                       }}
                       className="flex items-center justify-center gap-2"
@@ -140,7 +143,8 @@ export default function AuthDemo() {
                           contract,
                           setStatus,
                           setIsPending,
-                          wallet: 'metamask'
+                          wallet: 'metamask',
+                          accountId: "felipe"
                         });
                       }}
                       className="flex items-center justify-center gap-2"
@@ -164,7 +168,8 @@ export default function AuthDemo() {
                           contract,
                           setStatus,
                           setIsPending,
-                          wallet: 'okx'
+                          wallet: 'okx',
+                          accountId: "felipe"
                         });
                       }}
                       className="flex items-center justify-center gap-2"
@@ -186,7 +191,8 @@ export default function AuthDemo() {
                           contract,
                           setStatus,
                           setIsPending,
-                          wallet: 'okx'
+                          wallet: 'okx',
+                          accountId: "felipe"
                         });
                       }}
                       className="flex items-center justify-center gap-2"
@@ -210,7 +216,8 @@ export default function AuthDemo() {
                           contract,
                           setStatus,
                           setIsPending,
-                          wallet: 'phantom'
+                          wallet: 'phantom',
+                          accountId: "felipe"
                         });
                       }}
                       className="flex items-center justify-center gap-2"
@@ -232,7 +239,8 @@ export default function AuthDemo() {
                           contract,
                           setStatus,
                           setIsPending,
-                          wallet: 'phantom'
+                          wallet: 'phantom',
+                          accountId: "felipe"
                         });
                       }}
                       className="flex items-center justify-center gap-2"
