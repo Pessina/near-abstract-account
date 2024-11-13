@@ -35,9 +35,9 @@ export default function AuthDemo() {
         })
 
         // Initialize the auth contracts
-        await contractInstance.setAuthContract('webauthn', "felipe-webauthn.testnet")
-        await contractInstance.setAuthContract('ethereum', "felipe-ethereum.testnet")
-        await contractInstance.setAuthContract('solana', "felipe-solana.testnet")
+        await contractInstance.setAuthContract('webauthn', "felipe-webauthn-contract.testnet")
+        await contractInstance.setAuthContract('ethereum', "felipe-ethereum-contract.testnet")
+        await contractInstance.setAuthContract('solana', "felipe-solana-contract.testnet")
 
         setContract(contractInstance)
       } catch (error) {
