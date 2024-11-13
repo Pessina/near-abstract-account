@@ -4,8 +4,9 @@ import {
   custom,
   createWalletClient,
   Hex,
-  hashMessage,
   recoverPublicKey,
+  keccak256,
+  toBytes,
 } from "viem";
 import { EthereumAuthData } from "./types";
 
@@ -129,36 +130,61 @@ export class Ethereum {
     }
   }
 
-  public static async getCompressedPublicKey(): Promise<string | null> {
+  public static async getCompressedPublicKey(
+    message?: string,
+    signature?: { r: string; s: string; v: string }
+  ): Promise<string | null> {
     if (!this.isSupportedByBrowser()) {
       return null;
     }
 
     try {
-      const client = await this.getWalletClient();
-      const [address] = await client.getAddresses();
+      let finalMessage = message;
+      let finalSignature = signature;
 
-      if (!address) {
-        return null;
+      // If message and signature not provided, get them
+      if (!finalMessage || !finalSignature) {
+        const client = await this.getWalletClient();
+        const [address] = await client.getAddresses();
+
+        if (!address) {
+          return null;
+        }
+
+        finalMessage = "Get public key";
+        const sig = await client.signMessage({
+          account: address,
+          message: finalMessage,
+        });
+
+        if (!sig) {
+          return null;
+        }
+
+        // Split signature into r, s, v components
+        finalSignature = {
+          r: `0x${sig.slice(2, 66)}`,
+          s: `0x${sig.slice(66, 130)}`,
+          v: `0x${sig.slice(130, 132)}`,
+        };
       }
 
-      // For Ethereum, we use the compressed public key format
-      // This matches the format expected by the contract
-      const message = "Get public key";
-      const signature = await client.signMessage({
-        account: address,
-        message,
-      });
+      // Combine r, s, v into full signature
+      const fullSignature =
+        finalSignature.r.slice(2) +
+        finalSignature.s.slice(2) +
+        finalSignature.v.slice(2);
 
-      if (!signature) {
-        return null;
-      }
+      // Prepare message as wallet does - prefix with "\x19Ethereum Signed Message:\n" + length
+      const preparedMessage = `\x19Ethereum Signed Message:\n${finalMessage.length}${finalMessage}`;
+
+      // Hash the prepared message
+      const msgHash = keccak256(toBytes(preparedMessage));
 
       // Recover public key from signature
-      const msgHash = hashMessage(message);
       const uncompressedKey = await recoverPublicKey({
         hash: msgHash,
-        signature: signature as Hex,
+        signature: `0x${fullSignature}` as Hex,
       });
 
       // Convert to compressed format by taking first 66 chars (0x + 32 bytes)

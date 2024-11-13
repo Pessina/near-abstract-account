@@ -32,6 +32,7 @@ export const handleEthereumRegister = async ({
     }
 
     const compressedPublicKey = await Ethereum.getCompressedPublicKey();
+
     if (!compressedPublicKey) {
       setStatus("Failed to get compressed public key");
       return;
@@ -95,7 +96,11 @@ export const handleEthereumAuthenticate = async ({
       return;
     }
 
-    const compressedPublicKey = await Ethereum.getCompressedPublicKey();
+    const compressedPublicKey = await Ethereum.getCompressedPublicKey(
+      canonical,
+      ethereumData.signature
+    );
+
     if (!compressedPublicKey) {
       setStatus("Failed to get compressed public key");
       return;
