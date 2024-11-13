@@ -19,19 +19,19 @@ const mainnetConfig = {
   networkId: "mainnet",
   nodeUrl: "https://rpc.mainnet.near.org",
   helperUrl: "https://helper.mainnet.near.org",
-  explorerUrl: "https://nearblocks.io"
+  explorerUrl: "https://nearblocks.io",
 };
 
 const testnetConfig = {
-  networkId: "testnet", 
+  networkId: "testnet",
   nodeUrl: "https://rpc.testnet.near.org",
   helperUrl: "https://helper.testnet.near.org",
-  explorerUrl: "https://testnet.nearblocks.io"
+  explorerUrl: "https://testnet.nearblocks.io",
 };
 
 const config = {
-  ...networkId === "mainnet" ? mainnetConfig : testnetConfig,
-  keyStore
+  ...(networkId === "mainnet" ? mainnetConfig : testnetConfig),
+  keyStore,
 };
 
 async function initNear() {

@@ -2,6 +2,7 @@ import { AbstractAccountContract } from "@/lib/contract/AbstractAccountContract"
 import canonicalize from "canonicalize";
 import { Solana } from "@/lib/auth/Solana";
 import type { SolanaWalletType } from "@/lib/auth/Solana/types";
+import { mockTransaction } from "@/lib/constants";
 
 export const handleSolanaRegister = async ({
   contract,
@@ -66,29 +67,7 @@ export const handleSolanaAuthenticate = async ({
       return;
     }
 
-    const transaction = {
-      receiver_id: "v1.signer-prod.testnet",
-      nonce: nonce.toString(),
-      actions: [
-        { Transfer: { deposit: "1000000000000000000000" } },
-        {
-          FunctionCall: {
-            method_name: "sign",
-            args: JSON.stringify({
-              request: {
-                path: "ethereum,1",
-                payload: Array(32)
-                  .fill(0)
-                  .map((_, i) => i % 10),
-                key_version: 0,
-              },
-            }),
-            gas: "50000000000000",
-            deposit: "250000000000000000000000",
-          },
-        },
-      ],
-    };
+    const transaction = mockTransaction(nonce);
 
     const canonical = canonicalize(transaction);
     if (!canonical) {

@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { AbstractAccountContract } from "@/lib/contract/AbstractAccountContract"
 import initNear from "@/lib/near"
-import { FaBitcoin } from "react-icons/fa"
 import Image from "next/image"
 import { handlePasskeyAuthenticate } from "./_utils/webauthn"
 import { handlePasskeyRegister } from "./_utils/webauthn"
@@ -35,9 +34,9 @@ export default function AuthDemo() {
         })
 
         // Initialize the auth contracts
-        await contractInstance.setAuthContract('webauthn', "felipe-webauthn-contract.testnet")
-        await contractInstance.setAuthContract('ethereum', "felipe-ethereum-contract.testnet")
-        await contractInstance.setAuthContract('solana', "felipe-solana-contract.testnet")
+        // await contractInstance.setAuthContract('webauthn', "felipe-webauthn-contract.testnet")
+        // await contractInstance.setAuthContract('ethereum', "felipe-ethereum-contract.testnet")
+        // await contractInstance.setAuthContract('solana', "felipe-solana-contract.testnet")
 
         setContract(contractInstance)
       } catch (error) {
@@ -249,7 +248,7 @@ export default function AuthDemo() {
                       <span>Authenticate</span>
                     </Button>
                   </div>
-                  <Button
+                  {/* <Button
                     disabled
                     onClick={() => console.log("Connect BTC Wallet")}
                     className="flex items-center justify-center gap-2"
@@ -257,7 +256,7 @@ export default function AuthDemo() {
                   >
                     <FaBitcoin className="w-5 h-5 text-orange-500" />
                     <span>Connect BTC Wallet</span>
-                  </Button>
+                  </Button> */}
                 </div>
               </div>
             </div>
