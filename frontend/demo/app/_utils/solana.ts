@@ -34,7 +34,7 @@ export const handleSolanaRegister = async ({
 
     await contract.addAccount(accountId, {
       Wallet: {
-        chain: "Solana",
+        wallet_type: "Solana",
         compressed_public_key: publicKey,
       },
     });
@@ -95,7 +95,7 @@ export const handleSolanaAuthenticate = async ({
       auth: {
         auth_identity: {
           Wallet: {
-            chain: "Solana",
+            wallet_type: "Solana",
             compressed_public_key: publicKey,
           },
         },

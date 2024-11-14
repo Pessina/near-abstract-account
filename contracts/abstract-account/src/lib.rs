@@ -3,7 +3,7 @@ mod types;
 
 use mods::transaction::Transaction;
 use near_sdk::{env, near, require, store::LookupMap, AccountId, Promise};
-use types::{Account, AuthIdentity, Chain, UserOp};
+use types::{Account, AuthIdentity, UserOp, WalletType};
 
 #[near(contract_state)]
 pub struct AbstractAccountContract {
@@ -62,10 +62,8 @@ impl AbstractAccountContract {
             .parse::<u128>()
             .unwrap_or_else(|_| env::panic_str("Invalid nonce format"));
     
-        // Get the account
         let account = self.accounts.get_mut(&user_op.account_id).unwrap();
-        
-        // Check nonce
+                
         require!(
             parsed_nonce == account.nonce,
             format!(
@@ -74,7 +72,6 @@ impl AbstractAccountContract {
             )
         );
 
-        // Check auth identity
         require!(
             account.has_auth_identity(&user_op.auth.auth_identity),
             "Auth identity not found"
@@ -105,12 +102,12 @@ impl AbstractAccountContract {
                     Ok(promise) => promise,
                     Err(e) => env::panic_str(&e),
             }},
-            AuthIdentity::Wallet(wallet) => match wallet.chain {
-                Chain::Ethereum => match self.handle_ethereum_auth(user_op, wallet.compressed_public_key.clone()) {
+            AuthIdentity::Wallet(wallet) => match wallet.wallet_type {
+                WalletType::Ethereum => match self.handle_ethereum_auth(user_op, wallet.public_key.clone()) {
                     Ok(promise) => promise,
                     Err(e) => env::panic_str(&e),
                 },
-                Chain::Solana => match self.handle_solana_auth(user_op, wallet.compressed_public_key.clone()) {
+                WalletType::Solana => match self.handle_solana_auth(user_op, wallet.public_key.clone()) {
                     Ok(promise) => promise,
                     Err(e) => env::panic_str(&e),
                 },

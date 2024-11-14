@@ -23,5 +23,5 @@ pub trait EthereumAuth {
 
 #[ext_contract(solana_auth)]
 pub trait SolanaAuth {
-    fn validate_solana_signature(&self, solana_data: SolanaData, compressed_public_key: String) -> bool;
+    fn validate_solana_signature(&self, solana_data: SolanaData, public_key: String) -> bool;
 }

@@ -23,7 +23,7 @@ pub struct Auth {
 
 #[derive(Debug, BorshDeserialize, BorshSerialize, Deserialize, Serialize, JsonSchema, PartialEq, Eq, Clone)]
 #[serde(crate = "near_sdk::serde")] 
-pub enum Chain {
+pub enum WalletType {
     Ethereum,
     Solana,
 }
@@ -31,8 +31,8 @@ pub enum Chain {
 #[derive(Debug, BorshDeserialize, BorshSerialize, Deserialize, Serialize, JsonSchema, PartialEq, Eq, Clone)]
 #[serde(crate = "near_sdk::serde")] 
 pub struct Wallet {
-    pub chain: Chain,
-    pub compressed_public_key: String,
+    pub wallet_type: WalletType,
+    pub public_key: String, // Compressed public key if possible
 }
 #[derive(Debug, BorshDeserialize, BorshSerialize, Deserialize, Serialize, JsonSchema, Clone)]
 #[serde(crate = "near_sdk::serde")]
@@ -44,7 +44,11 @@ pub struct WebAuthn {
 
 impl PartialEq for WebAuthn {
     fn eq(&self, other: &Self) -> bool {
-        self.key_id == other.key_id
+        self.key_id == other.key_id && 
+        match (&self.compressed_public_key, &other.compressed_public_key) {
+            (Some(a), Some(b)) => a == b,
+            _ => true
+        }
     }
 }
 

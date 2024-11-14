@@ -26,10 +26,10 @@ export interface Transaction {
   actions: Action[];
 }
 
-export type Chain = "Ethereum" | "Solana";
+export type WalletType = "Ethereum" | "Solana";
 
 export interface Wallet {
-  chain: Chain;
+  wallet_type: WalletType;
   compressed_public_key: string;
 }
 

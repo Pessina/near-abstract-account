@@ -25,12 +25,6 @@ export const handleEthereumRegister = async ({
 
     Ethereum.setWallet(wallet);
 
-    const ethAddress = await Ethereum.getCurrentAddress();
-    if (!ethAddress || !contract) {
-      setStatus("Failed to get Ethereum address or initialize contract");
-      return;
-    }
-
     const compressedPublicKey = await Ethereum.getCompressedPublicKey();
 
     if (!compressedPublicKey) {
@@ -40,7 +34,7 @@ export const handleEthereumRegister = async ({
 
     await contract.addAccount(accountId, {
       Wallet: {
-        chain: "Ethereum",
+        wallet_type: "Ethereum",
         compressed_public_key: compressedPublicKey,
       },
     });
@@ -70,12 +64,6 @@ export const handleEthereumAuthenticate = async ({
   try {
     Ethereum.setWallet(wallet);
 
-    const ethAddress = await Ethereum.getCurrentAddress();
-    if (!ethAddress || !contract) {
-      setStatus("Failed to get Ethereum address");
-      return;
-    }
-
     const account = await contract.getAccountById(accountId);
     if (!account) {
       setStatus("Failed to get account");
@@ -90,7 +78,7 @@ export const handleEthereumAuthenticate = async ({
       return;
     }
 
-    const ethereumData = await Ethereum.signMessage(canonical, ethAddress);
+    const ethereumData = await Ethereum.signMessage(canonical);
     if (!ethereumData) {
       setStatus("Failed to sign message");
       return;
@@ -111,7 +99,7 @@ export const handleEthereumAuthenticate = async ({
       auth: {
         auth_identity: {
           Wallet: {
-            chain: "Ethereum",
+            wallet_type: "Ethereum",
             compressed_public_key: compressedPublicKey,
           },
         },
