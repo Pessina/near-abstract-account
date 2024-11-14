@@ -71,7 +71,6 @@ pub enum AuthIdentity {
     Account(String),
 }
 
-
 #[derive(Debug, BorshDeserialize, BorshSerialize, Deserialize, Serialize, JsonSchema)]
 #[serde(crate = "near_sdk::serde")]
 pub struct Account {
