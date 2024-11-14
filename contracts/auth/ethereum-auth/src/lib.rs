@@ -1,7 +1,7 @@
 use hex;
 use interfaces::ethereum_auth::EthereumData;
 use k256::ecdsa::{RecoveryId, Signature as K256Signature, VerifyingKey};
-use near_sdk::{log, near};
+use near_sdk::{log, near, require};
 use sha3::{Digest, Keccak256};
 
 #[near(contract_state)]
@@ -12,10 +12,17 @@ pub struct EthereumAuthContract {}
 impl EthereumAuthContract {
     /// Validates an Ethereum signature using k256 (secp256k1) curve
     pub fn validate_eth_signature(&self, eth_data: EthereumData, compressed_public_key: String) -> bool {
-        let (message_digest, signature, recovery_id) = match self.prepare_signature_components(&eth_data) {
-            Ok(components) => components,
-            Err(e) => {
-                log!("Failed to prepare signature components: {}", e);
+        let (message_digest, signature, recovery_id) = match (
+            self.prepare_message(&eth_data),
+            self.create_signature(&eth_data.signature),
+        ) {
+            (Ok(msg), Ok((sig, rec_id))) => (msg, sig, rec_id),
+            (Err(e), _) => {
+                log!("Failed to prepare message: {}", e);
+                return false;
+            }
+            (_, Err(e)) => {
+                log!("Failed to create signature: {}", e);
                 return false;
             }
         };
@@ -39,16 +46,6 @@ impl EthereumAuthContract {
     }
 
     #[inline(always)]
-    fn prepare_signature_components(
-        &self,
-        eth_data: &EthereumData,
-    ) -> Result<(Keccak256, K256Signature, RecoveryId), String> {
-        let message_digest = self.prepare_message(eth_data)?;
-        let (signature, recovery_id) = self.create_signature(&eth_data.signature)?;
-        Ok((message_digest, signature, recovery_id))
-    }
-
-    #[inline(always)]
     fn prepare_message(&self, eth_data: &EthereumData) -> Result<Keccak256, String> {
         let message_len = eth_data.message.len();
         let prefix = format!("\x19Ethereum Signed Message:\n{message_len}");
@@ -68,9 +65,7 @@ impl EthereumAuthContract {
         let sig_bytes = hex::decode(signature.strip_prefix("0x").unwrap_or(signature))
             .map_err(|_| "Invalid hex encoding in signature")?;
 
-        if sig_bytes.len() != 65 {
-            return Err("Invalid signature length - expected 65 bytes".into());
-        }
+        require!(sig_bytes.len() == 65, "Invalid signature length - expected 65 bytes");
 
         let (r_s_bytes, v_byte) = sig_bytes.split_at(64);
         let v = v_byte[0];
