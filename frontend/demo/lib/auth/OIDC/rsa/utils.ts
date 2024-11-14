@@ -22,7 +22,7 @@ export interface JWTPayload {
   jti: string;
 }
 
-interface JWK {
+export interface JWK {
   kid: string;
   n: string;
   e: string;
@@ -36,41 +36,44 @@ interface GoogleCertsResponse {
 }
 
 /**
- * Decodes and validates JWT token parts
+ * Decodes a base64url-encoded string to a Buffer.
+ * @param base64UrlString - The base64url-encoded string.
+ * @returns The decoded Buffer.
+ */
+export function base64UrlDecode(base64UrlString: string): Buffer {
+  let base64String = base64UrlString.replace(/-/g, "+").replace(/_/g, "/");
+  while (base64String.length % 4 !== 0) {
+    base64String += "=";
+  }
+  return Buffer.from(base64String, "base64");
+}
+
+/**
+ * Decodes and validates JWT token parts.
+ * @param token - The JWT token.
+ * @returns The decoded header, payload, signature, and signed data.
  */
 export async function decodeAndValidateToken(token: string): Promise<{
   header: JWTHeader;
   payload: JWTPayload;
   signatureB64: string;
-  // signedData: Uint8Array;
   signedData: string;
 }> {
-  // Split token into parts
   const [headerB64, payloadB64, signatureB64] = token.split(".");
 
   if (!headerB64 || !payloadB64 || !signatureB64) {
     throw new Error("Invalid token format");
   }
 
-  // Decode header and payload
-  const header = JSON.parse(
-    Buffer.from(headerB64, "base64").toString()
-  ) as JWTHeader;
+  const headerJson = base64UrlDecode(headerB64).toString("utf8");
+  const header = JSON.parse(headerJson) as JWTHeader;
 
-  const payload = JSON.parse(
-    Buffer.from(payloadB64, "base64").toString()
-  ) as JWTPayload;
+  const payloadJson = base64UrlDecode(payloadB64).toString("utf8");
+  const payload = JSON.parse(payloadJson) as JWTPayload;
 
-  // // Verify token hasn't expired
-  // const now = Math.floor(Date.now() / 1000);
-  // if (payload.exp < now) {
-  //   throw new Error("Token has expired");
-  // }
-
-  // const signedData = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
   const signedData = `${headerB64}.${payloadB64}`;
 
-  console.log("signedData", signedData);
+  console.log("Signed data:", signedData);
 
   return {
     header,
@@ -81,14 +84,19 @@ export async function decodeAndValidateToken(token: string): Promise<{
 }
 
 /**
- * Fetches Google's public keys and finds matching key
+ * Fetches Google's public keys and finds the matching key by 'kid'.
+ * @param kid - The key ID to match.
+ * @returns The matching JWK.
  */
 export async function fetchMatchingPublicKey(kid: string): Promise<JWK> {
   const response = await fetch("https://www.googleapis.com/oauth2/v3/certs");
-  const keys = (await response.json()) as GoogleCertsResponse;
+  if (!response.ok) {
+    throw new Error(`Failed to fetch public keys: ${response.statusText}`);
+  }
 
-  // Find matching key
+  const keys = (await response.json()) as GoogleCertsResponse;
   const key = keys.keys.find((k) => k.kid === kid);
+
   if (!key) {
     throw new Error("No matching key found");
   }
@@ -97,35 +105,36 @@ export async function fetchMatchingPublicKey(kid: string): Promise<JWK> {
 }
 
 /**
- * Converts JWK to CryptoKey
+ * Constructs the padded message according to PKCS#1 v1.5.
+ * @param hashBytes - The hash of the message.
+ * @param modulusLength - The length of the modulus in bytes.
+ * @returns The padded message as a Buffer.
  */
-export async function importPublicKey(jwk: JWK): Promise<CryptoKey> {
-  return await crypto.subtle.importKey(
-    "jwk",
-    jwk,
-    {
-      name: "RSASSA-PKCS1-v1_5",
-      hash: "SHA-256",
-    },
-    true,
-    ["verify"]
-  );
-}
+export function constructPaddedMessage(
+  hashBytes: Buffer,
+  modulusLength: number
+): Buffer {
+  const DER_SHA256_PREFIX = Buffer.from([
+    0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+    0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20,
+  ]);
 
-/**
- * Verifies RSA signature
- */
-export async function verifySignature(
-  publicKey: CryptoKey,
-  signatureB64: string,
-  signedData: Uint8Array
-): Promise<boolean> {
-  const signatureBytes = Uint8Array.from(Buffer.from(signatureB64, "base64"));
+  const tLen = DER_SHA256_PREFIX.length + hashBytes.length;
+  const psLength = modulusLength - tLen - 3;
 
-  return await crypto.subtle.verify(
-    "RSASSA-PKCS1-v1_5",
-    publicKey,
-    signatureBytes,
-    signedData
-  );
+  if (psLength < 8) {
+    throw new Error("Intended encoded message length too short");
+  }
+
+  const padding = Buffer.alloc(psLength, 0xff);
+
+  const paddedMessage = Buffer.concat([
+    Buffer.from([0x00, 0x01]),
+    padding,
+    Buffer.from([0x00]),
+    DER_SHA256_PREFIX,
+    hashBytes,
+  ]);
+
+  return paddedMessage;
 }
