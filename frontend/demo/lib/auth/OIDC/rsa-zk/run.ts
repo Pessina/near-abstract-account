@@ -10,12 +10,40 @@ import {
   base64UrlDecode,
 } from "../rsa/utils";
 import crypto from "crypto";
+import * as o1jslib from "o1js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import sexp from "s-expression";
+
+async function initializeBindingsLazy() {
+  try {
+    await o1jslib.initializeBindings();
+
+    console.log(globalThis.plonk_wasm);
+
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    const proofToRust = (globalThis as any).__snarkyTsBindings.rustConversion(
+      (globalThis as any).plonk_wasm
+    ).fq.proofToRust;
+
+    console.log({ proofToRust });
+
+    return {
+      proofToRust,
+    };
+  } catch (e) {
+    console.error("Failed to initialize bindings", e);
+  }
+}
 
 /**
  * Verifies a Google JWT OIDC token using RSA signature verification within a ZK circuit.
  * @param token - The JWT token to verify.
  */
 export async function verifyRSAZK(token: string): Promise<void> {
+  await initializeBindingsLazy();
+
   const rsaZkProgram = ZkProgram({
     name: "rsa-verify",
     methods: {
@@ -86,8 +114,21 @@ export async function verifyRSAZK(token: string): Promise<void> {
   );
   console.log("isValid2", isValid2);
 
-  console.log({
-    vk: compiledRsaZkProgram.verificationKey,
-    proof: proof.toJSON(),
-  });
+  const ret = await initializeBindingsLazy();
+
+  if (ret) {
+    const { proofToRust } = ret;
+    const proofBase64 = proof.toJSON().proof;
+    const proofString = Buffer.from(proofBase64, "base64").toString();
+    console.log("Proof as string:", proofString);
+    const sexpProof = sexp(proofString);
+    console.log("S-expression proof:", sexpProof);
+    const rustProof = proofToRust(sexpProof);
+    console.log("Rust proof:", rustProof);
+
+    console.log({
+      vk: compiledRsaZkProgram.verificationKey,
+      proof: proof.toJSON(),
+    });
+  }
 }

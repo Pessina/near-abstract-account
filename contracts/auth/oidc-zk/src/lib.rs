@@ -6,6 +6,7 @@ use kimchi::error::VerifyError;
 use kimchi::proof::{PointEvaluations, ProofEvaluations, ProverCommitments, RecursionChallenge};
 use mina_curves::pasta::{Fp, Fq, Pallas};
 use mina_p2p_messages::bigint::BigInt;
+use mina_p2p_messages::utils::FromBinProtStream;
 use mina_tree::proofs::field::FieldWitness;
 use mina_tree::proofs::util::extract_bulletproof;
 use mina_tree::proofs::verification::VK;
@@ -300,7 +301,10 @@ impl OIDCzkAuthContract {
             data: (),
         };
         
-        let pickles_proof = PicklesProofProofsVerified2ReprStableV2::binprot_read(&mut proof_bytes.as_slice()).expect("Invalid proof format");
+        let pickles_proof = PicklesProofProofsVerified2ReprStableV2
+            ::binprot_read(&mut proof_bytes.as_slice()).expect("Invalid proof format");
+
+        println!("pickles_proof: {:?}", pickles_proof);
 
         let proof = make_padded_proof_from_p2p(&pickles_proof).expect("Invalid proof format");
 
