@@ -50,10 +50,7 @@ export class WebAuthn {
         authenticatorAttachment: "platform",
       },
       attestation: "direct",
-      challenge: Uint8Array.from(
-        "random-challenge",
-        (c) => c.charCodeAt(0)
-      ),
+      challenge: Uint8Array.from("random-challenge", (c) => c.charCodeAt(0)),
     };
 
     const credential = await navigator.credentials.create({
@@ -73,9 +70,7 @@ export class WebAuthn {
     };
 
     // Decode attestation object and get public key
-    const decodedAttestationObj = cbor.decode(
-      cred.response.attestationObject
-    );
+    const decodedAttestationObj = cbor.decode(cred.response.attestationObject);
     const authData = parseAuthenticatorData(decodedAttestationObj.authData);
     const publicKey = cbor.decode(
       authData?.credentialPublicKey?.buffer as ArrayBuffer
@@ -90,11 +85,13 @@ export class WebAuthn {
 
     return {
       rawId: toHex(new Uint8Array(cred.rawId)),
-      compressedPublicKey
+      compressedPublicKey,
     };
   }
 
-  public static async get(challenge: Uint8Array): Promise<P256Credential | null> {
+  public static async get(
+    challenge: Uint8Array
+  ): Promise<P256Credential | null> {
     this.isSupportedByBrowser();
 
     const options: PublicKeyCredentialRequestOptions = {
@@ -124,17 +121,13 @@ export class WebAuthn {
 
     const utf8Decoder = new TextDecoder("utf-8");
 
-    const decodedClientData = utf8Decoder.decode(
-      cred.response.clientDataJSON
-    );
+    const decodedClientData = utf8Decoder.decode(cred.response.clientDataJSON);
     const clientDataObj = JSON.parse(decodedClientData);
 
     const authenticatorData = toHex(
       new Uint8Array(cred.response.authenticatorData)
     );
-    const signature = parseSignature(
-      new Uint8Array(cred?.response?.signature)
-    );
+    const signature = parseSignature(new Uint8Array(cred?.response?.signature));
 
     return {
       rawId: toHex(new Uint8Array(cred.rawId)),

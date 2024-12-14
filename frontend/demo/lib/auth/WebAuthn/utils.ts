@@ -1,7 +1,6 @@
 import { AsnParser } from "@peculiar/asn1-schema";
 import { ECDSASigValue } from "@peculiar/asn1-ecc";
 import { toHex } from "viem";
-import { P256Signature } from "./types";
 
 export function shouldRemoveLeadingZero(bytes: Uint8Array): boolean {
   return bytes[0] === 0x0 && (bytes[1] & (1 << 7)) !== 0;
@@ -22,7 +21,7 @@ export function concatUint8Arrays(arrays: Uint8Array[]): Uint8Array {
 }
 
 // Parse the signature from the authenticator and remove the leading zero if necessary
-export function parseSignature(signature: Uint8Array): P256Signature {
+export function parseSignature(signature: Uint8Array): string {
   const parsedSignature = AsnParser.parse(signature, ECDSASigValue);
   let rBytes = new Uint8Array(parsedSignature.r);
   let sBytes = new Uint8Array(parsedSignature.s);
@@ -33,8 +32,5 @@ export function parseSignature(signature: Uint8Array): P256Signature {
     sBytes = sBytes.slice(1);
   }
   const finalSignature = concatUint8Arrays([rBytes, sBytes]);
-  return {
-    r: toHex(finalSignature.slice(0, 32)),
-    s: toHex(finalSignature.slice(32)),
-  };
+  return toHex(finalSignature);
 }

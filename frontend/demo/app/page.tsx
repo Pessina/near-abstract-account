@@ -16,6 +16,9 @@ import { handleSolanaAuthenticate, handleSolanaRegister } from "./_utils/solana"
 import GoogleButton from "./_components/GoogleButton"
 import FacebookButton from "./_components/FacebookButton"
 import Providers from "./_components/Providers"
+// import { verifyRSA } from "@/lib/auth/OIDC/rsa/rsa"
+// import { GOOGLE_TOKEN } from "@/lib/constants"
+// import { verifyRSAZK } from "@/lib/auth/OIDC/rsa-zk/run"
 // import XLoginButton from "./_components/XButton"
 
 export default function AuthDemo() {
@@ -78,7 +81,8 @@ export default function AuthDemo() {
                         username,
                         contract,
                         setStatus,
-                        setIsPending
+                        setIsPending,
+                        accountId: "felipe"
                       });
                     }}
                     disabled={isPending}
@@ -91,7 +95,8 @@ export default function AuthDemo() {
                       handlePasskeyAuthenticate({
                         contract,
                         setStatus,
-                        setIsPending
+                        setIsPending,
+                        accountId: "felipe"
                       });
                     }}
                     variant="secondary"
@@ -118,7 +123,8 @@ export default function AuthDemo() {
                           contract,
                           setStatus,
                           setIsPending,
-                          wallet: 'metamask'
+                          wallet: 'metamask',
+                          accountId: "felipe"
                         });
                       }}
                       className="flex items-center justify-center gap-2"
@@ -140,7 +146,8 @@ export default function AuthDemo() {
                           contract,
                           setStatus,
                           setIsPending,
-                          wallet: 'metamask'
+                          wallet: 'metamask',
+                          accountId: "felipe"
                         });
                       }}
                       className="flex items-center justify-center gap-2"
@@ -164,7 +171,8 @@ export default function AuthDemo() {
                           contract,
                           setStatus,
                           setIsPending,
-                          wallet: 'okx'
+                          wallet: 'okx',
+                          accountId: "felipe"
                         });
                       }}
                       className="flex items-center justify-center gap-2"
@@ -186,7 +194,8 @@ export default function AuthDemo() {
                           contract,
                           setStatus,
                           setIsPending,
-                          wallet: 'okx'
+                          wallet: 'okx',
+                          accountId: "felipe"
                         });
                       }}
                       className="flex items-center justify-center gap-2"
@@ -210,7 +219,8 @@ export default function AuthDemo() {
                           contract,
                           setStatus,
                           setIsPending,
-                          wallet: 'phantom'
+                          wallet: 'phantom',
+                          accountId: "felipe"
                         });
                       }}
                       className="flex items-center justify-center gap-2"
@@ -232,7 +242,8 @@ export default function AuthDemo() {
                           contract,
                           setStatus,
                           setIsPending,
-                          wallet: 'phantom'
+                          wallet: 'phantom',
+                          accountId: "felipe"
                         });
                       }}
                       className="flex items-center justify-center gap-2"
@@ -257,6 +268,7 @@ export default function AuthDemo() {
                     <FaBitcoin className="w-5 h-5 text-orange-500" />
                     <span>Connect BTC Wallet</span>
                   </Button> */}
+                  {/* <Button onClick={() => verifyRSAZK(GOOGLE_TOKEN)}>Run RSA</Button> */}
                 </div>
               </div>
             </div>
