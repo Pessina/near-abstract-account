@@ -16,9 +16,9 @@ import { handleSolanaAuthenticate, handleSolanaRegister } from "./_utils/solana"
 import GoogleButton from "./_components/GoogleButton"
 import FacebookButton from "./_components/FacebookButton"
 import Providers from "./_components/Providers"
-import { verifyRSA } from "@/lib/auth/OIDC/rsa/rsa"
-import { GOOGLE_TOKEN } from "@/lib/constants"
-import { verifyRSAZK } from "@/lib/auth/OIDC/rsa-zk/run"
+// import { verifyRSA } from "@/lib/auth/OIDC/rsa/rsa"
+// import { GOOGLE_TOKEN } from "@/lib/constants"
+// import { verifyRSAZK } from "@/lib/auth/OIDC/rsa-zk/run"
 // import XLoginButton from "./_components/XButton"
 
 export default function AuthDemo() {
@@ -268,7 +268,7 @@ export default function AuthDemo() {
                     <FaBitcoin className="w-5 h-5 text-orange-500" />
                     <span>Connect BTC Wallet</span>
                   </Button> */}
-                  <Button onClick={() => verifyRSAZK(GOOGLE_TOKEN)}>Run RSA</Button>
+                  {/* <Button onClick={() => verifyRSAZK(GOOGLE_TOKEN)}>Run RSA</Button> */}
                 </div>
               </div>
             </div>

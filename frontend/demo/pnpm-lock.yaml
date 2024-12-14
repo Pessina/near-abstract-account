@@ -63,8 +63,8 @@ importers:
         specifier: 15.0.2
         version: 15.0.2(@babel/core@7.26.0)(react-dom@19.0.0-rc-02c0e824-20241028(react@19.0.0-rc-02c0e824-20241028))(react@19.0.0-rc-02c0e824-20241028)
       o1js:
-        specifier: ^2.1.0
-        version: 2.1.0
+        specifier: 2.0.0
+        version: 2.0.0
       react:
         specifier: 19.0.0-rc-02c0e824-20241028
         version: 19.0.0-rc-02c0e824-20241028
@@ -3361,8 +3361,8 @@ packages:
     resolution: {integrity: sha512-ppwTtiJZq0O/ai0z7yfudtBpWIoxM8yE6nHi1X47eFR2EWORqfbu6CnPlNsjeN683eT0qG6H/Pyf9fCcvjnnnQ==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
-  o1js@2.1.0:
-    resolution: {integrity: sha512-d3S4ouWHlzne86gVCiMWp+jELqsNdIAzSCzV5QLqK2hyhTclHXDENivzlP/RZ44EEns/CaI7LHuwbovCPMhaCw==}
+  o1js@2.0.0:
+    resolution: {integrity: sha512-mYCxUkdCgmfF4v8JOTreYJP/PsAUXGkAbDZJn1uRxWlfZ+Eepls1O2fpTKQ5W9DC64vu0LlQZp9uqWKxW4lrVQ==}
     engines: {node: '>=18.14.0'}
     hasBin: true
 
@@ -8578,7 +8578,7 @@ snapshots:
     dependencies:
       path-key: 4.0.0
 
-  o1js@2.1.0:
+  o1js@2.0.0:
     dependencies:
       blakejs: 1.2.1
       cachedir: 2.4.0

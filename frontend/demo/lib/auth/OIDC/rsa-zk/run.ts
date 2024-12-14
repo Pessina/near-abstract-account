@@ -19,18 +19,14 @@ async function initializeBindingsLazy() {
   try {
     await o1jslib.initializeBindings();
 
-    console.log(globalThis.plonk_wasm);
-
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    const proofToRust = (globalThis as any).__snarkyTsBindings.rustConversion(
-      (globalThis as any).plonk_wasm
-    ).fq.proofToRust;
-
-    console.log({ proofToRust });
+    const rustConversion = (
+      globalThis as any
+    ).__snarkyTsBindings.rustConversion((globalThis as any).plonk_wasm);
 
     return {
-      proofToRust,
+      rustConversion,
     };
   } catch (e) {
     console.error("Failed to initialize bindings", e);
@@ -95,7 +91,7 @@ export async function verifyRSAZK(token: string): Promise<void> {
   console.timeEnd("generate RSA parameters and inputs from Google token");
 
   console.time("prove");
-  const { proof } = await rsaZkProgram.verifyRsa65537(
+  const { proof, auxiliaryOutput } = await rsaZkProgram.verifyRsa65537(
     message,
     signatureZK,
     modulus
@@ -117,14 +113,71 @@ export async function verifyRSAZK(token: string): Promise<void> {
   const ret = await initializeBindingsLazy();
 
   if (ret) {
-    const { proofToRust } = ret;
-    const proofBase64 = proof.toJSON().proof;
-    const proofString = Buffer.from(proofBase64, "base64").toString();
-    console.log("Proof as string:", proofString);
-    const sexpProof = sexp(proofString);
-    console.log("S-expression proof:", sexpProof);
-    const rustProof = proofToRust(sexpProof);
-    console.log("Rust proof:", rustProof);
+    const { rustConversion } = ret;
+    // const proofBase64 = proof.toJSON().proof;
+    // const proofString = Buffer.from(proofBase64, "base64").toString();
+    // const sexpProof = sexp(proofString);
+    // console.log("S-expression proof:", sexpProof);
+    console.log(proof.proof);
+    console.log(auxiliaryOutput);
+
+    // Try all available rustConversion methods for converting proof
+    // const proofData = [0, [], (proof.proof as any)[1]];
+    const proofData = proof.proof as any;
+
+    // List of all available conversion methods
+    const conversionMethods = [
+      {
+        name: "mapMlArrayToRustVector",
+        fn: rustConversion.mapMlArrayToRustVector,
+      },
+      { name: "wireToRust", fn: rustConversion.wireToRust },
+      { name: "fieldsToRustFlat", fn: rustConversion.fieldsToRustFlat },
+      { name: "fq.proofToRust", fn: rustConversion.fq.proofToRust },
+      {
+        name: "fq.runtimeTableCfgsToRust",
+        fn: rustConversion.fq.runtimeTableCfgsToRust,
+      },
+      {
+        name: "fq.lookupTablesToRust",
+        fn: rustConversion.fq.lookupTablesToRust,
+      },
+      { name: "fq.pointsToRust", fn: rustConversion.fq.pointsToRust },
+      { name: "fq.shiftsToRust", fn: rustConversion.fq.shiftsToRust },
+      { name: "fq.vectorToRust", fn: rustConversion.fq.vectorToRust },
+      { name: "fq.polyCommsToRust", fn: rustConversion.fq.polyCommsToRust },
+      {
+        name: "fq.runtimeTablesToRust",
+        fn: rustConversion.fq.runtimeTablesToRust,
+      },
+      { name: "fp.proofToRust", fn: rustConversion.fp.proofToRust },
+      {
+        name: "fp.runtimeTableCfgsToRust",
+        fn: rustConversion.fp.runtimeTableCfgsToRust,
+      },
+      {
+        name: "fp.lookupTablesToRust",
+        fn: rustConversion.fp.lookupTablesToRust,
+      },
+      { name: "fp.pointsToRust", fn: rustConversion.fp.pointsToRust },
+      { name: "fp.shiftsToRust", fn: rustConversion.fp.shiftsToRust },
+      { name: "fp.vectorToRust", fn: rustConversion.fp.vectorToRust },
+      { name: "fp.polyCommsToRust", fn: rustConversion.fp.polyCommsToRust },
+      {
+        name: "fp.runtimeTablesToRust",
+        fn: rustConversion.fp.runtimeTablesToRust,
+      },
+    ];
+
+    // Try each conversion method
+    for (const { name, fn } of conversionMethods) {
+      try {
+        const rustProof = fn(proofData);
+        console.log(`${name} result:`, rustProof);
+      } catch (e) {
+        console.log(`Error in ${name}:`, e instanceof Error ? e.message : e);
+      }
+    }
 
     console.log({
       vk: compiledRsaZkProgram.verificationKey,
