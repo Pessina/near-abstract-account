@@ -1,23 +1,28 @@
 mod mods;
 mod types;
 
-use mods::transaction::Transaction;
+use mods::transaction::SignPayloadsRequest;
 use near_sdk::{env, near, require, store::LookupMap, AccountId, Promise};
 use types::{Account, AuthIdentity, UserOp, WalletType};
 
 #[near(contract_state)]
 pub struct AbstractAccountContract {
     owner: AccountId,
-    accounts: LookupMap<String, Account>, // account_id -> account (nonce, auth_identities)
+    accounts: LookupMap<String, Account>, // account_id -> account (auth_identities)
     auth_contracts: LookupMap<String, AccountId>,
 }
 
 impl Default for AbstractAccountContract {
     fn default() -> Self {
+        let mut auth_contracts = LookupMap::new(b"q");
+        auth_contracts.insert("webauthn".to_string(), "felipe-webauthn-contract.testnet".parse().unwrap());
+        auth_contracts.insert("ethereum".to_string(), "felipe-ethereum-contract.testnet".parse().unwrap());
+        auth_contracts.insert("solana".to_string(), "felipe-solana-contract.testnet".parse().unwrap());
+
         Self {
             accounts: LookupMap::new(b"e"),
             owner: env::predecessor_account_id(),
-            auth_contracts: LookupMap::new(b"q")
+            auth_contracts
         }
     }
 }
@@ -38,7 +43,10 @@ impl AbstractAccountContract {
     }
 
     pub fn add_account(&mut self, account_id: String, auth_identity: AuthIdentity) {
-        // TODO: validate auth_identity is valid
+        if self.accounts.contains_key(&account_id) {
+            env::panic_str("Account already exists");
+        }
+
         self.accounts.insert(account_id, Account::new(vec![auth_identity]));
     }
 
@@ -47,37 +55,20 @@ impl AbstractAccountContract {
     }
 
     // TODO: get_account_by_auth_identity
-    
-    pub fn set_auth_contract(&mut self, auth_type: String, auth_contract_account_id: AccountId) {
-        self.assert_owner();
-        self.auth_contracts
-            .insert(auth_type, auth_contract_account_id);
+    // TODO: add_auth_identity
+
+    pub fn build_account_path(&self, account_id: String, path: String) -> String {
+        format!("{}.{}", account_id, path)
     }
 
     #[payable]
-    pub fn auth(&mut self, user_op: UserOp) -> Promise {
-        let parsed_nonce = user_op
-            .transaction
-            .nonce
-            .parse::<u128>()
-            .unwrap_or_else(|_| env::panic_str("Invalid nonce format"));
-    
+    pub fn send_transaction(&mut self, user_op: UserOp) -> Promise {
         let account = self.accounts.get_mut(&user_op.account_id).unwrap();
-                
-        require!(
-            parsed_nonce == account.nonce,
-            format!(
-                "Nonce mismatch - Expected: {}, Got: {}",
-                account.nonce, parsed_nonce
-            )
-        );
 
         require!(
             account.has_auth_identity(&user_op.auth.auth_identity),
-            "Auth identity not found"
+            "Auth identity not found in account"
         );
-
-        account.nonce += 1;
 
         let auth_identity = user_op.auth.auth_identity.clone();
         match auth_identity {
@@ -118,13 +109,14 @@ impl AbstractAccountContract {
     }
 
     #[private]
-    pub fn auth_callback(
+    pub fn send_transaction_callback(
         &mut self,
-        transaction: Transaction,
+        account_id: String,
+        payloads: SignPayloadsRequest,
         #[callback_result] auth_result: Result<bool, near_sdk::PromiseError>,
     ) -> Promise {
         match auth_result {
-            Ok(true) => match self.execute_transaction(transaction) {
+            Ok(true) => match self.execute_transaction(account_id, payloads) {
                 Ok(promise) => promise,
                 Err(e) => env::panic_str(&e),
             },

@@ -32,11 +32,6 @@ export default function AuthDemo() {
           contractId: process.env.NEXT_PUBLIC_ABSTRACT_ACCOUNT_CONTRACT as string
         })
 
-        // Initialize the auth contracts
-        // await contractInstance.setAuthContract('webauthn', "felipe-webauthn-contract.testnet")
-        // await contractInstance.setAuthContract('ethereum', "felipe-ethereum-contract.testnet")
-        // await contractInstance.setAuthContract('solana', "felipe-solana-contract.testnet")
-
         setContract(contractInstance)
       } catch (error) {
         console.error("Failed to initialize contract:", error)

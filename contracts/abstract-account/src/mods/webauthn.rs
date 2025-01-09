@@ -17,7 +17,7 @@ impl AbstractAccountContract {
             .as_str()
             .ok_or("Missing challenge in client data")?;
 
-        let canonical = serde_json_canonicalizer::to_string(&user_op.transaction)
+        let canonical = serde_json_canonicalizer::to_string(&user_op.payloads)
             .map_err(|_| "Failed to canonicalize transaction")?;
         let transaction_hash = URL_SAFE_NO_PAD.encode(env::sha256(canonical.as_bytes()));
 
@@ -43,6 +43,6 @@ impl AbstractAccountContract {
         Ok(webauthn_auth::ext(webauthn_contract.clone())
             .with_static_gas(VALIDATE_P256_SIGNATURE_GAS)
             .validate_p256_signature(webauthn_data, compressed_public_key)
-            .then(Self::ext(env::current_account_id()).auth_callback(user_op.transaction)))
+            .then(Self::ext(env::current_account_id()).send_transaction_callback(user_op.account_id, user_op.payloads)))
     }
 }

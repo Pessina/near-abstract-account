@@ -3,27 +3,15 @@ import { WebAutahnAuthData } from "../auth/WebAuthn/types";
 import { EthereumAuthData } from "../auth/Ethereum/types";
 import { SolanaAuthData } from "../auth/Solana/types";
 
-export interface FunctionCallAction {
-  FunctionCall: {
-    method_name: string;
-    args: string;
-    gas: string;
-    deposit: string;
-  };
+export interface SignRequest {
+  payload: number[];
+  path: string;
+  key_version: number;
 }
 
-export interface TransferAction {
-  Transfer: {
-    deposit: string;
-  };
-}
-
-export type Action = FunctionCallAction | TransferAction;
-
-export interface Transaction {
-  nonce: string;
-  receiver_id: string;
-  actions: Action[];
+export interface SignPayloadsRequest {
+  contract_id: string;
+  payloads: SignRequest[];
 }
 
 export type WalletType = "Ethereum" | "Solana";
@@ -58,7 +46,7 @@ export interface Auth {
 export interface UserOperation {
   account_id: string;
   auth: Auth;
-  transaction: Transaction;
+  transaction: SignPayloadsRequest;
 }
 
 export interface Account {
@@ -73,11 +61,10 @@ type AbstractContract = Contract & {
     auth_identity: AuthIdentity;
   }) => Promise<void>;
   get_account_by_id: (args: { account_id: string }) => Promise<Account | null>;
-  set_auth_contract: (args: {
-    auth_type: string;
-    auth_contract_account_id: string;
-  }) => Promise<void>;
-  auth: (args: { user_op: UserOperation }, gas?: string) => Promise<void>;
+  send_transaction: (
+    args: { user_op: UserOperation },
+    gas?: string
+  ) => Promise<void>;
 };
 
 export class AbstractAccountContract {
@@ -92,7 +79,7 @@ export class AbstractAccountContract {
   }) {
     this.contract = new Contract(account, contractId, {
       viewMethods: ["get_account_by_id"],
-      changeMethods: ["new", "add_account", "set_auth_contract", "auth"],
+      changeMethods: ["new", "add_account", "auth"],
       useLocalViewExecution: false,
     }) as unknown as AbstractContract;
   }
@@ -115,17 +102,10 @@ export class AbstractAccountContract {
     return await this.contract.get_account_by_id({ account_id: accountId });
   }
 
-  async setAuthContract(
-    authType: string,
-    authContractAccountId: string
-  ): Promise<void> {
-    return await this.contract.set_auth_contract({
-      auth_type: authType,
-      auth_contract_account_id: authContractAccountId,
-    });
-  }
-
-  async auth(userOp: UserOperation): Promise<void> {
-    return await this.contract.auth({ user_op: userOp }, "300000000000000");
+  async send_transaction(userOp: UserOperation): Promise<void> {
+    return await this.contract.send_transaction(
+      { user_op: userOp },
+      "300000000000000"
+    );
   }
 }

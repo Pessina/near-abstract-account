@@ -1,4 +1,4 @@
-use crate::mods::transaction::Transaction;
+use crate::mods::transaction::SignPayloadsRequest;
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
@@ -11,7 +11,7 @@ use serde_json::Value;
 pub struct UserOp {
     pub account_id: String,
     pub auth: Auth,
-    pub transaction: Transaction,
+    pub payloads: SignPayloadsRequest,
 }
 
 #[derive(Deserialize, Serialize, JsonSchema)]
@@ -74,14 +74,12 @@ pub enum AuthIdentity {
 #[derive(Debug, BorshDeserialize, BorshSerialize, Deserialize, Serialize, JsonSchema)]
 #[serde(crate = "near_sdk::serde")]
 pub struct Account {
-    pub nonce: u128,
     pub auth_identities: Vec<AuthIdentity>,
 }
 
 impl Account {
     pub fn new(auth_identities: Vec<AuthIdentity>) -> Self {
         Self { 
-            nonce: 0, 
             auth_identities, 
         }
     }

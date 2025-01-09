@@ -9,7 +9,7 @@ impl AbstractAccountContract {
         let solana_auth: SolanaData = serde_json::from_str(&user_op.auth.auth_data.to_string())
             .map_err(|_| "Invalid Solana auth data")?;
 
-        let message = serde_json_canonicalizer::to_string(&user_op.transaction)
+        let message = serde_json_canonicalizer::to_string(&user_op.payloads)
             .map_err(|_| "Failed to canonicalize transaction")?;
 
         let solana_data = SolanaData {
@@ -25,6 +25,6 @@ impl AbstractAccountContract {
         Ok(solana_auth::ext(solana_contract.clone())
             .with_static_gas(VALIDATE_ETH_SIGNATURE_GAS)
             .validate_solana_signature(solana_data, public_key)
-            .then(Self::ext(env::current_account_id()).auth_callback(user_op.transaction)))
+            .then(Self::ext(env::current_account_id()).send_transaction_callback(user_op.account_id, user_op.payloads)))
     }
 }
