@@ -42,6 +42,7 @@ impl AbstractAccountContract {
 
         Ok(webauthn_auth::ext(webauthn_contract.clone())
             .with_static_gas(VALIDATE_P256_SIGNATURE_GAS)
+            .with_attached_deposit(env::attached_deposit())
             .validate_p256_signature(webauthn_data, compressed_public_key))
     }
 }

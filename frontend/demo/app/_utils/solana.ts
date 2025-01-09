@@ -35,7 +35,7 @@ export const handleSolanaRegister = async ({
     await contract.addAccount(accountId, {
       Wallet: {
         wallet_type: "Solana",
-        compressed_public_key: publicKey,
+        public_key: publicKey,
       },
     });
     setStatus("Solana address registration successful!");
@@ -76,7 +76,7 @@ export const handleSolanaAuthenticate = async ({
       return;
     }
 
-    const transaction = mockTransaction(account.nonce);
+    const transaction = mockTransaction();
 
     const canonical = canonicalize(transaction);
     if (!canonical) {
@@ -90,18 +90,19 @@ export const handleSolanaAuthenticate = async ({
       return;
     }
 
-    await contract.auth({
+    await contract.sendTransaction({
       account_id: accountId,
+      selected_auth_identity: undefined,
       auth: {
         auth_identity: {
           Wallet: {
             wallet_type: "Solana",
-            compressed_public_key: publicKey,
+            public_key: publicKey,
           },
         },
         auth_data: solanaData,
       },
-      transaction,
+      payloads: transaction,
     });
 
     setStatus("Solana authentication successful!");

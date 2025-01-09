@@ -18,7 +18,7 @@ export type WalletType = "Ethereum" | "Solana";
 
 export interface Wallet {
   wallet_type: WalletType;
-  compressed_public_key: string;
+  public_key: string;
 }
 
 export interface WebAuthn {
@@ -46,7 +46,8 @@ export interface Auth {
 export interface UserOperation {
   account_id: string;
   auth: Auth;
-  transaction: SignPayloadsRequest;
+  selected_auth_identity?: AuthIdentity;
+  payloads: SignPayloadsRequest;
 }
 
 export interface Account {
@@ -61,10 +62,11 @@ type AbstractContract = Contract & {
     auth_identity: AuthIdentity;
   }) => Promise<void>;
   get_account_by_id: (args: { account_id: string }) => Promise<Account | null>;
-  send_transaction: (
-    args: { user_op: UserOperation },
-    gas?: string
-  ) => Promise<void>;
+  send_transaction: (args: {
+    args: { user_op: UserOperation };
+    gas?: string;
+    amount?: string;
+  }) => Promise<void>;
 };
 
 export class AbstractAccountContract {
@@ -79,7 +81,7 @@ export class AbstractAccountContract {
   }) {
     this.contract = new Contract(account, contractId, {
       viewMethods: ["get_account_by_id"],
-      changeMethods: ["new", "add_account", "auth"],
+      changeMethods: ["new", "add_account", "send_transaction"],
       useLocalViewExecution: false,
     }) as unknown as AbstractContract;
   }
@@ -102,10 +104,12 @@ export class AbstractAccountContract {
     return await this.contract.get_account_by_id({ account_id: accountId });
   }
 
-  async send_transaction(userOp: UserOperation): Promise<void> {
-    return await this.contract.send_transaction(
-      { user_op: userOp },
-      "300000000000000"
-    );
+  async sendTransaction(userOp: UserOperation): Promise<void> {
+    console.log("Sending transaction");
+    return await this.contract.send_transaction({
+      args: { user_op: userOp },
+      gas: "300000000000000",
+      amount: "10000000000000000000000",
+    });
   }
 }

@@ -35,7 +35,7 @@ export const handleEthereumRegister = async ({
     await contract.addAccount(accountId, {
       Wallet: {
         wallet_type: "Ethereum",
-        compressed_public_key: compressedPublicKey,
+        public_key: compressedPublicKey,
       },
     });
     setStatus("Ethereum address registration successful!");
@@ -70,7 +70,7 @@ export const handleEthereumAuthenticate = async ({
       return;
     }
 
-    const transaction = mockTransaction(account.nonce);
+    const transaction = mockTransaction();
 
     const canonical = canonicalize(transaction);
     if (!canonical) {
@@ -94,18 +94,19 @@ export const handleEthereumAuthenticate = async ({
       return;
     }
 
-    await contract.auth({
+    await contract.sendTransaction({
       account_id: accountId,
+      selected_auth_identity: undefined,
       auth: {
         auth_identity: {
           Wallet: {
             wallet_type: "Ethereum",
-            compressed_public_key: compressedPublicKey,
+            public_key: compressedPublicKey,
           },
         },
         auth_data: ethereumData,
       },
-      transaction,
+      payloads: transaction,
     });
 
     setStatus("Ethereum authentication successful!");

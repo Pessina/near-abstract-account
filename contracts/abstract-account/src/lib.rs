@@ -3,7 +3,7 @@ mod types;
 mod traits;
 
 use mods::transaction::SignPayloadsRequest;
-use near_sdk::{env, near, require, store::LookupMap, AccountId, Promise};
+use near_sdk::{env, log, near, require, store::LookupMap, AccountId, Promise};
 use types::{account::Account, auth_identities::{AuthIdentity, WalletType}, transaction::UserOp};
 
 #[near(contract_state)]
@@ -11,6 +11,7 @@ pub struct AbstractAccountContract {
     owner: AccountId,
     accounts: LookupMap<String, Account>, // account_id -> account (auth_identities)
     auth_contracts: LookupMap<String, AccountId>,
+    signer_account: AccountId,
 }
 
 impl Default for AbstractAccountContract {
@@ -23,7 +24,8 @@ impl Default for AbstractAccountContract {
         Self {
             accounts: LookupMap::new(b"e"),
             owner: env::predecessor_account_id(),
-            auth_contracts
+            auth_contracts,
+            signer_account: "v1.signer-prod.testnet".parse().unwrap(),
         }
     }
 }
@@ -65,6 +67,8 @@ impl AbstractAccountContract {
     #[payable]
     pub fn send_transaction(&mut self, user_op: UserOp) -> Promise {
         let account = self.accounts.get_mut(&user_op.account_id).unwrap();
+
+        log!("Attached deposit: {}", env::attached_deposit());
 
         require!(
             account.has_auth_identity(&user_op.auth.auth_identity),
@@ -121,10 +125,11 @@ impl AbstractAccountContract {
             AuthIdentity::Account(_) => env::panic_str("Account auth type not yet supported"),
         };
 
-        promise.then(Self::ext(env::current_account_id()).send_transaction_callback(selected_auth_identity, payloads))
+        promise.then(Self::ext(env::current_account_id()).with_attached_deposit(env::attached_deposit()).send_transaction_callback(selected_auth_identity, payloads))
     }
 
     #[private]
+    #[payable]
     pub fn send_transaction_callback(
         &mut self,
         auth_identity: AuthIdentity,

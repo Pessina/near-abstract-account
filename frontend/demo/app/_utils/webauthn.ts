@@ -65,7 +65,7 @@ export const handlePasskeyAuthenticate = async ({
       return;
     }
 
-    const transaction = mockTransaction(account.nonce);
+    const transaction = mockTransaction();
 
     const canonical = canonicalize(transaction);
     if (!canonical) {
@@ -84,8 +84,9 @@ export const handlePasskeyAuthenticate = async ({
 
     console.log("credential", credential);
 
-    await contract.auth({
+    await contract.sendTransaction({
       account_id: accountId,
+      selected_auth_identity: undefined,
       auth: {
         auth_identity: {
           WebAuthn: {
@@ -98,7 +99,7 @@ export const handlePasskeyAuthenticate = async ({
           client_data: JSON.stringify(credential.clientData),
         },
       },
-      transaction,
+      payloads: transaction,
     });
 
     setStatus("Passkey authentication successful!");
