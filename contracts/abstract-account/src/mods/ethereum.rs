@@ -1,8 +1,8 @@
 use crate::mods::external_contracts::{ethereum_auth, VALIDATE_ETH_SIGNATURE_GAS};
-use crate::types::UserOp;
+use crate::types::transaction::UserOp;
 use crate::AbstractAccountContract;
 use interfaces::ethereum_auth::EthereumData;
-use near_sdk::{env, Promise};
+use near_sdk::Promise;
 use serde_json_canonicalizer;
 
 impl AbstractAccountContract {
@@ -25,7 +25,6 @@ impl AbstractAccountContract {
 
         Ok(ethereum_auth::ext(ethereum_contract.clone())
             .with_static_gas(VALIDATE_ETH_SIGNATURE_GAS)
-            .validate_eth_signature(ethereum_data, compressed_public_key)
-            .then(Self::ext(env::current_account_id()).send_transaction_callback(user_op.account_id, user_op.payloads)))
+            .validate_eth_signature(ethereum_data, compressed_public_key))
     }
 }

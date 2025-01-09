@@ -1,8 +1,8 @@
 use crate::mods::external_contracts::{solana_auth, VALIDATE_ETH_SIGNATURE_GAS};
-use crate::types::UserOp;
+use crate::types::transaction::UserOp;
 use crate::AbstractAccountContract;
 use interfaces::solana_auth::SolanaData;
-use near_sdk::{env, Promise};
+use near_sdk::Promise;
 
 impl AbstractAccountContract {
     pub fn handle_solana_auth(&self, user_op: UserOp, public_key: String) -> Result<Promise, String> {
@@ -24,7 +24,6 @@ impl AbstractAccountContract {
 
         Ok(solana_auth::ext(solana_contract.clone())
             .with_static_gas(VALIDATE_ETH_SIGNATURE_GAS)
-            .validate_solana_signature(solana_data, public_key)
-            .then(Self::ext(env::current_account_id()).send_transaction_callback(user_op.account_id, user_op.payloads)))
+            .validate_solana_signature(solana_data, public_key))
     }
 }

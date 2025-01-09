@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::AbstractAccountContract;
+use crate::{traits::path::Path, types::auth_identities::AuthIdentity, AbstractAccountContract};
 use near_sdk::{
     env, serde::{Deserialize, Serialize}, AccountId, Gas, NearToken, Promise
 };
@@ -8,7 +8,7 @@ use schemars::JsonSchema;
 
 use super::signer::SignRequest;
 
-#[derive(Deserialize, Serialize, JsonSchema)]
+#[derive(Deserialize, Serialize, JsonSchema, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub struct SignPayloadsRequest {
     pub contract_id: String,
@@ -16,7 +16,7 @@ pub struct SignPayloadsRequest {
 }
 
 impl AbstractAccountContract {
-    pub fn execute_transaction(&self, account_id: String, payloads: SignPayloadsRequest) -> Result<Promise, String> {
+    pub fn execute_transaction(&self, auth_identity: AuthIdentity, payloads: SignPayloadsRequest) -> Result<Promise, String> {
         let receiver_id = AccountId::from_str(&payloads.contract_id)
             .map_err(|_| "Invalid receiver account ID")?;
         let mut promise = Promise::new(receiver_id);
@@ -24,7 +24,7 @@ impl AbstractAccountContract {
         let gas_per_call = env::prepaid_gas().as_gas() / payloads.payloads.len() as u64;
 
         for payload in payloads.payloads {
-            let path = self.build_account_path(account_id.clone(), payload.path);
+            let path = self.build_account_path(auth_identity.path(), payload.path);
 
             promise = promise.function_call(
                 path,

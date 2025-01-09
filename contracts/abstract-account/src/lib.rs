@@ -1,9 +1,10 @@
 mod mods;
 mod types;
+mod traits;
 
 use mods::transaction::SignPayloadsRequest;
 use near_sdk::{env, near, require, store::LookupMap, AccountId, Promise};
-use types::{Account, AuthIdentity, UserOp, WalletType};
+use types::{account::Account, auth_identities::{AuthIdentity, WalletType}, transaction::UserOp};
 
 #[near(contract_state)]
 pub struct AbstractAccountContract {
@@ -70,8 +71,21 @@ impl AbstractAccountContract {
             "Auth identity not found in account"
         );
 
+        let selected_auth_identity = if let Some(selected_auth_identity) = user_op.selected_auth_identity.clone() {
+            require!(
+                account.has_auth_identity(&selected_auth_identity),
+                "Selected auth identity not found in account"
+            );
+            selected_auth_identity
+        } else {
+            user_op.auth.auth_identity.clone()
+        };
+
+        // TODO: check if the close is needed
         let auth_identity = user_op.auth.auth_identity.clone();
-        match auth_identity {
+        let payloads = user_op.payloads.clone();
+        
+        let promise = match auth_identity {
             AuthIdentity::WebAuthn(ref webauthn) => {
                 let account = self.accounts.get(&user_op.account_id).unwrap();
                 let webauthn_identity = account.auth_identities.iter()
@@ -105,18 +119,20 @@ impl AbstractAccountContract {
             },
             AuthIdentity::OIDC(_) => env::panic_str("OIDC auth type not yet implemented"),
             AuthIdentity::Account(_) => env::panic_str("Account auth type not yet supported"),
-        }
+        };
+
+        promise.then(Self::ext(env::current_account_id()).send_transaction_callback(selected_auth_identity, payloads))
     }
 
     #[private]
     pub fn send_transaction_callback(
         &mut self,
-        account_id: String,
+        auth_identity: AuthIdentity,
         payloads: SignPayloadsRequest,
         #[callback_result] auth_result: Result<bool, near_sdk::PromiseError>,
     ) -> Promise {
         match auth_result {
-            Ok(true) => match self.execute_transaction(account_id, payloads) {
+            Ok(true) => match self.execute_transaction(auth_identity, payloads) {
                 Ok(promise) => promise,
                 Err(e) => env::panic_str(&e),
             },
