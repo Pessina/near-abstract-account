@@ -16,10 +16,6 @@ import { handleSolanaAuthenticate, handleSolanaRegister } from "./_utils/solana"
 import GoogleButton from "./_components/GoogleButton"
 import FacebookButton from "./_components/FacebookButton"
 import Providers from "./_components/Providers"
-// import { verifyRSA } from "@/lib/auth/OIDC/rsa/rsa"
-// import { GOOGLE_TOKEN } from "@/lib/constants"
-// import { verifyRSAZK } from "@/lib/auth/OIDC/rsa-zk/run"
-// import XLoginButton from "./_components/XButton"
 
 export default function AuthDemo() {
   const [contract, setContract] = useState<AbstractAccountContract | null>(null)
@@ -110,7 +106,6 @@ export default function AuthDemo() {
                 <h3 className="text-lg font-semibold">Social Login</h3>
                 <GoogleButton />
                 <FacebookButton />
-                {/* <XLoginButton /> */}
               </div>
               <div className="space-y-4 md:col-span-2">
                 <h3 className="text-lg font-semibold">Wallet Authentication</h3>
