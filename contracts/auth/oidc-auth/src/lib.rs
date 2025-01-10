@@ -1,6 +1,6 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use jwt_simple::prelude::*;
-use near_sdk::{near, log, serde::{Deserialize, Serialize}, borsh::{self, BorshDeserialize, BorshSerialize},};
+use near_sdk::{near, log, serde::{Deserialize, Serialize}, borsh::{self, BorshDeserialize, BorshSerialize, BorshSchema}};
 use schemars::JsonSchema;
 
 #[derive(Debug)]
@@ -13,7 +13,7 @@ pub enum OidcError {
     KeyIdNotFound,
 }
 
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, JsonSchema, Default, Debug,)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, JsonSchema, Default, Debug, BorshSchema)]
 #[serde(crate = "near_sdk::serde")]
 pub struct PublicKey {
     pub kid: String,
@@ -25,7 +25,7 @@ pub struct PublicKey {
     pub use_: String,
 }
 
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, JsonSchema, Default, Debug,)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, JsonSchema, Default, Debug, BorshSchema)]
 #[serde(crate = "near_sdk::serde")]
 pub struct KeySet {
     pub keys: Vec<PublicKey>,
