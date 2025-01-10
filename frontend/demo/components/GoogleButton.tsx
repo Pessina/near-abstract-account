@@ -12,7 +12,6 @@ const GoogleButton = ({ onSuccess, onError }: GoogleButtonProps) => {
   return (
     <div className="w-full">
       <GoogleLogin
-        locale='en-US'
         onSuccess={response => {
           console.log(response);
           onSuccess?.(response);
@@ -21,7 +20,7 @@ const GoogleButton = ({ onSuccess, onError }: GoogleButtonProps) => {
           console.log('Google login failed');
           onError?.();
         }}
-        useOneTap
+
       />
     </div>
   );

@@ -4437,6 +4437,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "oidc-auth"
+version = "0.1.0"
+dependencies = [
+ "near-sdk",
+ "near-workspaces 0.14.1",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

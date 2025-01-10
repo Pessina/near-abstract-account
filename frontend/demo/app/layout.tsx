@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import GoogleProvider from "./_providers/GoogleProvider";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -18,9 +17,7 @@ export default function RootLayout({
         className={`antialiased h-full w-full`}
         suppressHydrationWarning
       >
-        <GoogleProvider>
-          {children}
-        </GoogleProvider>
+        {children}
       </body>
     </html>
   );
