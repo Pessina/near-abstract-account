@@ -1,4 +1,6 @@
 use interfaces::ethereum_auth::EthereumData;
+use interfaces::oidc_auth::OIDCAuthIdentity;
+use interfaces::oidc_auth::OIDCData;
 use interfaces::solana_auth::SolanaData;
 use interfaces::webauthn_auth::WebAuthnData;
 use near_sdk::ext_contract;
@@ -28,5 +30,5 @@ pub trait SolanaAuth {
 
 #[ext_contract(oidc_auth)]
 pub trait OidcAuth {
-    fn validate_oidc_token(&self, token: String) -> bool;
+    fn validate_oidc_token(&self, oidc_data: OIDCData, oidc_auth_identity: OIDCAuthIdentity) -> bool;
 }

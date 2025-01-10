@@ -2,6 +2,7 @@ mod mods;
 mod types;
 mod traits;
 
+use interfaces::oidc_auth::OIDCAuthIdentity;
 use mods::transaction::SignPayloadsRequest;
 use near_sdk::{env, near, require, store::{IterableMap, LookupMap}, AccountId, Promise};
 use types::{account::Account, auth_identities::{AuthIdentity, WalletType}, transaction::UserOp};
@@ -20,6 +21,7 @@ impl Default for AbstractAccountContract {
         auth_contracts.insert("webauthn".to_string(), "felipe-webauthn-contract.testnet".parse().unwrap());
         auth_contracts.insert("ethereum".to_string(), "felipe-ethereum-contract.testnet".parse().unwrap());
         auth_contracts.insert("solana".to_string(), "felipe-solana-contract.testnet".parse().unwrap());
+        auth_contracts.insert("oidc".to_string(), "felipe-oidc-contract.testnet".parse().unwrap());
 
         Self {
             accounts: IterableMap::new(b"e"),
@@ -132,7 +134,17 @@ impl AbstractAccountContract {
                     Err(e) => env::panic_str(&e),
                 },
             },
-            AuthIdentity::OIDC(_) => env::panic_str("OIDC auth type not yet implemented"),
+            AuthIdentity::OIDC(oidc) => {
+                // TODO: Should not need to rebuild OIDCAuthIdentity
+                match self.handle_oidc_auth(user_op, OIDCAuthIdentity {
+                    client_id: oidc.client_id.clone(),
+                    issuer: oidc.issuer.clone(),
+                    email: oidc.email.clone(),
+                }) {
+                    Ok(promise) => promise,
+                    Err(e) => env::panic_str(&e),
+                }
+            },
             AuthIdentity::Account(_) => env::panic_str("Account auth type not yet supported"),
         };
 
