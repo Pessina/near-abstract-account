@@ -22,7 +22,7 @@ export default function FacebookButton() {
     const handleLogin = async () => {
         setIsLoading(true);
         await initiateLogin({
-            nonce: 'test-123',
+            nonce: 'test_123_felipe',
         });
         setIsLoading(false);
     };

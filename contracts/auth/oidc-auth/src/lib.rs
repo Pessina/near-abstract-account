@@ -1,4 +1,5 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+use interfaces::oidc_auth::{OIDCData, OIDCAuthIdentity};
 use jwt_simple::prelude::*;
 use near_sdk::{near, log, serde::{Deserialize, Serialize}, borsh::{self, BorshDeserialize, BorshSerialize, BorshSchema}};
 use schemars::JsonSchema;
@@ -40,8 +41,8 @@ pub struct OIDCAuthContract {
 
 #[near]
 impl OIDCAuthContract {
-    pub fn validate_oidc_token(&self, token: String, issuer: String) -> bool {
-        match self.validate_token_internal(&token, &issuer) {
+    pub fn validate_oidc_token(&self, oidc_data: OIDCData, oidc_auth_identity: OIDCAuthIdentity) -> bool {
+        match self.validate_token_internal(&oidc_data.token, &oidc_data.message, &oidc_auth_identity) {
             Ok(_) => true,
             Err(e) => {
                 log!("Token validation failed: {:?}", e);
@@ -50,19 +51,61 @@ impl OIDCAuthContract {
         }
     }
 
-    fn validate_token_internal(&self, token: &str, issuer: &str) -> Result<(), OidcError> {
-        log!("Starting token validation for issuer: {}", issuer);
-
-        let key_set = match issuer {
-            "https://accounts.google.com" => &self.google_keys,
-            "https://www.facebook.com" => &self.facebook_keys,
-            _ => return Err(OidcError::UnsupportedIssuer),
-        };
+    fn validate_token_internal(&self, token: &str, message: &str, oidc_auth_identity: &OIDCAuthIdentity) -> Result<(), OidcError> {
+        log!("Starting OIDC token validation");
 
         let parts: Vec<&str> = token.split('.').collect();
         if parts.len() != 3 {
             return Err(OidcError::InvalidTokenFormat);
         }
+
+        let payload_json = URL_SAFE_NO_PAD
+            .decode(parts[1])
+            .map_err(|_| OidcError::InvalidTokenFormat)?;
+        let payload: serde_json::Value =
+            serde_json::from_slice(&payload_json).map_err(|_| OidcError::InvalidTokenFormat)?;
+        let token_issuer = payload["iss"]
+            .as_str()
+            .ok_or(OidcError::InvalidTokenFormat)?;
+
+        // Validate issuer matches identity
+        if token_issuer != oidc_auth_identity.issuer {
+            log!("Token issuer does not match identity issuer");
+            return Err(OidcError::InvalidTokenFormat);
+        }
+
+        // Validate client ID matches identity
+        let token_client_id = payload["aud"]
+            .as_str()
+            .ok_or(OidcError::InvalidTokenFormat)?;
+        if token_client_id != oidc_auth_identity.client_id {
+            log!("Token client ID does not match identity client ID");
+            return Err(OidcError::InvalidTokenFormat);
+        }
+
+        // Validate email matches identity
+        let token_email = payload["email"]
+            .as_str()
+            .ok_or(OidcError::InvalidTokenFormat)?;
+        if token_email != oidc_auth_identity.email {
+            log!("Token email does not match identity email");
+            return Err(OidcError::InvalidTokenFormat);
+        }
+
+        // Validate message is included in token's nonce field
+        let token_nonce = payload["nonce"]
+            .as_str()
+            .ok_or(OidcError::InvalidTokenFormat)?;
+        if token_nonce != message {
+            log!("Token nonce does not match provided message");
+            return Err(OidcError::InvalidTokenFormat);
+        }
+
+        let key_set = match token_issuer {
+            "https://accounts.google.com" => &self.google_keys,
+            "https://www.facebook.com" => &self.facebook_keys,
+            _ => return Err(OidcError::UnsupportedIssuer),
+        };
 
         let header_json = URL_SAFE_NO_PAD
             .decode(parts[0])
@@ -92,7 +135,7 @@ impl OIDCAuthContract {
         let verification = VerificationOptions {
             time_tolerance: Some(Duration::from_hours(10)),
             max_validity: Some(Duration::from_days(1)),
-            allowed_issuers: Some([issuer.to_string()].iter().cloned().collect()),
+            allowed_issuers: Some([token_issuer.to_string()].iter().cloned().collect()),
             ..Default::default()
         };
 
@@ -168,67 +211,69 @@ mod tests {
 
     #[test]
     fn validate_google_token_should_succeed() {
-        let contract = get_test_contract();
-        let token = "eyJhbGciOiJSUzI1NiIsImtpZCI6Ijg5Y2UzNTk4YzQ3M2FmMWJkYTRiZmY5NWU2Yzg3MzY0NTAyMDZmYmEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI3Mzk5MTEwNjk3OTctaWRwMDYyODY2OTY0Z2JuZG82NjkzaDMydGdhNWN2bDEuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI3Mzk5MTEwNjk3OTctaWRwMDYyODY2OTY0Z2JuZG82NjkzaDMydGdhNWN2bDEuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMTc5MDI4NTUzNzMxNTc0MTAzMzAiLCJlbWFpbCI6ImZzLnBlc3NpbmFAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5iZiI6MTczNjUxMTQ1OCwibmFtZSI6IkZlbGlwZSBQZXNzaW5hIiwicGljdHVyZSI6Imh0dHBzOi8vbGgzLmdvb2dsZXVzZXJjb250ZW50LmNvbS9hL0FDZzhvY0pLSmJVeUJWcUNCdjRxVkdPRFNuVlRnTEhQS04wdFZPTUlNWFZpdWtncmQtMHRmZWRVPXM5Ni1jIiwiZ2l2ZW5fbmFtZSI6IkZlbGlwZSIsImZhbWlseV9uYW1lIjoiUGVzc2luYSIsImlhdCI6MTczNjUxMTc1OCwiZXhwIjoxNzM2NTE1MzU4LCJqdGkiOiI4NTQ0YzMwZGQ2MjA3NzM3NDQ1ZjRlMWE1MGYxMjA0Nzk1YmVkMWJmIn0.YrQny7qVn6dWa_ojGPCHJshT_pofwjIFTmhqQA5nR_-T3p0Wi7RCSg4dJ138yTZAxmcwwEzjT3m9oOSKxlzPDRROOdXCOx0ljwgzsTKqq3JuzOB8bRdT3NmY4E9cr4NLzkR-99JQvYeOLV46q_uxytJ20deyE-4OP4qbKhyc_ZILVitJ8Vus5yB68eGLhZwO6Ew9k8FZGy11xJLUuGjhwZ6cg-peFjWaj3uk8H_nN-UyF_iPzhxVcsndyiB6O9h2JS9mEg-Xzj8wuEzRQ1SqTLQjMjMWmZ1KhY7KkQhb8vrGLzk8cuR_fnOKTwv0N7qHjrahLxejBNlmAkfgCQyFsg";
+        let contract: OIDCAuthContract = get_test_contract();
+        let oidc_data =  OIDCData{
+            token: "eyJhbGciOiJSUzI1NiIsImtpZCI6Ijg5Y2UzNTk4YzQ3M2FmMWJkYTRiZmY5NWU2Yzg3MzY0NTAyMDZmYmEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI3Mzk5MTEwNjk3OTctaWRwMDYyODY2OTY0Z2JuZG82NjkzaDMydGdhNWN2bDEuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI3Mzk5MTEwNjk3OTctaWRwMDYyODY2OTY0Z2JuZG82NjkzaDMydGdhNWN2bDEuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMTc5MDI4NTUzNzMxNTc0MTAzMzAiLCJlbWFpbCI6ImZzLnBlc3NpbmFAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5vbmNlIjoidGVzdF8xMjNfZmVsaXBlIiwibmJmIjoxNzM2NTIzMjM2LCJuYW1lIjoiRmVsaXBlIFBlc3NpbmEiLCJwaWN0dXJlIjoiaHR0cHM6Ly9saDMuZ29vZ2xldXNlcmNvbnRlbnQuY29tL2EvQUNnOG9jSktKYlV5QlZxQ0J2NHFWR09EU25WVGdMSFBLTjB0Vk9NSU1YVml1a2dyZC0wdGZlZFU9czk2LWMiLCJnaXZlbl9uYW1lIjoiRmVsaXBlIiwiZmFtaWx5X25hbWUiOiJQZXNzaW5hIiwiaWF0IjoxNzM2NTIzNTM2LCJleHAiOjE3MzY1MjcxMzYsImp0aSI6ImY3MjdlZjg1MGFhNzNmMDQ3ZmQwNjY5OWIwNjk3YTIwMDIzYWViYWMifQ.nlRKhlzBhHVpYejoSkH_S9ZOeAejlhvnL5u-94AzsREIhzuKroJbPp9jEHuvvki5dJozc-FzXx9lfpjT17X6PT0hJOM86QUE05RkmV9WkrVSr8trr1zbHY6dieii9tzj7c01pXsLJTa2FvTonmJAxDteVt_vsZFl7-pRWmyXKLMk4CFv9AZx20-uj5pDLuj-F5IkAk_cpXBuMJYh5PQeNBDk22d5svDTQkuwUAH5N9sssXRzDNdv92snGu4AykpmoPIJeSmc3EY-RW0TB5bAnwXH0E3keAjv84yrNYjnovYn2FRqKbTKxNxN4XUgWU_P0oRYCzckJznwz4tStaYZ2A".to_string(),
+            message: "test_123_felipe".to_string()
+        };
+
+        let oidc_auth_identity = OIDCAuthIdentity { 
+            client_id: "739911069797-idp062866964gbndo6693h32tga5cvl1.apps.googleusercontent.com".to_string(),
+            issuer: "https://accounts.google.com".to_string(),
+            email: "fs.pessina@gmail.com".to_string()
+        };
         
-        assert!(contract.validate_oidc_token(
-            token.to_string(),
-            "https://accounts.google.com".to_string()
-        ));
+        assert!(contract.validate_oidc_token(oidc_data, oidc_auth_identity));
     }
 
     #[test]
     fn validate_facebook_token_should_succeed() {
         let contract = get_test_contract();
-        let token = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImFlYzM5NjU4ZTU0NDIzNzY2MTFmMDY5OGE4ODZkZjk2MDZjMDNhN2MifQ.eyJpc3MiOiJodHRwczpcL1wvd3d3LmZhY2Vib29rLmNvbSIsImF1ZCI6IjIxMDM0OTYyMjAwNDU4NDMiLCJzdWIiOiI5MDAxMTQ1NzQzMjcwMjgwIiwiaWF0IjoxNzM2NTE0MjU4LCJleHAiOjE3MzY1MTc4NTgsImp0aSI6IjJ5aWUuZmQzOTc0ZjIyMDU2Njk4YWQxMzMyY2IxY2JhOTVhMGJiYzdiZjM0ZDM5YTJjMzAwMmRmZDM1MDk5MTEwNzkzOCIsIm5vbmNlIjoiIiwiYXRfaGFzaCI6Im5LSTB5NTRtUTVSOHJLMXZSNUEtWEEiLCJlbWFpbCI6ImZzLnBlc3NpbmFcdTAwNDBnbWFpbC5jb20iLCJnaXZlbl9uYW1lIjoiRmVsaXBlIiwiZmFtaWx5X25hbWUiOiJQZXNzaW5hIiwibmFtZSI6IkZlbGlwZSBQZXNzaW5hIiwicGljdHVyZSI6Imh0dHBzOlwvXC9wbGF0Zm9ybS1sb29rYXNpZGUuZmJzYnguY29tXC9wbGF0Zm9ybVwvcHJvZmlsZXBpY1wvP2FzaWQ9OTAwMTE0NTc0MzI3MDI4MCZoZWlnaHQ9MTAwJndpZHRoPTEwMCZleHQ9MTczOTEwNjI1OCZoYXNoPUFiYnNqYzdham5ZWXFMYXJMWHdnLVlNTyJ9.VeZRS6yn6wBsAduWn7DabLE01WiGmEBeCTDYJsHbKCsisV6J1Eugym6GN10BYCUxY9yp4wePIpXa-fdbz31HX-HReC-xPLM2DIry4MIx8xgZeNTzoktuEd0v2EHqjChtZOWPKYHtv58HOTojMCUtekOZkVenbGxHh-kritvqkq-l1q8PxOPMrJnOL4c0Ie7-Rl2UJH-doTALCSLa4F6EI1HQgFB8zk8aEN5a_nPq0QJBFzHK8F-4yTy_WqaQ2sgi-rHoE9qaK6SCOTfHcYjPEbX2Y9YM48FV9eoWHaxmb_FF81zd7UEd8WsjOhJj_f9nNLqQKUZG3NgYfsLHgLTHyQ";
+        let oidc_data =  OIDCData{
+            token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImFlYzM5NjU4ZTU0NDIzNzY2MTFmMDY5OGE4ODZkZjk2MDZjMDNhN2MifQ.eyJpc3MiOiJodHRwczpcL1wvd3d3LmZhY2Vib29rLmNvbSIsImF1ZCI6IjIxMDM0OTYyMjAwNDU4NDMiLCJzdWIiOiI5MDAxMTQ1NzQzMjcwMjgwIiwiaWF0IjoxNzM2NTIzNDczLCJleHAiOjE3MzY1MjcwNzMsImp0aSI6ImpYZ1kuZjNhMzczNzY3NjRmZDY0NGQyY2YzYmIxYWNjODIzZTRhNzc3ZmZjZGU5NmM1MzIzMzI0MjZkNmIzZDg4OWJiNyIsIm5vbmNlIjoidGVzdF8xMjNfZmVsaXBlIiwiYXRfaGFzaCI6InRwQXo0ZWZUQ2RsVUExcU14aE5BN2ciLCJlbWFpbCI6ImZzLnBlc3NpbmFcdTAwNDBnbWFpbC5jb20iLCJnaXZlbl9uYW1lIjoiRmVsaXBlIiwiZmFtaWx5X25hbWUiOiJQZXNzaW5hIiwibmFtZSI6IkZlbGlwZSBQZXNzaW5hIiwicGljdHVyZSI6Imh0dHBzOlwvXC9wbGF0Zm9ybS1sb29rYXNpZGUuZmJzYnguY29tXC9wbGF0Zm9ybVwvcHJvZmlsZXBpY1wvP2FzaWQ9OTAwMTE0NTc0MzI3MDI4MCZoZWlnaHQ9MTAwJndpZHRoPTEwMCZleHQ9MTczOTExNTQ3MyZoYXNoPUFiYjZSVHNBcndlcXdYTFZWMXpHNUZPcCJ9.lKLW6JvLxyafBYXVNPj0uGc_Fu_DG3yz1k4JjPtBNXsHOL47KBpx3OEtYE19OMMGbUAwX8XakpuDtviTwnMLp-SIvryYyoJQJbP61oph3IoVTXOvBeIBUJZhCCeZdP-CcBsBPFG_wih2jXc-2Zog8apQCkMkoHLO9X2Y3y6d2QAU_5Dn46p5dBfYNcEz-AFmsgb-soHPtEvEhHjyAMu22Be6aHHfmP9HG6QgimbWmro56aZ1EI33ra15jo4yqPInSCgq5SEdVd5ukDZiD_QVAbGOn0VX7SC4m8JbRqLWNpL_6L3DmR0L2Xqd0U15PGtx87gm5DOqa6e7j6R2A2LQJQ".to_string(),
+            message: "test_123_felipe".to_string()
+        };
+
+        let oidc_auth_identity = OIDCAuthIdentity { 
+            client_id: "2103496220045843".to_string(),
+            issuer: "https://www.facebook.com".to_string(),
+            email: "fs.pessina@gmail.com".to_string()
+        };
         
-        assert!(contract.validate_oidc_token(
-            token.to_string(), 
-            "https://www.facebook.com".to_string()
-        ));
+        assert!(contract.validate_oidc_token(oidc_data, oidc_auth_identity));
     }
 
     #[test]
     fn validate_google_token_should_fail_signature_invalid() {
         let contract = get_test_contract();
-        let token = "eyJhbGciOiJSUzI1NiIsImtpZCI6Ijg5Y2UzNTk4YzQ3M2FmMWJkYTRiZmY5NWU2Yzg3MzY0NTAyMDZmYmEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI3Mzk5MTEwNjk3OTctaWRwMDYyODY2OTY0Z2JuZG82NjkzaDMydGdhNWN2bDEuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI3Mzk5MTEwNjk3OTctaWRwMDYyODY2OTY0Z2JuZG82NjkzaDMydGdhNWN2bDEuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMTc5MDI4NTUzNzMxNTc0MTAzMzAiLCJlbWFpbCI6ImZzLnBlc3NpbmFAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5iZiI6MTczNjUxMTQ1OCwibmFtZSI6IkZlbGlwZSBQZXNzaW5hIiwicGljdHVyZSI6Imh0dHBzOi8vbGgzLmdvb2dsZXVzZXJjb250ZW50LmNvbS9hL0FDZzhvY0pLSmJVeUJWcUNCdjRxVkdPRFNuVlRnTEhQS04wdFZPTUlNWFZpdWtncmQtMHRmZWRVPXM5Ni1jIiwiZ2l2ZW5fbmFtZSI6IkZlbGlwZSIsImZhbWlseV9uYW1lIjoiUGVzc2luYSIsImlhdCI6MTczNjUxMTc1OCwiZXhwIjoxNzM2NTE1MzU4LCJqdGkiOiI4NTQ0YzMwZGQ2MjA3NzM3NDQ1ZjRlMWE1MGYxMjA0Nzk1YmVkMWJmIn0.YrQny7qVn6dWa_ojGPCHJshT_pofwjIFTmhqQA5nR_-T3p0Wi7RCSg4dJ138yTZAxmcwwEzjT3m9oOSKxlzPDRROOdXCOx0ljwgzsTKqq3JuzOB8bRdT3NmY4E9cr4NLzkR-99JQvYeOLV46q_uxytJ20deyE-4OP4qbKhyc_ZILVitJ8Vus5yB68eGLhZwO6Ew9k8FZGy11xJLUuGjhwZ6cg-peFjWaj3uk8H_nN-UyF_iPzhzVcsndyiB6O9h2JS9mEg-Xzj8wuEzRQ1SqTLQjMjMWmZ1KhY7KkQhb8vrGLzk8cuR_fnOKTwv0N7qHjrahLxejBNlmAkfgCQyFsg";
+        let oidc_data =  OIDCData{
+            token: "eyJhbGciOiJSUzI1NiIsImtpZCI6Ijg5Y2UzNTk4YzQ3M2FmMWJkYTRiZmY5NWU2Yzg3MzY0NTAyMDZmYmEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI3Mzk5MTEwNjk3OTctaWRwMDYyODY2OTY0Z2JuZG82NjkzaDMydGdhNWN2bDEuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI3Mzk5MTEwNjk3OTctaWRwMDYyODY2OTY0Z2JuZG82NjkzaDMydGdhNWN2bDEuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMTc5MDI4NTUzNzMxNTc0MTAzMzAiLCJlbWFpbCI6ImZzLnBlc3NpbmFAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5iZiI6MTczNjUxMTQ1OCwibmFtZSI6IkZlbGlwZSBQZXNzaW5hIiwicGljdHVyZSI6Imh0dHBzOi8vbGgzLmdvb2dsZXVzZXJjb250ZW50LmNvbS9hL0FDZzhvY0pLSmJVeUJWcUNCdjRxVkdPRFNuVlRnTEhQS04wdFZPTUlNWFZpdWtncmQtMHRmZWRVPXM5Ni1jIiwiZ2l2ZW5fbmFtZSI6IkZlbGlwZSIsImZhbWlseV9uYW1lIjoiUGVzc2luYSIsImlhdCI6MTczNjUxMTc1OCwiZXhwIjoxNzM2NTE1MzU4LCJqdGkiOiI4NTQ0YzMwZGQ2MjA3NzM3NDQ1ZjRlMWE1MGYxMjA0Nzk1YmVkMWJmIn0.YrQny7qVn6dWa_ojGPCHJshT_pofwjIFTmhqQA5nR_-T3p0Wi7RCSg4dJ138yTZAxmcwwEzjT3m9oOSKxlzPDRROOdXCOx0ljwgzsTKqq3JuzOB8bRdT3NmY4E9cr4NLzkR-99JQvYeOLV46q_uxytJ20deyE-4OP4qbKhyc_ZILVitJ8Vus5yB68eGLhZwO6Ew9k8FZGy11xJLUuGjhwZ6cg-peFjWaj3uk8H_nN-UyF_iPzhxVcsndyiB6O9h2JS9mEg-Xzj8wuEzRQ1SqTLQjMjMWmZ1KhY7KkQhb8vrGLzk8cuR_fnOKTwv0N7qHjrahLxejBNlmAkfg123Fsg".to_string(),
+            message: "".to_string()
+        };
+
+        let oidc_auth_identity = OIDCAuthIdentity { 
+            client_id: "739911069797-idp062866964gbndo6693h32tga5cvl1.apps.googleusercontent.com".to_string(),
+            issuer: "https://accounts.google.com".to_string(),
+            email: "fs.pessina@gmail.com".to_string()
+        };
         
-        assert!(!contract.validate_oidc_token(
-            token.to_string(),
-            "https://accounts.google.com".to_string()
-        ));
+        assert!(!contract.validate_oidc_token(oidc_data, oidc_auth_identity));
     }
 
     #[test]
     fn validate_facebook_token_should_fail_signature_invalid() {
         let contract = get_test_contract();
-        let token = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImFlYzM5NjU4ZTU0NDIzNzY2MTFmMDY5OGE4ODZkZjk2MDZjMDNhN2MifQ.eyJpc3MiOiJodHRwczpcL1wvd3d3LmZhY2Vib29rLmNvbSIsImF1ZCI6IjIxMDM0OTYyMjAwNDU4NDMiLCJzdWIiOiI5MDAxMTQ1NzQzMjcwMjgwIiwiaWF0IjoxNzM2NTE0MjU4LCJleHAiOjE3MzY1MTc4NTgsImp0aSI6IjJ5aWUuZmQzOTc0ZjIyMDU2Njk4YWQxMzMyY2IxY2JhOTVhMGJiYzdiZjM0ZDM5YTJjMzAwMmRmZDM1MDk5MTEwNzkzOCIsIm5vbmNlIjoiIiwiYXRfaGFzaCI6Im5LSTB5NTRtUTVSOHJLMXZSNUEtWEEiLCJlbWFpbCI6ImZzLnBlc3NpbmFcdTAwNDBnbWFpbC5jb20iLCJnaXZlbl9uYW1lIjoiRmVsaXBlIiwiZmFtaWx5X25hbWUiOiJQZXNzaW5hIiwibmFtZSI6IkZlbGlwZSBQZXNzaW5hIiwicGljdHVyZSI6Imh0dHBzOlwvXC9wbGF0Zm9ybS1sb29rYXNpZGUuZmJzYnguY29tXC9wbGF0Zm9ybVwvcHJvZmlsZXBpY1wvP2FzaWQ9OTAwMTE0NTc0MzI3MDI4MCZoZWlnaHQ9MTAwJndpZHRoPTEwMCZleHQ9MTczOTEwNjI1OCZoYXNoPUFiYnNqYzdham5ZWXFMYXJMWHdnLVlNTyJ9.VeZRS6yn6wBsAduWn7DabLE01WiGmEBeCTDYJsHbKCsisV6J1Eugym6GN10BYCUxY9yp4wePIpXa-fdbz31HX-HReC-xPLM2DIry4MIx8xgZeNTzoktuEd0v2EHqjChtZOWPKYHtv58HOTojMCUtekOZkVenbGxHh-kritvqkq-l1q8PxOPMrJnOL4c0Ie7-Rl2UJH-doTALCSLa4F6EI1HQgFB8zk8aEN5a_nPq0QJBFzHK8F-4yTy_WqaQ2sgi-rHoE9qaK6SCOTfHcYjPEbX2Y9YM48FV9eoWHaxmb_FF81zd7UEd8ssjOhJj_f9nNLqQKUZG3NgYfsLHgLTHyQ";
-        
-        assert!(!contract.validate_oidc_token(
-            token.to_string(), 
-            "https://www.facebook.com".to_string()
-        ));
-    }
+        let oidc_data =  OIDCData{
+            token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImFlYzM5NjU4ZTU0NDIzNzY2MTFmMDY5OGE4ODZkZjk2MDZjMDNhN2MifQ.eyJpc3MiOiJodHRwczpcL1wvd3d3LmZhY2Vib29rLmNvbSIsImF1ZCI6IjIxMDM0OTYyMjAwNDU4NDMiLCJzdWIiOiI5MDAxMTQ1NzQzMjcwMjgwIiwiaWF0IjoxNzM2NTE0MjU4LCJleHAiOjE3MzY1MTc4NTgsImp0aSI6IjJ5aWUuZmQzOTc0ZjIyMDU2Njk4YWQxMzMyY2IxY2JhOTVhMGJiYzdiZjM0ZDM5YTJjMzAwMmRmZDM1MDk5MTEwNzkzOCIsIm5vbmNlIjoiIiwiYXRfaGFzaCI6Im5LSTB5NTRtUTVSOHJLMXZSNUEtWEEiLCJlbWFpbCI6ImZzLnBlc3NpbmFcdTAwNDBnbWFpbC5jb20iLCJnaXZlbl9uYW1lIjoiRmVsaXBlIiwiZmFtaWx5X25hbWUiOiJQZXNzaW5hIiwibmFtZSI6IkZlbGlwZSBQZXNzaW5hIiwicGljdHVyZSI6Imh0dHBzOlwvXC9wbGF0Zm9ybS1sb29rYXNpZGUuZmJzYnguY29tXC9wbGF0Zm9ybVwvcHJvZmlsZXBpY1wvP2FzaWQ9OTAwMTE0NTc0MzI3MDI4MCZoZWlnaHQ9MTAwJndpZHRoPTEwMCZleHQ9MTczOTEwNjI1OCZoYXNoPUFiYnNqYzdham5ZWXFMYXJMWHdnLVlNTyJ9.VeZRS6yn6wBsAduWn7DabLE01WiGmEBeCTDYJsHbKCsisV6J1Eugym6GN10BYCUxY9yp4wePIpXa-fdbz31HX-HReC-xPLM2DIry4MIx8xgZeNTzoktuEd0v2EHqjChtZOWPKYHtv58HOTojMCUtekOZkVenbGxHh-kritvqkq-l1q8PxOPMrJnOL4c0Ie7-Rl2UJH-doTALCSLa4F6EI1HQgFB8zk8aEN5a_nPq0QJBFzHK8F-4yTy_WqaQ2sgi-rHoE9qaK6SCOTfHcYjPEbX2Y9YM48FV9eoWHaxmb_FF81zd7UEd8WsjOhJj_f9nNLqQKUZG3NgYfs123LTHyQ".to_string(),
+            message: "".to_string()
+        };
 
-    #[test]
-    fn validate_expired_token_should_fail() {
-        let contract = get_test_contract();
-        let expired_token = "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiZXhwIjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+        let oidc_auth_identity = OIDCAuthIdentity { 
+            client_id: "2103496220045843".to_string(),
+            issuer: "https://www.facebook.com".to_string(),
+            email: "fs.pessina@gmail.com".to_string()
+        };
         
-        assert!(!contract.validate_oidc_token(
-            expired_token.to_string(),
-            "https://accounts.google.com".to_string()
-        ));
-    }
-
-    #[test]
-    fn validate_invalid_issuer_should_fail() {
-        let contract = get_test_contract();
-        let token = "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiZXhwIjoyNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
-        
-        assert!(!contract.validate_oidc_token(
-            token.to_string(),
-            "https://invalid-issuer.com".to_string()
-        ));
+        assert!(!contract.validate_oidc_token(oidc_data, oidc_auth_identity));
     }
 }

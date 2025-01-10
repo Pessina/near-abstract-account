@@ -4,3 +4,4 @@ pub mod solana;
 pub mod transaction;
 pub mod webauthn;
 pub mod signer;
+pub mod oidc;

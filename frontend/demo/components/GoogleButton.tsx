@@ -20,7 +20,9 @@ const GoogleButton = ({ onSuccess, onError }: GoogleButtonProps) => {
           console.log('Google login failed');
           onError?.();
         }}
-
+        nonce="test_123_felipe"
+        locale='en-US'
+        useOneTap
       />
     </div>
   );
