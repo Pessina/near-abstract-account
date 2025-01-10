@@ -62,6 +62,10 @@ type AbstractContract = Contract & {
     auth_identity: AuthIdentity;
   }) => Promise<void>;
   get_account_by_id: (args: { account_id: string }) => Promise<Account | null>;
+  list_account_ids: () => Promise<string[]>;
+  list_auth_identities: (args: {
+    account_id: string;
+  }) => Promise<AuthIdentity[] | null>;
   send_transaction: (args: {
     args: { user_op: UserOperation };
     gas?: string;
@@ -80,7 +84,11 @@ export class AbstractAccountContract {
     contractId: string;
   }) {
     this.contract = new Contract(account, contractId, {
-      viewMethods: ["get_account_by_id"],
+      viewMethods: [
+        "get_account_by_id",
+        "list_account_ids",
+        "list_auth_identities",
+      ],
       changeMethods: ["new", "add_account", "send_transaction"],
       useLocalViewExecution: false,
     }) as unknown as AbstractContract;
@@ -102,6 +110,14 @@ export class AbstractAccountContract {
 
   async getAccountById(accountId: string): Promise<Account | null> {
     return await this.contract.get_account_by_id({ account_id: accountId });
+  }
+
+  async listAccountIds(): Promise<string[]> {
+    return await this.contract.list_account_ids();
+  }
+
+  async listAuthIdentities(accountId: string): Promise<AuthIdentity[] | null> {
+    return await this.contract.list_auth_identities({ account_id: accountId });
   }
 
   async sendTransaction(userOp: UserOperation): Promise<void> {

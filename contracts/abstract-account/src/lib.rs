@@ -3,13 +3,13 @@ mod types;
 mod traits;
 
 use mods::transaction::SignPayloadsRequest;
-use near_sdk::{env, near, require, store::LookupMap, AccountId, Promise};
+use near_sdk::{env, near, require, store::{IterableMap, LookupMap}, AccountId, Promise};
 use types::{account::Account, auth_identities::{AuthIdentity, WalletType}, transaction::UserOp};
 
 #[near(contract_state)]
 pub struct AbstractAccountContract {
     owner: AccountId,
-    accounts: LookupMap<String, Account>, // account_id -> account (auth_identities)
+    accounts: IterableMap<String, Account>, // account_id -> account (auth_identities)
     auth_contracts: LookupMap<String, AccountId>,
     signer_account: AccountId,
 }
@@ -22,7 +22,7 @@ impl Default for AbstractAccountContract {
         auth_contracts.insert("solana".to_string(), "felipe-solana-contract.testnet".parse().unwrap());
 
         Self {
-            accounts: LookupMap::new(b"e"),
+            accounts: IterableMap::new(b"e"),
             owner: env::predecessor_account_id(),
             auth_contracts,
             signer_account: "v1.signer-prod.testnet".parse().unwrap(),
@@ -55,6 +55,19 @@ impl AbstractAccountContract {
 
     pub fn get_account_by_id(&self, account_id: String) -> Option<&Account> {
         self.accounts.get(&account_id)
+    }
+
+    pub fn list_account_ids(&self) -> Vec<String> {
+        self.accounts
+            .iter()
+            .map(|(key, _)| key.clone())
+            .collect()
+    }
+
+    pub fn list_auth_identities(&self, account_id: String) -> Option<Vec<AuthIdentity>> {
+        self.accounts
+            .get(&account_id)
+            .map(|account| account.auth_identities.clone())
     }
 
     // TODO: get_account_by_auth_identity

@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from "@/components/ui/button"
-import { useFacebookAuth } from '../../hooks/useFacebookAuth';
+import { useFacebookAuth } from '@/hooks/useFacebookAuth';
 import { useState } from "react";
 
 export default function FacebookButton() {
