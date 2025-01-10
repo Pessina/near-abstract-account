@@ -1,11 +1,10 @@
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use jwt_simple::prelude::*;
-use near_sdk::{log, near};
-use near_sdk::{serde::{Deserialize, Serialize}, borsh::{BorshSerialize, BorshDeserialize, BorshSchema}};
+use near_sdk::{near, log, serde::{Deserialize, Serialize}, borsh::{self, BorshDeserialize, BorshSerialize},};
 use schemars::JsonSchema;
 
 #[derive(Debug)]
-pub enum OIDCError {
+pub enum OidcError {
     InvalidTokenFormat,
     TokenExpired,
     InvalidSignature,
@@ -14,36 +13,29 @@ pub enum OIDCError {
     KeyIdNotFound,
 }
 
-#[derive(Serialize, Deserialize, Default, BorshSerialize, BorshDeserialize, JsonSchema, BorshSchema)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, JsonSchema, Default, Debug,)]
 #[serde(crate = "near_sdk::serde")]
-struct Claims {
-    exp: i64,
-    iss: String,
-    sub: String,
+pub struct PublicKey {
+    pub kid: String,
+    pub n: String,
+    pub e: String,
+    pub alg: String,
+    pub kty: String,
+    #[serde(rename = "use")]
+    pub use_: String,
 }
 
-#[derive(Serialize, Deserialize, Default, BorshSerialize, BorshDeserialize, JsonSchema, BorshSchema)]
-#[serde(crate = "near_sdk::serde")]
-struct PublicKey {
-    kid: String,
-    n: String,
-    e: String,
-    use_: String,
-    alg: String,
-    kty: String,
-}
-
-#[derive(Serialize, Deserialize, Default, BorshSerialize, BorshDeserialize, JsonSchema, BorshSchema)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, JsonSchema, Default, Debug,)]
 #[serde(crate = "near_sdk::serde")]
 pub struct KeySet {
-    keys: Vec<PublicKey>,
+    pub keys: Vec<PublicKey>,
 }
 
 #[near(contract_state)]
 #[derive(Default)]
 pub struct OIDCAuthContract {
-    google_keys: KeySet,
-    facebook_keys: KeySet,
+    pub google_keys: KeySet,
+    pub facebook_keys: KeySet,
 }
 
 #[near]
@@ -58,64 +50,62 @@ impl OIDCAuthContract {
         }
     }
 
-    fn validate_token_internal(&self, token: &str, issuer: &str) -> Result<(), OIDCError> {
+    fn validate_token_internal(&self, token: &str, issuer: &str) -> Result<(), OidcError> {
         log!("Starting token validation for issuer: {}", issuer);
-    
+
         let key_set = match issuer {
             "https://accounts.google.com" => &self.google_keys,
             "https://www.facebook.com" => &self.facebook_keys,
-            _ => return Err(OIDCError::UnsupportedIssuer),
+            _ => return Err(OidcError::UnsupportedIssuer),
         };
-    
-        // Parse token header to get kid
+
         let parts: Vec<&str> = token.split('.').collect();
         if parts.len() != 3 {
-            return Err(OIDCError::InvalidTokenFormat);
+            return Err(OidcError::InvalidTokenFormat);
         }
-    
-        let header_json = URL_SAFE_NO_PAD.decode(parts[0])
-            .map_err(|_| OIDCError::InvalidTokenFormat)?;
-        
-        let header: serde_json::Value = serde_json::from_slice(&header_json)
-            .map_err(|_| OIDCError::InvalidTokenFormat)?;
-        
-        let kid = header["kid"].as_str()
-            .ok_or(OIDCError::InvalidTokenFormat)?;
-    
-        let public_key = key_set.keys.iter()
-            .find(|k| k.kid == kid)
-            .ok_or(OIDCError::KeyIdNotFound)?;
-    
-        // Create RSA public key
-        let n = URL_SAFE_NO_PAD.decode(&public_key.n)
-            .map_err(|_| OIDCError::InvalidPublicKey)?;
-        let e = URL_SAFE_NO_PAD.decode(&public_key.e)
-            .map_err(|_| OIDCError::InvalidPublicKey)?;
-    
-        let rs_public_key = RS256PublicKey::from_components(&n, &e)
-            .map_err(|_| OIDCError::InvalidPublicKey)?;
-    
-        // Set verification options - only verify signature
+
+        let header_json = URL_SAFE_NO_PAD
+            .decode(parts[0])
+            .map_err(|_| OidcError::InvalidTokenFormat)?;
+        let header: serde_json::Value =
+            serde_json::from_slice(&header_json).map_err(|_| OidcError::InvalidTokenFormat)?;
+        let kid = header["kid"]
+            .as_str()
+            .ok_or(OidcError::InvalidTokenFormat)?;
+
+        let public_key = key_set
+            .keys
+            .iter()
+            .find(|key| key.kid == kid)
+            .ok_or(OidcError::KeyIdNotFound)?;
+
+        let n = URL_SAFE_NO_PAD
+            .decode(&public_key.n)
+            .map_err(|_| OidcError::InvalidPublicKey)?;
+        let e = URL_SAFE_NO_PAD
+            .decode(&public_key.e)
+            .map_err(|_| OidcError::InvalidPublicKey)?;
+
+        let rs_public_key =
+            RS256PublicKey::from_components(&n, &e).map_err(|_| OidcError::InvalidPublicKey)?;
+
         let verification = VerificationOptions {
-            time_tolerance: Some(Duration::from_days(1)),
+            time_tolerance: Some(Duration::from_hours(10)),
             max_validity: Some(Duration::from_days(1)),
-            allowed_issuers: Some(vec![issuer.to_string()].into_iter().collect()),
-            allowed_audiences: None,
+            allowed_issuers: Some([issuer.to_string()].iter().cloned().collect()),
             ..Default::default()
         };
-    
-        match rs_public_key.verify_token::<NoCustomClaims>(token, Some(verification)) {
-            Ok(_) => {
-                log!("Token validation successful");
-                Ok(())
-            },
-            Err(e) => {
-                log!("Token validation failed: {:?}", e);
-                Err(OIDCError::InvalidSignature)
+
+        match rs_public_key
+            .verify_token::<NoCustomClaims>(token, Some(verification)) {
+                Ok(_) => Ok(()),
+                Err(e) => {
+                    log!("Token validation failed: {:?}", e);
+                    Err(OidcError::InvalidSignature)
+                }
             }
-        }
     }
-    
+
     pub fn update_google_keys(&mut self, keys: KeySet) {
         log!("Updating Google keys");
         self.google_keys = keys;
@@ -133,7 +123,6 @@ mod tests {
 
     fn get_test_contract() -> OIDCAuthContract {
         let mut contract = OIDCAuthContract::default();
-        // Test public keys from Google and Facebook JWKs
         contract.google_keys = KeySet {
             keys: vec![
                 PublicKey {
