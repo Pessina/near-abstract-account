@@ -1,5 +1,5 @@
 [package]
-name = "webauthn-auth"
+name = "oidc-auth"
 description = "cargo-near-new-project-description"
 version = "0.1.0"
 edition = "2021"
@@ -20,7 +20,8 @@ hex = { workspace = true }
 interfaces = { path = "../../interfaces" }
 base64 = { workspace = true }
 jsonwebtoken = { workspace = true }
-
+borsh = { workspace = true }
+serde_json = { workspace = true }
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2.12", features = ["custom"] }
 
