@@ -105,11 +105,10 @@ export class AbstractAccountContract {
   }
 
   async sendTransaction(userOp: UserOperation): Promise<void> {
-    console.log("Sending transaction");
     return await this.contract.send_transaction({
       args: { user_op: userOp },
       gas: "300000000000000",
-      amount: "10000000000000000000000",
+      amount: "10", // TODO: Use dynamic fee
     });
   }
 }

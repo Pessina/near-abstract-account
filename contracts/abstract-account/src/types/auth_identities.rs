@@ -23,9 +23,10 @@ impl Path for Wallet {
     fn path(&self) -> String {
         match self.wallet_type {
             WalletType::Ethereum => {
-                let public_key = hex::decode(&self.public_key).unwrap_or_default();
-                if public_key.len() >= 20 {
-                    let address = &public_key[public_key.len()-20..];
+                let key = self.public_key.strip_prefix("0x").unwrap_or(&self.public_key);
+                if let Ok(public_key) = hex::decode(key) {
+                    let hash = near_sdk::env::keccak256(&public_key[1..]);
+                    let address = &hash[12..];
                     format!("0x{}", hex::encode(address))
                 } else {
                     format!("{}", self.public_key)

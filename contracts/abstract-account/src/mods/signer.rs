@@ -1,11 +1,9 @@
 use near_sdk::{
-    ext_contract, 
-    AccountId, 
-    PromiseOrValue,
-    serde::{Deserialize, Serialize},
-    borsh::{BorshSerialize, BorshDeserialize}
+    borsh::{BorshDeserialize, BorshSerialize}, ext_contract, serde::{Deserialize, Serialize}, AccountId, Gas, PromiseOrValue
 };
 use schemars::JsonSchema;
+
+pub const SIGN_GAS: Gas = Gas::from_tgas(50);
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, BorshSerialize, BorshDeserialize)]
 #[serde(crate = "near_sdk::serde")]

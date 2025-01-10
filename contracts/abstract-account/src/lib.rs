@@ -3,7 +3,7 @@ mod types;
 mod traits;
 
 use mods::transaction::SignPayloadsRequest;
-use near_sdk::{env, log, near, require, store::LookupMap, AccountId, Promise};
+use near_sdk::{env, near, require, store::LookupMap, AccountId, Promise};
 use types::{account::Account, auth_identities::{AuthIdentity, WalletType}, transaction::UserOp};
 
 #[near(contract_state)]
@@ -61,14 +61,12 @@ impl AbstractAccountContract {
     // TODO: add_auth_identity
 
     pub fn build_account_path(&self, account_id: String, path: String) -> String {
-        format!("{}.{}", account_id, path)
+        format!("{},{}", account_id, path)
     }
 
     #[payable]
     pub fn send_transaction(&mut self, user_op: UserOp) -> Promise {
         let account = self.accounts.get_mut(&user_op.account_id).unwrap();
-
-        log!("Attached deposit: {}", env::attached_deposit());
 
         require!(
             account.has_auth_identity(&user_op.auth.auth_identity),
