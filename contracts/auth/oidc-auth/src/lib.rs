@@ -68,13 +68,11 @@ impl OIDCAuthContract {
             .as_str()
             .ok_or(OidcError::InvalidTokenFormat)?;
 
-        // Validate issuer matches identity
         if token_issuer != oidc_auth_identity.issuer {
             log!("Token issuer does not match identity issuer");
             return Err(OidcError::InvalidTokenFormat);
         }
 
-        // Validate client ID matches identity
         let token_client_id = payload["aud"]
             .as_str()
             .ok_or(OidcError::InvalidTokenFormat)?;
@@ -83,7 +81,6 @@ impl OIDCAuthContract {
             return Err(OidcError::InvalidTokenFormat);
         }
 
-        // Validate email matches identity
         let token_email = payload["email"]
             .as_str()
             .ok_or(OidcError::InvalidTokenFormat)?;
@@ -92,7 +89,6 @@ impl OIDCAuthContract {
             return Err(OidcError::InvalidTokenFormat);
         }
 
-        // Validate message is included in token's nonce field
         let token_nonce = payload["nonce"]
             .as_str()
             .ok_or(OidcError::InvalidTokenFormat)?;
