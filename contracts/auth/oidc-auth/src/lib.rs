@@ -1,8 +1,6 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use interfaces::oidc_auth::{OIDCAuthIdentity, OIDCData};
-use jwt_simple::prelude::{
-    Duration, NoCustomClaims, RS256PublicKey, RSAPublicKeyLike, VerificationOptions,
-};
+use jwt_simple::prelude::{NoCustomClaims, RS256PublicKey, RSAPublicKeyLike};
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     log, near,
@@ -133,19 +131,13 @@ impl OIDCAuthContract {
             Err(_) => return false,
         };
 
+        // The lines bellow cause InstantiateError when calling methods on the contract
         let rs_public_key = match RS256PublicKey::from_components(&n, &e) {
             Ok(key) => key,
             Err(_) => return false,
         };
 
-        let verification = VerificationOptions {
-            time_tolerance: Some(Duration::from_hours(10)),
-            max_validity: Some(Duration::from_days(1)),
-            allowed_issuers: Some([token_issuer.to_string()].iter().cloned().collect()),
-            ..Default::default()
-        };
-
-        match rs_public_key.verify_token::<NoCustomClaims>(&oidc_data.token, Some(verification)) {
+        match rs_public_key.verify_token::<NoCustomClaims>(&oidc_data.token, None) {
             Ok(_) => true,
             Err(_) => false,
         }
