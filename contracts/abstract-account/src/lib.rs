@@ -1,11 +1,19 @@
 mod mods;
-mod types;
 mod traits;
+mod types;
 
 use interfaces::oidc_auth::OIDCAuthIdentity;
 use mods::transaction::SignPayloadsRequest;
-use near_sdk::{env, near, require, store::{IterableMap, LookupMap}, AccountId, Promise};
-use types::{account::Account, auth_identities::{AuthIdentity, WalletType}, transaction::UserOp};
+use near_sdk::{
+    env, near, require,
+    store::{IterableMap, LookupMap},
+    AccountId, Promise,
+};
+use types::{
+    account::Account,
+    auth_identities::{AuthIdentity, WalletType},
+    transaction::UserOp,
+};
 
 #[near(contract_state)]
 pub struct AbstractAccountContract {
@@ -18,10 +26,22 @@ pub struct AbstractAccountContract {
 impl Default for AbstractAccountContract {
     fn default() -> Self {
         let mut auth_contracts = LookupMap::new(b"q");
-        auth_contracts.insert("webauthn".to_string(), "felipe-webauthn-contract.testnet".parse().unwrap());
-        auth_contracts.insert("ethereum".to_string(), "felipe-ethereum-contract.testnet".parse().unwrap());
-        auth_contracts.insert("solana".to_string(), "felipe-solana-contract.testnet".parse().unwrap());
-        auth_contracts.insert("oidc".to_string(), "felipe-oidc-contract.testnet".parse().unwrap());
+        auth_contracts.insert(
+            "webauthn".to_string(),
+            "felipe-webauthn-contract.testnet".parse().unwrap(),
+        );
+        auth_contracts.insert(
+            "ethereum".to_string(),
+            "felipe-ethereum-contract.testnet".parse().unwrap(),
+        );
+        auth_contracts.insert(
+            "solana".to_string(),
+            "felipe-solana-contract.testnet".parse().unwrap(),
+        );
+        auth_contracts.insert(
+            "oidc".to_string(),
+            "felipe-oidc-contract.testnet".parse().unwrap(),
+        );
 
         Self {
             accounts: IterableMap::new(b"e"),
@@ -52,7 +72,8 @@ impl AbstractAccountContract {
             env::panic_str("Account already exists");
         }
 
-        self.accounts.insert(account_id, Account::new(vec![auth_identity]));
+        self.accounts
+            .insert(account_id, Account::new(vec![auth_identity]));
     }
 
     pub fn get_account_by_id(&self, account_id: String) -> Option<&Account> {
@@ -60,10 +81,7 @@ impl AbstractAccountContract {
     }
 
     pub fn list_account_ids(&self) -> Vec<String> {
-        self.accounts
-            .iter()
-            .map(|(key, _)| key.clone())
-            .collect()
+        self.accounts.iter().map(|(key, _)| key.clone()).collect()
     }
 
     pub fn list_auth_identities(&self, account_id: String) -> Option<Vec<AuthIdentity>> {
@@ -88,20 +106,21 @@ impl AbstractAccountContract {
             "Auth identity not found in account"
         );
 
-        let selected_auth_identity = if let Some(selected_auth_identity) = user_op.selected_auth_identity.clone() {
-            require!(
-                account.has_auth_identity(&selected_auth_identity),
-                "Selected auth identity not found in account"
-            );
-            selected_auth_identity
-        } else {
-            user_op.auth.auth_identity.clone()
-        };
+        let selected_auth_identity =
+            if let Some(selected_auth_identity) = user_op.selected_auth_identity.clone() {
+                require!(
+                    account.has_auth_identity(&selected_auth_identity),
+                    "Selected auth identity not found in account"
+                );
+                selected_auth_identity
+            } else {
+                user_op.auth.auth_identity.clone()
+            };
 
         // TODO: check if the close is needed
         let auth_identity = user_op.auth.auth_identity.clone();
         let payloads = user_op.payloads.clone();
-        
+
         let promise = match auth_identity {
             AuthIdentity::WebAuthn(ref webauthn) => {
                 let account = self.accounts.get(&user_op.account_id).unwrap();
@@ -116,39 +135,52 @@ impl AbstractAccountContract {
                     })
                     .expect("WebAuthn identity not found");
 
-                let compressed_public_key = webauthn_identity.compressed_public_key
+                let compressed_public_key = webauthn_identity
+                    .compressed_public_key
                     .as_ref()
                     .expect("WebAuthn public key not found");
 
                 match self.handle_webauthn_auth(user_op, compressed_public_key.to_string()) {
                     Ok(promise) => promise,
                     Err(e) => env::panic_str(&e),
-            }},
+                }
+            }
             AuthIdentity::Wallet(wallet) => match wallet.wallet_type {
-                WalletType::Ethereum => match self.handle_ethereum_auth(user_op, wallet.public_key.clone()) {
-                    Ok(promise) => promise,
-                    Err(e) => env::panic_str(&e),
-                },
-                WalletType::Solana => match self.handle_solana_auth(user_op, wallet.public_key.clone()) {
-                    Ok(promise) => promise,
-                    Err(e) => env::panic_str(&e),
-                },
+                WalletType::Ethereum => {
+                    match self.handle_ethereum_auth(user_op, wallet.public_key.clone()) {
+                        Ok(promise) => promise,
+                        Err(e) => env::panic_str(&e),
+                    }
+                }
+                WalletType::Solana => {
+                    match self.handle_solana_auth(user_op, wallet.public_key.clone()) {
+                        Ok(promise) => promise,
+                        Err(e) => env::panic_str(&e),
+                    }
+                }
             },
             AuthIdentity::OIDC(oidc) => {
                 // TODO: Should not need to rebuild OIDCAuthIdentity
-                match self.handle_oidc_auth(user_op, OIDCAuthIdentity {
-                    client_id: oidc.client_id.clone(),
-                    issuer: oidc.issuer.clone(),
-                    email: oidc.email.clone(),
-                }) {
+                match self.handle_oidc_auth(
+                    user_op,
+                    OIDCAuthIdentity {
+                        client_id: oidc.client_id.clone(),
+                        issuer: oidc.issuer.clone(),
+                        email: oidc.email.clone(),
+                    },
+                ) {
                     Ok(promise) => promise,
                     Err(e) => env::panic_str(&e),
                 }
-            },
+            }
             AuthIdentity::Account(_) => env::panic_str("Account auth type not yet supported"),
         };
 
-        promise.then(Self::ext(env::current_account_id()).with_attached_deposit(env::attached_deposit()).send_transaction_callback(selected_auth_identity, payloads))
+        promise.then(
+            Self::ext(env::current_account_id())
+                .with_attached_deposit(env::attached_deposit())
+                .send_transaction_callback(selected_auth_identity, payloads),
+        )
     }
 
     #[private]

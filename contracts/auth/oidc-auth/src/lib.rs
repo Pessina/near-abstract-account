@@ -1,20 +1,17 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
-use interfaces::oidc_auth::{OIDCData, OIDCAuthIdentity};
-use jwt_simple::prelude::*;
-use near_sdk::{near, log, serde::{Deserialize, Serialize}, borsh::{self, BorshDeserialize, BorshSerialize, BorshSchema}};
+use interfaces::oidc_auth::{OIDCAuthIdentity, OIDCData};
+use jwt_simple::prelude::{
+    Duration, NoCustomClaims, RS256PublicKey, RSAPublicKeyLike, VerificationOptions,
+};
+use near_sdk::{
+    borsh::{self, BorshDeserialize, BorshSerialize},
+    log, near,
+    serde::{Deserialize, Serialize},
+    store::LookupMap,
+};
 use schemars::JsonSchema;
 
-#[derive(Debug)]
-pub enum OidcError {
-    InvalidTokenFormat,
-    TokenExpired,
-    InvalidSignature,
-    UnsupportedIssuer,
-    InvalidPublicKey,
-    KeyIdNotFound,
-}
-
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, JsonSchema, Default, Debug, BorshSchema)]
+#[derive(Debug, BorshDeserialize, BorshSerialize, Deserialize, Serialize, JsonSchema, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub struct PublicKey {
     pub kid: String,
@@ -22,65 +19,20 @@ pub struct PublicKey {
     pub e: String,
     pub alg: String,
     pub kty: String,
-    #[serde(rename = "use")]
     pub use_: String,
-}
-
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, JsonSchema, Default, Debug, BorshSchema)]
-#[serde(crate = "near_sdk::serde")]
-pub struct KeySet {
-    pub keys: Vec<PublicKey>,
 }
 
 #[near(contract_state)]
 pub struct OIDCAuthContract {
-    pub google_keys: KeySet,
-    pub facebook_keys: KeySet,
+    pub google_keys: LookupMap<String, PublicKey>,
+    pub facebook_keys: LookupMap<String, PublicKey>,
 }
 
 impl Default for OIDCAuthContract {
     fn default() -> Self {
         Self {
-            google_keys: KeySet {
-                keys: vec![
-                    PublicKey {
-                        e: "AQAB".to_string(),
-                        kid: "89ce3598c473af1bda4bff95e6c8736450206fba".to_string(),
-                        use_: "sig".to_string(),
-                        kty: "RSA".to_string(),
-                        n: "wvLUmyAlRhJkFgok97rojtg0xkqsQ6CPPoqRUSXDIYcjfVWMy1Z4hk_-90Y554KTuADfT_0FA46FWb-pr4Scm00gB3CnM8wGLZiaUeDUOu84_Zjh-YPVAua6hz6VFa7cpOUOQ5ZCxCkEQMjtrmei21a6ijy5LS1n9fdiUsjOuYWZSoIQCUj5ow5j2asqYYLRfp0OeymYf6vnttYwz3jS54Xe7tYHW2ZJ_DLCja6mz-9HzIcJH5Tmv5tQRhAUs3aoPKoCQ8ceDHMblDXNV2hBpkv9B6Pk5QVkoDTyEs7lbPagWQ1uz6bdkxM-DnjcMUJ2nh80R_DcbhyqkK4crNrM1w".to_string(),
-                        alg: "RS256".to_string(),
-                    },
-                    PublicKey {
-                        e: "AQAB".to_string(),
-                        kid: "dd125d5f462fbc6014aedab81ddf3bcedab70847".to_string(),
-                        use_: "sig".to_string(),
-                        kty: "RSA".to_string(),
-                        n: "jwstqI4w2drqbTTVRDriFqepwVVI1y05D5TZCmGvgMK5hyOsVW0tBRiY9Jk9HKDRue3vdXiMgarwqZEDOyOA0rpWh-M76eauFhRl9lTXd5gkX0opwh2-dU1j6UsdWmMa5OpVmPtqXl4orYr2_3iAxMOhHZ_vuTeD0KGeAgbeab7_4ijyLeJ-a8UmWPVkglnNb5JmG8To77tSXGcPpBcAFpdI_jftCWr65eL1vmAkPNJgUTgI4sGunzaybf98LSv_w4IEBc3-nY5GfL-mjPRqVCRLUtbhHO_5AYDpqGj6zkKreJ9-KsoQUP6RrAVxkNuOHV9g1G-CHihKsyAifxNN2Q".to_string(),
-                        alg: "RS256".to_string(),
-                    }
-                ]
-            },
-            facebook_keys: KeySet {
-                keys: vec![
-                    PublicKey {
-                        e: "AQAB".to_string(),
-                        kid: "aec39658e5442376611f0698a886df9606c03a7c".to_string(),
-                        use_: "sig".to_string(),
-                        kty: "RSA".to_string(),
-                        n: "yJnCLmLeCs9hiijCmP2wTzNcV0N73wVbm0rmh2QZu6m5RoHCbeVPNDsqNsfYvPCZG0-l_AteOEDu1mBOs9q9wyZ5pAlO1voFuIh8UCpkbPxDZoWXdI9hTv1U70RdN9SrGf552GfvOBNSOAAlAiJdPsTrQ3yIlopDsYk87yD5CeHERKWz4oIF0F5bPe7uZfJxKQM97o2m-UeI56lueHT1s_me7UY7zLu5pwHX-s_ZPBb4JZUlMJdCnhzQS_m5oS6XAWX8EiFc-GPn-_V0fG3LSxW6cOq1kbRae2i78yT7qK0i80BpRQ3U4wwIcK5IfY4NZoACvtoLkf82KTw7tysQoQ".to_string(),
-                        alg: "RS256".to_string(),
-                    },
-                    PublicKey {
-                        e: "AQAB".to_string(),
-                        kid: "1e43d9e5cde459139a9d5327dd89992685a0154a".to_string(),
-                        use_: "sig".to_string(),
-                        kty: "RSA".to_string(),
-                        n: "oodq2r5oXMj8VWU2RTxKXqIqtRuPIz3pa6dDHF7TYkaTMhi23tP2AF8I4FcovgsrtWnz8v-Ax20apjZEaKPLHxFPTITPqjuZ-XVkTiBpY2y6xXTZ4N3TohbxY0C9TMcdpdK357hSwnmYPkOT6HlAxFadud60wTu_DyGkWvKhz3km-9tX93JfbHVsn5dbZ42atqFXqwXbWj9MvVYHgF7tK3NeVBg_DJSTS1owP5OpH6xJMI6q6ANldtqHQU7AhGQmwOo_LSrUwdjG9hejjckG8ju3XPjEa6gDVIKYQFcO1am9SXVN5HaXmX8H3n2BaNb2Rhl_zgNwXAMgJVEJ3e5_KQ".to_string(),
-                        alg: "RS256".to_string(),
-                    }
-                ]
-            }
+            google_keys: LookupMap::new(b"g"),
+            facebook_keys: LookupMap::new(b"f"),
         }
     }
 }
@@ -92,92 +44,99 @@ impl OIDCAuthContract {
         Self::default()
     }
 
-    pub fn validate_oidc_token(&self, oidc_data: OIDCData, oidc_auth_identity: OIDCAuthIdentity) -> bool {
-        match self.validate_token_internal(&oidc_data.token, &oidc_data.message, &oidc_auth_identity) {
-            Ok(_) => true,
-            Err(e) => {
-                log!("Token validation failed: {:?}", e);
-                false
-            }
-        }
-    }
-
-    fn validate_token_internal(&self, token: &str, message: &str, oidc_auth_identity: &OIDCAuthIdentity) -> Result<(), OidcError> {
-        log!("Starting OIDC token validation");
-
-        let parts: Vec<&str> = token.split('.').collect();
+    pub fn validate_oidc_token(
+        &self,
+        oidc_data: OIDCData,
+        oidc_auth_identity: OIDCAuthIdentity,
+    ) -> bool {
+        let parts: Vec<&str> = oidc_data.token.split('.').collect();
         if parts.len() != 3 {
-            return Err(OidcError::InvalidTokenFormat);
+            return false;
         }
 
-        let payload_json = URL_SAFE_NO_PAD
-            .decode(parts[1])
-            .map_err(|_| OidcError::InvalidTokenFormat)?;
-        let payload: serde_json::Value =
-            serde_json::from_slice(&payload_json).map_err(|_| OidcError::InvalidTokenFormat)?;
-        let token_issuer = payload["iss"]
-            .as_str()
-            .ok_or(OidcError::InvalidTokenFormat)?;
+        let payload_json = match URL_SAFE_NO_PAD.decode(parts[1]) {
+            Ok(json) => json,
+            Err(_) => return false,
+        };
+
+        let payload: serde_json::Value = match serde_json::from_slice(&payload_json) {
+            Ok(p) => p,
+            Err(_) => return false,
+        };
+
+        let token_issuer = match payload["iss"].as_str() {
+            Some(issuer) => issuer,
+            None => return false,
+        };
 
         if token_issuer != oidc_auth_identity.issuer {
-            log!("Token issuer does not match identity issuer");
-            return Err(OidcError::InvalidTokenFormat);
+            return false;
         }
 
-        let token_client_id = payload["aud"]
-            .as_str()
-            .ok_or(OidcError::InvalidTokenFormat)?;
+        let token_client_id = match payload["aud"].as_str() {
+            Some(client_id) => client_id,
+            None => return false,
+        };
         if token_client_id != oidc_auth_identity.client_id {
-            log!("Token client ID does not match identity client ID");
-            return Err(OidcError::InvalidTokenFormat);
+            return false;
         }
 
-        let token_email = payload["email"]
-            .as_str()
-            .ok_or(OidcError::InvalidTokenFormat)?;
+        let token_email = match payload["email"].as_str() {
+            Some(email) => email,
+            None => return false,
+        };
         if token_email != oidc_auth_identity.email {
-            log!("Token email does not match identity email");
-            return Err(OidcError::InvalidTokenFormat);
+            return false;
         }
 
-        let token_nonce = payload["nonce"]
-            .as_str()
-            .ok_or(OidcError::InvalidTokenFormat)?;
-        if token_nonce != message {
-            log!("Token nonce does not match provided message");
-            return Err(OidcError::InvalidTokenFormat);
+        let token_nonce = match payload["nonce"].as_str() {
+            Some(nonce) => nonce,
+            None => return false,
+        };
+        if token_nonce != oidc_data.message {
+            return false;
         }
 
         let key_set = match token_issuer {
             "https://accounts.google.com" => &self.google_keys,
             "https://www.facebook.com" => &self.facebook_keys,
-            _ => return Err(OidcError::UnsupportedIssuer),
+            _ => return false,
         };
 
-        let header_json = URL_SAFE_NO_PAD
-            .decode(parts[0])
-            .map_err(|_| OidcError::InvalidTokenFormat)?;
-        let header: serde_json::Value =
-            serde_json::from_slice(&header_json).map_err(|_| OidcError::InvalidTokenFormat)?;
-        let kid = header["kid"]
-            .as_str()
-            .ok_or(OidcError::InvalidTokenFormat)?;
+        let header_json = match URL_SAFE_NO_PAD.decode(parts[0]) {
+            Ok(json) => json,
+            Err(_) => return false,
+        };
 
-        let public_key = key_set
-            .keys
-            .iter()
-            .find(|key| key.kid == kid)
-            .ok_or(OidcError::KeyIdNotFound)?;
+        let header: serde_json::Value = match serde_json::from_slice(&header_json) {
+            Ok(h) => h,
+            Err(_) => return false,
+        };
 
-        let n = URL_SAFE_NO_PAD
-            .decode(&public_key.n)
-            .map_err(|_| OidcError::InvalidPublicKey)?;
-        let e = URL_SAFE_NO_PAD
-            .decode(&public_key.e)
-            .map_err(|_| OidcError::InvalidPublicKey)?;
+        let kid = match header["kid"].as_str() {
+            Some(k) => k,
+            None => return false,
+        };
 
-        let rs_public_key =
-            RS256PublicKey::from_components(&n, &e).map_err(|_| OidcError::InvalidPublicKey)?;
+        let public_key = match key_set.get(kid) {
+            Some(key) => key,
+            None => return false,
+        };
+
+        let n = match URL_SAFE_NO_PAD.decode(&public_key.n) {
+            Ok(decoded) => decoded,
+            Err(_) => return false,
+        };
+
+        let e = match URL_SAFE_NO_PAD.decode(&public_key.e) {
+            Ok(decoded) => decoded,
+            Err(_) => return false,
+        };
+
+        let rs_public_key = match RS256PublicKey::from_components(&n, &e) {
+            Ok(key) => key,
+            Err(_) => return false,
+        };
 
         let verification = VerificationOptions {
             time_tolerance: Some(Duration::from_hours(10)),
@@ -186,24 +145,24 @@ impl OIDCAuthContract {
             ..Default::default()
         };
 
-        match rs_public_key
-            .verify_token::<NoCustomClaims>(token, Some(verification)) {
-                Ok(_) => Ok(()),
-                Err(e) => {
-                    log!("Token validation failed: {:?}", e);
-                    Err(OidcError::InvalidSignature)
-                }
-            }
+        match rs_public_key.verify_token::<NoCustomClaims>(&oidc_data.token, Some(verification)) {
+            Ok(_) => true,
+            Err(_) => false,
+        }
     }
 
-    pub fn update_google_keys(&mut self, keys: KeySet) {
-        log!("Updating Google keys");
-        self.google_keys = keys;
-    }
+    // pub fn update_google_keys(&mut self, keys: KeySet) {
+    //     log!("Updating Google keys");
+    //     self.google_keys = keys;
+    // }
 
-    pub fn update_facebook_keys(&mut self, keys: KeySet) {
-        log!("Updating Facebook keys");
-        self.facebook_keys = keys;
+    // pub fn update_facebook_keys(&mut self, keys: KeySet) {
+    //     log!("Updating Facebook keys");
+    //     self.facebook_keys = keys;
+    // }
+
+    pub fn logany(&self, any: String) {
+        log!("{}", any);
     }
 }
 
@@ -213,8 +172,8 @@ mod tests {
 
     fn get_test_contract() -> OIDCAuthContract {
         let mut contract = OIDCAuthContract::default();
-        contract.google_keys = KeySet {
-            keys: vec![
+
+        contract.google_keys.insert("89ce3598c473af1bda4bff95e6c8736450206fba".to_string(), 
                 PublicKey {
                     e: "AQAB".to_string(),
                     kid: "89ce3598c473af1bda4bff95e6c8736450206fba".to_string(),
@@ -222,7 +181,8 @@ mod tests {
                     kty: "RSA".to_string(),
                     n: "wvLUmyAlRhJkFgok97rojtg0xkqsQ6CPPoqRUSXDIYcjfVWMy1Z4hk_-90Y554KTuADfT_0FA46FWb-pr4Scm00gB3CnM8wGLZiaUeDUOu84_Zjh-YPVAua6hz6VFa7cpOUOQ5ZCxCkEQMjtrmei21a6ijy5LS1n9fdiUsjOuYWZSoIQCUj5ow5j2asqYYLRfp0OeymYf6vnttYwz3jS54Xe7tYHW2ZJ_DLCja6mz-9HzIcJH5Tmv5tQRhAUs3aoPKoCQ8ceDHMblDXNV2hBpkv9B6Pk5QVkoDTyEs7lbPagWQ1uz6bdkxM-DnjcMUJ2nh80R_DcbhyqkK4crNrM1w".to_string(),
                     alg: "RS256".to_string(),
-                },
+                });
+        contract.google_keys.insert("dd125d5f462fbc6014aedab81ddf3bcedab70847".to_string(), 
                 PublicKey {
                     e: "AQAB".to_string(),
                     kid: "dd125d5f462fbc6014aedab81ddf3bcedab70847".to_string(),
@@ -230,11 +190,8 @@ mod tests {
                     kty: "RSA".to_string(),
                     n: "jwstqI4w2drqbTTVRDriFqepwVVI1y05D5TZCmGvgMK5hyOsVW0tBRiY9Jk9HKDRue3vdXiMgarwqZEDOyOA0rpWh-M76eauFhRl9lTXd5gkX0opwh2-dU1j6UsdWmMa5OpVmPtqXl4orYr2_3iAxMOhHZ_vuTeD0KGeAgbeab7_4ijyLeJ-a8UmWPVkglnNb5JmG8To77tSXGcPpBcAFpdI_jftCWr65eL1vmAkPNJgUTgI4sGunzaybf98LSv_w4IEBc3-nY5GfL-mjPRqVCRLUtbhHO_5AYDpqGj6zkKreJ9-KsoQUP6RrAVxkNuOHV9g1G-CHihKsyAifxNN2Q".to_string(),
                     alg: "RS256".to_string(),
-                }
-            ]
-        };
-        contract.facebook_keys = KeySet {
-            keys: vec![
+                });
+        contract.facebook_keys.insert("aec39658e5442376611f0698a886df9606c03a7c".to_string(), 
                 PublicKey {
                     e: "AQAB".to_string(),
                     kid: "aec39658e5442376611f0698a886df9606c03a7c".to_string(),
@@ -242,7 +199,8 @@ mod tests {
                     kty: "RSA".to_string(),
                     n: "yJnCLmLeCs9hiijCmP2wTzNcV0N73wVbm0rmh2QZu6m5RoHCbeVPNDsqNsfYvPCZG0-l_AteOEDu1mBOs9q9wyZ5pAlO1voFuIh8UCpkbPxDZoWXdI9hTv1U70RdN9SrGf552GfvOBNSOAAlAiJdPsTrQ3yIlopDsYk87yD5CeHERKWz4oIF0F5bPe7uZfJxKQM97o2m-UeI56lueHT1s_me7UY7zLu5pwHX-s_ZPBb4JZUlMJdCnhzQS_m5oS6XAWX8EiFc-GPn-_V0fG3LSxW6cOq1kbRae2i78yT7qK0i80BpRQ3U4wwIcK5IfY4NZoACvtoLkf82KTw7tysQoQ".to_string(),
                     alg: "RS256".to_string(),
-                },
+                });
+        contract.facebook_keys.insert("1e43d9e5cde459139a9d5327dd89992685a0154a".to_string(), 
                 PublicKey {
                     e: "AQAB".to_string(),
                     kid: "1e43d9e5cde459139a9d5327dd89992685a0154a".to_string(),
@@ -250,9 +208,7 @@ mod tests {
                     kty: "RSA".to_string(),
                     n: "oodq2r5oXMj8VWU2RTxKXqIqtRuPIz3pa6dDHF7TYkaTMhi23tP2AF8I4FcovgsrtWnz8v-Ax20apjZEaKPLHxFPTITPqjuZ-XVkTiBpY2y6xXTZ4N3TohbxY0C9TMcdpdK357hSwnmYPkOT6HlAxFadud60wTu_DyGkWvKhz3km-9tX93JfbHVsn5dbZ42atqFXqwXbWj9MvVYHgF7tK3NeVBg_DJSTS1owP5OpH6xJMI6q6ANldtqHQU7AhGQmwOo_LSrUwdjG9hejjckG8ju3XPjEa6gDVIKYQFcO1am9SXVN5HaXmX8H3n2BaNb2Rhl_zgNwXAMgJVEJ3e5_KQ".to_string(),
                     alg: "RS256".to_string(),
-                }
-            ]
-        };
+                });
         contract
     }
 
@@ -264,12 +220,13 @@ mod tests {
             message: "test_123_felipe".to_string()
         };
 
-        let oidc_auth_identity = OIDCAuthIdentity { 
-            client_id: "739911069797-idp062866964gbndo6693h32tga5cvl1.apps.googleusercontent.com".to_string(),
+        let oidc_auth_identity = OIDCAuthIdentity {
+            client_id: "739911069797-idp062866964gbndo6693h32tga5cvl1.apps.googleusercontent.com"
+                .to_string(),
             issuer: "https://accounts.google.com".to_string(),
-            email: "fs.pessina@gmail.com".to_string()
+            email: "fs.pessina@gmail.com".to_string(),
         };
-        
+
         assert!(contract.validate_oidc_token(oidc_data, oidc_auth_identity));
     }
 
@@ -281,12 +238,12 @@ mod tests {
             message: "test_123_felipe".to_string()
         };
 
-        let oidc_auth_identity = OIDCAuthIdentity { 
+        let oidc_auth_identity = OIDCAuthIdentity {
             client_id: "2103496220045843".to_string(),
             issuer: "https://www.facebook.com".to_string(),
-            email: "fs.pessina@gmail.com".to_string()
+            email: "fs.pessina@gmail.com".to_string(),
         };
-        
+
         assert!(contract.validate_oidc_token(oidc_data, oidc_auth_identity));
     }
 
@@ -298,12 +255,13 @@ mod tests {
             message: "".to_string()
         };
 
-        let oidc_auth_identity = OIDCAuthIdentity { 
-            client_id: "739911069797-idp062866964gbndo6693h32tga5cvl1.apps.googleusercontent.com".to_string(),
+        let oidc_auth_identity = OIDCAuthIdentity {
+            client_id: "739911069797-idp062866964gbndo6693h32tga5cvl1.apps.googleusercontent.com"
+                .to_string(),
             issuer: "https://accounts.google.com".to_string(),
-            email: "fs.pessina@gmail.com".to_string()
+            email: "fs.pessina@gmail.com".to_string(),
         };
-        
+
         assert!(!contract.validate_oidc_token(oidc_data, oidc_auth_identity));
     }
 
@@ -315,12 +273,12 @@ mod tests {
             message: "".to_string()
         };
 
-        let oidc_auth_identity = OIDCAuthIdentity { 
+        let oidc_auth_identity = OIDCAuthIdentity {
             client_id: "2103496220045843".to_string(),
             issuer: "https://www.facebook.com".to_string(),
-            email: "fs.pessina@gmail.com".to_string()
+            email: "fs.pessina@gmail.com".to_string(),
         };
-        
+
         assert!(!contract.validate_oidc_token(oidc_data, oidc_auth_identity));
     }
 }
