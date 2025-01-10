@@ -19,9 +19,11 @@ sha2 = { workspace = true }
 hex = { workspace = true }
 interfaces = { path = "../../interfaces" }
 base64 = { workspace = true }
-jsonwebtoken = { workspace = true }
+jwt-simple = { workspace = true }
 borsh = { workspace = true }
 serde_json = { workspace = true }
+schemars = { workspace = true }
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2.12", features = ["custom"] }
 

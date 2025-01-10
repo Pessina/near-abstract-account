@@ -1,6 +1,8 @@
-use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
-use near_sdk::{env, log, near};
-use near_sdk::{serde::{Deserialize, Serialize}, borsh::{BorshSerialize, BorshDeserialize}};
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use jwt_simple::prelude::*;
+use near_sdk::{log, near};
+use near_sdk::{serde::{Deserialize, Serialize}, borsh::{BorshSerialize, BorshDeserialize, BorshSchema}};
+use schemars::JsonSchema;
 
 #[derive(Debug)]
 pub enum OIDCError {
@@ -12,7 +14,7 @@ pub enum OIDCError {
     KeyIdNotFound,
 }
 
-#[derive(Serialize, Deserialize, Default, BorshSerialize, BorshDeserialize)]
+#[derive(Serialize, Deserialize, Default, BorshSerialize, BorshDeserialize, JsonSchema, BorshSchema)]
 #[serde(crate = "near_sdk::serde")]
 struct Claims {
     exp: i64,
@@ -20,7 +22,7 @@ struct Claims {
     sub: String,
 }
 
-#[derive(Serialize, Deserialize, Default, BorshSerialize, BorshDeserialize)]
+#[derive(Serialize, Deserialize, Default, BorshSerialize, BorshDeserialize, JsonSchema, BorshSchema)]
 #[serde(crate = "near_sdk::serde")]
 struct PublicKey {
     kid: String,
@@ -31,7 +33,7 @@ struct PublicKey {
     kty: String,
 }
 
-#[derive(Serialize, Deserialize, Default, BorshSerialize, BorshDeserialize)]
+#[derive(Serialize, Deserialize, Default, BorshSerialize, BorshDeserialize, JsonSchema, BorshSchema)]
 #[serde(crate = "near_sdk::serde")]
 pub struct KeySet {
     keys: Vec<PublicKey>,
@@ -40,14 +42,12 @@ pub struct KeySet {
 #[near(contract_state)]
 #[derive(Default)]
 pub struct OIDCAuthContract {
-    // Hardcoded key sets for now - will fetch from oracle later
     google_keys: KeySet,
     facebook_keys: KeySet,
 }
 
 #[near]
 impl OIDCAuthContract {
-    /// Validates an OIDC JWT token signature
     pub fn validate_oidc_token(&self, token: String, issuer: String) -> bool {
         match self.validate_token_internal(&token, &issuer) {
             Ok(_) => true,
@@ -60,86 +60,60 @@ impl OIDCAuthContract {
 
     fn validate_token_internal(&self, token: &str, issuer: &str) -> Result<(), OIDCError> {
         log!("Starting token validation for issuer: {}", issuer);
-
-        // Get key set based on issuer
+    
         let key_set = match issuer {
             "https://accounts.google.com" => &self.google_keys,
             "https://www.facebook.com" => &self.facebook_keys,
             _ => return Err(OIDCError::UnsupportedIssuer),
         };
-        log!("Found key set with {} keys", key_set.keys.len());
-
-        // Decode header to verify algorithm and get key ID
-        let header = match decode_header(token) {
-            Ok(h) => h,
-            Err(e) => {
-                log!("Failed to decode header: {:?}", e);
-                return Err(OIDCError::InvalidTokenFormat);
-            }
-        };
-
-        if header.alg != Algorithm::RS256 {
-            log!("Unsupported algorithm: {:?}", header.alg);
+    
+        // Parse token header to get kid
+        let parts: Vec<&str> = token.split('.').collect();
+        if parts.len() != 3 {
             return Err(OIDCError::InvalidTokenFormat);
         }
-
-        let kid = match header.kid {
-            Some(k) => k,
-            None => {
-                log!("No kid found in header");
-                return Err(OIDCError::InvalidTokenFormat);
-            }
+    
+        let header_json = URL_SAFE_NO_PAD.decode(parts[0])
+            .map_err(|_| OIDCError::InvalidTokenFormat)?;
+        
+        let header: serde_json::Value = serde_json::from_slice(&header_json)
+            .map_err(|_| OIDCError::InvalidTokenFormat)?;
+        
+        let kid = header["kid"].as_str()
+            .ok_or(OIDCError::InvalidTokenFormat)?;
+    
+        let public_key = key_set.keys.iter()
+            .find(|k| k.kid == kid)
+            .ok_or(OIDCError::KeyIdNotFound)?;
+    
+        // Create RSA public key
+        let n = URL_SAFE_NO_PAD.decode(&public_key.n)
+            .map_err(|_| OIDCError::InvalidPublicKey)?;
+        let e = URL_SAFE_NO_PAD.decode(&public_key.e)
+            .map_err(|_| OIDCError::InvalidPublicKey)?;
+    
+        let rs_public_key = RS256PublicKey::from_components(&n, &e)
+            .map_err(|_| OIDCError::InvalidPublicKey)?;
+    
+        // Set verification options - only verify signature
+        let verification = VerificationOptions {
+            time_tolerance: Some(Duration::from_days(1)),
+            max_validity: Some(Duration::from_days(1)),
+            allowed_issuers: Some(vec![issuer.to_string()].into_iter().collect()),
+            allowed_audiences: None,
+            ..Default::default()
         };
-        log!("Looking for key with kid: {}", kid);
-
-        // Find matching public key
-        let public_key = match key_set.keys.iter().find(|k| k.kid == kid) {
-            Some(k) => k,
-            None => {
-                log!("No matching key found for kid: {}", kid);
-                return Err(OIDCError::KeyIdNotFound);
-            }
-        };
-        log!("Found matching public key");
-
-        // Setup validation
-        let mut validation = Validation::new(Algorithm::RS256);
-        validation.set_issuer(&[issuer]);
-        validation.validate_exp = true;
-        validation.leeway = 0;
-        validation.validate_aud = false;
-
-        // Create decoding key from RSA components
-        let decoding_key = match DecodingKey::from_rsa_components(
-            &public_key.n,  // Use n directly
-            &public_key.e   // Use e directly
-        ) {
-            Ok(k) => k,
+    
+        match rs_public_key.verify_token::<NoCustomClaims>(token, Some(verification)) {
+            Ok(_) => {
+                log!("Token validation successful");
+                Ok(())
+            },
             Err(e) => {
-                log!("Failed to create decoding key: {:?}", e);
-                return Err(OIDCError::InvalidPublicKey);
+                log!("Token validation failed: {:?}", e);
+                Err(OIDCError::InvalidSignature)
             }
-        };
-
-        // Verify token
-        let token_data = match decode::<Claims>(token, &decoding_key, &validation) {
-            Ok(t) => t,
-            Err(e) => {
-                log!("Failed to decode token: {:?}", e);
-                return Err(OIDCError::InvalidSignature);
-            }
-        };
-
-        // Additional timestamp validation
-        let now = env::block_timestamp() as i64;
-        log!("Current timestamp: {}, Token expiration: {}", now, token_data.claims.exp);
-        if now > token_data.claims.exp {
-            log!("Token has expired");
-            return Err(OIDCError::TokenExpired);
         }
-
-        log!("Token validation successful");
-        Ok(())
     }
     
     pub fn update_google_keys(&mut self, keys: KeySet) {
