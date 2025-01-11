@@ -36,10 +36,12 @@ export default function UpdateOIDCKeys() {
       setIsLoading(true);
       setStatus("Fetching Google keys...");
 
-      const response = await fetch(
-        "https://www.googleapis.com/oauth2/v3/certs"
-      );
+      const response = await fetch("/api/oidc/google/keys");
       const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch Google keys');
+      }
 
       for (const key of data.keys) {
         const publicKey: PublicKey = {
@@ -67,10 +69,12 @@ export default function UpdateOIDCKeys() {
       setIsLoading(true);
       setStatus("Fetching Facebook keys...");
 
-      const response = await fetch(
-        `https://corsproxy.io/?url=https://www.facebook.com/.well-known/oauth/openid/jwks`
-      );
+      const response = await fetch("/api/oidc/facebook/keys");
       const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch Facebook keys');
+      }
 
       for (const key of data.keys) {
         const publicKey: PublicKey = {

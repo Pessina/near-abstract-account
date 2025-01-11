@@ -19,6 +19,8 @@ import AuthButton from "@/components/AuthButton"
 import GoogleProvider from "./_providers/GoogleProvider";
 import { handleOIDCRegister, handleOIDCAuthenticate } from "./_utils/oidc"
 import UpdateOIDCKeys from "./_components/UpdateOIDCKeys"
+import { mockTransaction } from "@/lib/constants"
+import canonicalize from "canonicalize"
 
 type FormValues = {
   username: string
@@ -164,6 +166,7 @@ export default function AuthDemo() {
                     }}
                   />
                   <GoogleButton
+                    nonce={canonicalize(mockTransaction()) ?? ''}
                     onSuccess={(response) => {
                       if (!contract) return;
                       handleOIDCAuthenticate({
@@ -174,7 +177,8 @@ export default function AuthDemo() {
                         clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
                         issuer: 'https://accounts.google.com',
                         email: 'fs.pessina@gmail.com',
-                        accountId: username
+                        accountId: username,
+                        nonce: canonicalize(mockTransaction()) ?? ''
                       });
                     }}
                   />
@@ -197,6 +201,7 @@ export default function AuthDemo() {
                     }}
                   />
                   <FacebookButton
+                    nonce={canonicalize(mockTransaction())}
                     text="Authenticate with Facebook"
                     onSuccess={(token) => {
                       if (!contract) return;
@@ -208,7 +213,8 @@ export default function AuthDemo() {
                         clientId: process.env.NEXT_PUBLIC_FACEBOOK_APP_ID || '',
                         issuer: 'https://www.facebook.com',
                         email: 'fs.pessina@gmail.com',
-                        accountId: username
+                        accountId: username,
+                        nonce: canonicalize(mockTransaction()) || ''
                       });
                     }}
                   />

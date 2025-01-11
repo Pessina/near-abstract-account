@@ -7,9 +7,10 @@ import { useState } from "react";
 type FacebookButtonProps = {
     text: string;
     onSuccess: (token: string) => void;
+    nonce?: string;
 }
 
-export default function FacebookButton({ text, onSuccess }: FacebookButtonProps) {
+export default function FacebookButton({ text, onSuccess, nonce }: FacebookButtonProps) {
     const [isLoading, setIsLoading] = useState(false);
     const { initiateLogin } = useFacebookAuth({
         scope: 'email',
@@ -32,7 +33,7 @@ export default function FacebookButton({ text, onSuccess }: FacebookButtonProps)
     const handleLogin = async () => {
         setIsLoading(true);
         await initiateLogin({
-            nonce: 'test_123_felipe',
+            nonce: nonce,
         });
         setIsLoading(false);
     };

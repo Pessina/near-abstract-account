@@ -1,5 +1,4 @@
 import { AbstractAccountContract } from "@/lib/contract/AbstractAccountContract";
-import canonicalize from "canonicalize";
 import { mockTransaction } from "@/lib/constants";
 
 export const handleOIDCRegister = async ({
@@ -47,6 +46,7 @@ export const handleOIDCAuthenticate = async ({
   issuer,
   email,
   accountId,
+  nonce,
 }: {
   contract: AbstractAccountContract;
   setStatus: (status: string) => void;
@@ -56,20 +56,13 @@ export const handleOIDCAuthenticate = async ({
   issuer: string;
   email: string;
   accountId: string;
+  nonce: string;
 }) => {
   setIsPending(true);
   try {
     const account = await contract.getAccountById(accountId);
     if (!account) {
       setStatus("Failed to get account");
-      return;
-    }
-
-    const transaction = mockTransaction();
-
-    const canonical = canonicalize(transaction);
-    if (!canonical) {
-      setStatus("Failed to canonicalize transaction");
       return;
     }
 
@@ -85,11 +78,11 @@ export const handleOIDCAuthenticate = async ({
           },
         },
         auth_data: {
-          message: canonical,
+          message: nonce,
           token: token,
         },
       },
-      payloads: transaction,
+      payloads: mockTransaction(),
     });
 
     setStatus(`OIDC authentication successful!`);

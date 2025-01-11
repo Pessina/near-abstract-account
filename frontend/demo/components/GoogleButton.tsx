@@ -6,9 +6,10 @@ import { CredentialResponse } from '@react-oauth/google';
 interface GoogleButtonProps {
   onSuccess?: (response: CredentialResponse) => void;
   onError?: () => void;
+  nonce?: string;
 }
 
-const GoogleButton = ({ onSuccess, onError }: GoogleButtonProps) => {
+const GoogleButton = ({ onSuccess, onError, nonce }: GoogleButtonProps) => {
   return (
     <div className="w-full">
       <GoogleLogin
@@ -20,7 +21,7 @@ const GoogleButton = ({ onSuccess, onError }: GoogleButtonProps) => {
           console.log('Google login failed');
           onError?.();
         }}
-        nonce="test_123_felipe"
+        nonce={nonce}
         locale='pt_BR'
         useOneTap
       />
