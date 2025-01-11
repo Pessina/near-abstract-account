@@ -49,6 +49,10 @@ impl OIDCAuthContract {
         Self::default()
     }
 
+    /*
+        TODO:
+        - Define a struct for the oidc and keys to avoid direct json field access
+    */
     pub fn validate_oidc_token(
         &self,
         oidc_data: OIDCData,
@@ -146,13 +150,18 @@ impl OIDCAuthContract {
             .is_ok()
     }
 
-    // pub fn update_google_key(&mut self, kid: String, key: PublicKey) {
-    //     self.google_keys.insert(&kid, &key);
-    // }
+    /*
+       TODO:
+       - This should be updated on a secure way: decentralized oracles, zk, zk tls, dao...
+       - The old keys should be cleaned up when new keys are added
+    */
+    pub fn update_google_key(&mut self, kid: String, key: PublicKey) {
+        self.google_keys.insert(kid, key);
+    }
 
-    // pub fn update_facebook_key(&mut self, kid: String, key: PublicKey) {
-    //     self.facebook_keys.insert(&kid, &key);
-    // }
+    pub fn update_facebook_key(&mut self, kid: String, key: PublicKey) {
+        self.facebook_keys.insert(kid, key);
+    }
 }
 
 #[cfg(test)]
