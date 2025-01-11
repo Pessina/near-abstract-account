@@ -1,28 +1,43 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
+import { useForm } from "react-hook-form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { AbstractAccountContract } from "@/lib/contract/AbstractAccountContract"
 import initNear from "@/lib/near"
-import Image from "next/image"
 import { handlePasskeyAuthenticate } from "./_utils/webauthn"
 import { handlePasskeyRegister } from "./_utils/webauthn"
 import { handleEthereumAuthenticate } from "./_utils/ethereum"
 import { handleEthereumRegister } from "./_utils/ethereum"
 import { handleSolanaAuthenticate, handleSolanaRegister } from "./_utils/solana"
-import GoogleButton from "./_components/GoogleButton"
-import FacebookButton from "./_components/FacebookButton"
-import Providers from "./_components/Providers"
-// import XLoginButton from "./_components/XButton"
+import GoogleButton from "@/components/GoogleButton"
+import FacebookButton from "@/components/FacebookButton"
+import AuthButton from "@/components/AuthButton"
+import GoogleProvider from "./_providers/GoogleProvider";
+import { handleOIDCRegister, handleOIDCAuthenticate } from "./_utils/oidc"
+import UpdateOIDCKeys from "./_components/UpdateOIDCKeys"
+import { mockTransaction } from "@/lib/constants"
+import canonicalize from "canonicalize"
+
+type FormValues = {
+  username: string
+}
 
 export default function AuthDemo() {
   const [contract, setContract] = useState<AbstractAccountContract | null>(null)
-  const [username, setUsername] = useState("")
   const [status, setStatus] = useState("")
   const [isPending, setIsPending] = useState(false)
+
+  const { register, watch } = useForm<FormValues>({
+    defaultValues: {
+      username: ""
+    }
+  })
+
+  const username = watch("username")
 
   useEffect(() => {
     const setupContract = async () => {
@@ -32,11 +47,6 @@ export default function AuthDemo() {
           account,
           contractId: process.env.NEXT_PUBLIC_ABSTRACT_ACCOUNT_CONTRACT as string
         })
-
-        // Initialize the auth contracts
-        // await contractInstance.setAuthContract('webauthn', "felipe-webauthn-contract.testnet")
-        // await contractInstance.setAuthContract('ethereum', "felipe-ethereum-contract.testnet")
-        // await contractInstance.setAuthContract('solana', "felipe-solana-contract.testnet")
 
         setContract(contractInstance)
       } catch (error) {
@@ -49,7 +59,7 @@ export default function AuthDemo() {
   }, [])
 
   return (
-    <Providers>
+    <GoogleProvider>
       <div className="flex justify-center items-center h-full">
         <Card className="w-full md:max-w-md">
           <CardHeader>
@@ -59,15 +69,49 @@ export default function AuthDemo() {
           <CardContent>
             <div className="flex flex-col gap-6">
               <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Account Management</h3>
+                <div className="flex flex-col gap-4">
+                  <Button
+                    onClick={async () => {
+                      if (!contract) return;
+                      try {
+                        const accounts = await contract.listAccountIds();
+                        setStatus(`Accounts: ${accounts.join(', ')}`);
+                      } catch (error) {
+                        setStatus(`Error listing accounts: ${error}`);
+                      }
+                    }}
+                    disabled={isPending}
+                  >
+                    List Accounts
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      if (!contract || !username) return;
+                      try {
+                        const identities = await contract.listAuthIdentities(username);
+                        setStatus(`Auth identities for ${username}: ${JSON.stringify(identities)}`);
+                      } catch (error) {
+                        setStatus(`Error listing auth identities: ${error}`);
+                      }
+                    }}
+                    variant="secondary"
+                    disabled={isPending || !username}
+                  >
+                    List Auth Identities
+                  </Button>
+                  <UpdateOIDCKeys />
+                </div>
+              </div>
+              <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Passkey Authentication</h3>
                 <div>
                   <Label htmlFor="username">Username</Label>
                   <Input
                     id="username"
                     type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
                     placeholder="Enter username"
+                    {...register("username")}
                   />
                 </div>
                 <div className="flex space-x-4">
@@ -78,7 +122,8 @@ export default function AuthDemo() {
                         username,
                         contract,
                         setStatus,
-                        setIsPending
+                        setIsPending,
+                        accountId: username
                       });
                     }}
                     disabled={isPending}
@@ -91,7 +136,8 @@ export default function AuthDemo() {
                       handlePasskeyAuthenticate({
                         contract,
                         setStatus,
-                        setIsPending
+                        setIsPending,
+                        accountId: username
                       });
                     }}
                     variant="secondary"
@@ -103,160 +149,182 @@ export default function AuthDemo() {
               </div>
               <div className="flex flex-col gap-4">
                 <h3 className="text-lg font-semibold">Social Login</h3>
-                <GoogleButton />
-                <FacebookButton />
-                {/* <XLoginButton /> */}
+                <div className="flex gap-2">
+                  <GoogleButton
+                    onSuccess={(response) => {
+                      if (!contract) return;
+                      handleOIDCRegister({
+                        contract,
+                        setStatus,
+                        setIsPending,
+                        token: response.credential || '',
+                        clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
+                        issuer: 'https://accounts.google.com',
+                        email: 'fs.pessina@gmail.com',
+                        accountId: username
+                      });
+                    }}
+                  />
+                  <GoogleButton
+                    nonce={canonicalize(mockTransaction()) ?? ''}
+                    onSuccess={(response) => {
+                      if (!contract) return;
+                      handleOIDCAuthenticate({
+                        contract,
+                        setStatus,
+                        setIsPending,
+                        token: response.credential || '',
+                        clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
+                        issuer: 'https://accounts.google.com',
+                        email: 'fs.pessina@gmail.com',
+                        accountId: username,
+                        nonce: canonicalize(mockTransaction()) ?? ''
+                      });
+                    }}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <FacebookButton
+                    text="Register with Facebook"
+                    onSuccess={(token) => {
+                      if (!contract) return;
+                      handleOIDCRegister({
+                        contract,
+                        setStatus,
+                        setIsPending,
+                        token,
+                        clientId: process.env.NEXT_PUBLIC_FACEBOOK_APP_ID || '',
+                        issuer: 'https://www.facebook.com',
+                        email: 'fs.pessina@gmail.com',
+                        accountId: username
+                      });
+                    }}
+                  />
+                  <FacebookButton
+                    nonce={canonicalize(mockTransaction())}
+                    text="Authenticate with Facebook"
+                    onSuccess={(token) => {
+                      if (!contract) return;
+                      handleOIDCAuthenticate({
+                        contract,
+                        setStatus,
+                        setIsPending,
+                        token,
+                        clientId: process.env.NEXT_PUBLIC_FACEBOOK_APP_ID || '',
+                        issuer: 'https://www.facebook.com',
+                        email: 'fs.pessina@gmail.com',
+                        accountId: username,
+                        nonce: canonicalize(mockTransaction()) || ''
+                      });
+                    }}
+                  />
+                </div>
               </div>
               <div className="space-y-4 md:col-span-2">
                 <h3 className="text-lg font-semibold">Wallet Authentication</h3>
                 <div className="flex flex-wrap gap-4">
                   <div className="flex gap-2">
-                    <Button
+                    <AuthButton
                       onClick={() => {
                         if (!contract) return;
                         handleEthereumRegister({
                           contract,
                           setStatus,
                           setIsPending,
-                          wallet: 'metamask'
+                          wallet: 'metamask',
+                          accountId: username
                         });
                       }}
-                      className="flex items-center justify-center gap-2"
-                      variant="outline"
+                      imageSrc="/metamask.svg"
+                      imageAlt="MetaMask logo"
+                      buttonText="Register"
                       disabled={isPending}
-                    >
-                      <Image
-                        src="/metamask.svg"
-                        alt="MetaMask logo"
-                        width={24}
-                        height={24}
-                      />
-                      <span>Register</span>
-                    </Button>
-                    <Button
+                    />
+                    <AuthButton
                       onClick={() => {
                         if (!contract) return;
                         handleEthereumAuthenticate({
                           contract,
                           setStatus,
                           setIsPending,
-                          wallet: 'metamask'
+                          wallet: 'metamask',
+                          accountId: username
                         });
                       }}
-                      className="flex items-center justify-center gap-2"
-                      variant="outline"
+                      imageSrc="/metamask.svg"
+                      imageAlt="MetaMask logo"
+                      buttonText="Authenticate"
                       disabled={isPending}
-                    >
-                      <Image
-                        src="/metamask.svg"
-                        alt="MetaMask logo"
-                        width={24}
-                        height={24}
-                      />
-                      <span>Authenticate</span>
-                    </Button>
+                    />
                   </div>
                   <div className="flex gap-2">
-                    <Button
+                    <AuthButton
                       onClick={() => {
                         if (!contract) return;
                         handleEthereumRegister({
                           contract,
                           setStatus,
                           setIsPending,
-                          wallet: 'okx'
+                          wallet: 'okx',
+                          accountId: username
                         });
                       }}
-                      className="flex items-center justify-center gap-2"
-                      variant="outline"
+                      imageSrc="/okx.svg"
+                      imageAlt="OKX logo"
+                      buttonText="Register"
                       disabled={isPending}
-                    >
-                      <Image
-                        src="/okx.svg"
-                        alt="OKX logo"
-                        width={24}
-                        height={24}
-                      />
-                      <span>Register</span>
-                    </Button>
-                    <Button
+                    />
+                    <AuthButton
                       onClick={() => {
                         if (!contract) return;
                         handleEthereumAuthenticate({
                           contract,
                           setStatus,
                           setIsPending,
-                          wallet: 'okx'
+                          wallet: 'okx',
+                          accountId: username
                         });
                       }}
-                      className="flex items-center justify-center gap-2"
-                      variant="outline"
+                      imageSrc="/okx.svg"
+                      imageAlt="OKX logo"
+                      buttonText="Authenticate"
                       disabled={isPending}
-                    >
-                      <Image
-                        src="/okx.svg"
-                        alt="OKX logo"
-                        width={24}
-                        height={24}
-                      />
-                      <span>Authenticate</span>
-                    </Button>
+                    />
                   </div>
                   <div className="flex gap-2">
-                    <Button
+                    <AuthButton
                       onClick={() => {
                         if (!contract) return;
                         handleSolanaRegister({
                           contract,
                           setStatus,
                           setIsPending,
-                          wallet: 'phantom'
+                          wallet: 'phantom',
+                          accountId: username
                         });
                       }}
-                      className="flex items-center justify-center gap-2"
-                      variant="outline"
+                      imageSrc="/sol.svg"
+                      imageAlt="Phantom logo"
+                      buttonText="Register"
                       disabled={isPending}
-                    >
-                      <Image
-                        src="/sol.svg"
-                        alt="Phantom logo"
-                        width={24}
-                        height={24}
-                      />
-                      <span>Register</span>
-                    </Button>
-                    <Button
+                    />
+                    <AuthButton
                       onClick={() => {
                         if (!contract) return;
                         handleSolanaAuthenticate({
                           contract,
                           setStatus,
                           setIsPending,
-                          wallet: 'phantom'
+                          wallet: 'phantom',
+                          accountId: username
                         });
                       }}
-                      className="flex items-center justify-center gap-2"
-                      variant="outline"
+                      imageSrc="/sol.svg"
+                      imageAlt="Phantom logo"
+                      buttonText="Authenticate"
                       disabled={isPending}
-                    >
-                      <Image
-                        src="/sol.svg"
-                        alt="Phantom logo"
-                        width={24}
-                        height={24}
-                      />
-                      <span>Authenticate</span>
-                    </Button>
+                    />
                   </div>
-                  {/* <Button
-                    disabled
-                    onClick={() => console.log("Connect BTC Wallet")}
-                    className="flex items-center justify-center gap-2"
-                    variant="outline"
-                  >
-                    <FaBitcoin className="w-5 h-5 text-orange-500" />
-                    <span>Connect BTC Wallet</span>
-                  </Button> */}
                 </div>
               </div>
             </div>
@@ -268,6 +336,6 @@ export default function AuthDemo() {
           </CardContent>
         </Card>
       </div>
-    </Providers>
+    </GoogleProvider>
   )
 }

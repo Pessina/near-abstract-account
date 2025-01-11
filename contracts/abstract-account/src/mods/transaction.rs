@@ -1,82 +1,42 @@
 use std::str::FromStr;
 
-use crate::AbstractAccountContract;
+use crate::{traits::path::Path, types::auth_identities::AuthIdentity, AbstractAccountContract};
 use near_sdk::{
-    serde::{Deserialize, Serialize},
-    AccountId, Gas, NearToken, Promise,
+    env, serde::{Deserialize, Serialize}, AccountId, Promise
 };
 use schemars::JsonSchema;
 
-// TODO: Those types should be imported from near libs and we should also find a way to automatically convert them to u64 and u128, without using parse.
-type FunctionCallGas = String; // u64;
-type Balance = String; // u128;
-type Args = String; // Vec<u8>: Base64
-type Nonce = String; // u64
+use super::signer::{ext_signer, SignRequest, SIGN_GAS};
 
-#[derive(Deserialize, Serialize, JsonSchema)]
+#[derive(Deserialize, Serialize, JsonSchema, Clone)]
 #[serde(crate = "near_sdk::serde")]
-pub struct FunctionCallAction {
-    pub method_name: String,
-    pub args: Args,
-    pub gas: FunctionCallGas,
-    pub deposit: Balance,
-}
-
-#[derive(Deserialize, Serialize, JsonSchema)]
-#[serde(crate = "near_sdk::serde")]
-pub struct TransferAction {
-    pub deposit: Balance,
-}
-
-#[derive(Deserialize, Serialize, JsonSchema)]
-#[serde(crate = "near_sdk::serde")]
-pub enum Action {
-    Transfer(TransferAction),
-    FunctionCall(FunctionCallAction),
-}
-
-#[derive(Deserialize, Serialize, JsonSchema)]
-#[serde(crate = "near_sdk::serde")]
-pub struct Transaction {
-    pub nonce: Nonce,
-    pub receiver_id: String,
-    pub actions: Vec<Action>,
+pub struct SignPayloadsRequest {
+    pub contract_id: String,
+    pub payloads: Vec<SignRequest>
 }
 
 impl AbstractAccountContract {
-    pub fn execute_transaction(&self, transaction: Transaction) -> Result<Promise, String> {
-        let receiver_id = AccountId::from_str(&transaction.receiver_id)
+    pub fn execute_transaction(&self, auth_identity: AuthIdentity, payloads: SignPayloadsRequest) -> Result<Promise, String> {
+        let receiver_id = AccountId::from_str(&payloads.contract_id)
             .map_err(|_| "Invalid receiver account ID")?;
-
         let mut promise = Promise::new(receiver_id);
+        let deposit_per_call = env::attached_deposit().saturating_div(payloads.payloads.len() as u128);
 
-        for action in transaction.actions {
-            match action {
-                Action::Transfer(transfer) => {
-                    let amount = transfer
-                        .deposit
-                        .parse::<u128>()
-                        .map_err(|_| "Invalid transfer amount")?;
-                    promise = promise.transfer(NearToken::from_yoctonear(amount));
-                }
-                Action::FunctionCall(function_call) => {
-                    let deposit = function_call
-                        .deposit
-                        .parse::<u128>()
-                        .map_err(|_| "Invalid function call deposit")?;
-                    let gas = function_call
-                        .gas
-                        .parse::<u64>()
-                        .map_err(|_| "Invalid gas amount")?;
-                    promise = promise.function_call(
-                        function_call.method_name,
-                        function_call.args.as_bytes().to_vec(),
-                        NearToken::from_yoctonear(deposit),
-                        Gas::from_gas(gas),
-                    );
-                }
-            }
+        for payload in payloads.payloads {
+            let path = self.build_account_path(auth_identity.path(), payload.path);
+
+            let sign_request = SignRequest::new(
+                payload.payload,
+                path,
+                payload.key_version
+            );
+
+            promise = promise.then(ext_signer::ext(self.signer_account.clone())
+                .with_attached_deposit(deposit_per_call)
+                .with_static_gas(SIGN_GAS)
+                .sign(sign_request))
         }
+
         Ok(promise)
     }
 }

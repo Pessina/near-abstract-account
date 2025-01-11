@@ -5,10 +5,11 @@ members = [
   "auth/webauthn-auth",
   "auth/ethereum-auth",
   "auth/solana-auth",
+  "auth/oidc-auth",
 ]
 
 [workspace.dependencies]
-near-sdk = "5.5.0"
+near-sdk = "5.7.0"
 p256 = "0.13.2"
 sha2 = "0.10.8"
 hex = "0.4.3"
@@ -17,3 +18,6 @@ sha3 = "0.10.8"
 k256 = "0.13.4"
 bs58 = "0.5.1"
 base64 = "0.22.1"
+borsh = "1.5.3"
+serde_json = "1.0.135"
+rsa = { version = "0.9.7", features = ["sha2"] }

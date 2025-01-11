@@ -1,50 +1,82 @@
-import { Contract, Account } from "near-api-js";
+import { Contract, Account as NearAccount } from "near-api-js";
 import { WebAutahnAuthData } from "../auth/WebAuthn/types";
 import { EthereumAuthData } from "../auth/Ethereum/types";
 import { SolanaAuthData } from "../auth/Solana/types";
 
-
-export interface FunctionCallAction {
-  FunctionCall: {
-    method_name: string;
-    args: string;
-    gas: string;
-    deposit: string;
-  }
+export interface SignRequest {
+  payload: number[];
+  path: string;
+  key_version: number;
 }
 
-export interface TransferAction {
-  Transfer: {
-    deposit: string;
-  }
+export interface SignPayloadsRequest {
+  contract_id: string;
+  payloads: SignRequest[];
 }
 
-export type Action = FunctionCallAction | TransferAction;
+export type WalletType = "Ethereum" | "Solana";
 
-export interface Transaction {
-  nonce: string;
-  receiver_id: string;
-  actions: Action[];
+export interface Wallet {
+  wallet_type: WalletType;
+  public_key: string;
 }
+
+export interface WebAuthn {
+  key_id: string;
+  compressed_public_key?: string;
+}
+
+export interface OIDCAuthIdentity {
+  client_id: string;
+  issuer: string;
+  email: string;
+}
+
+export interface OIDCData {
+  token: string;
+  message: string;
+}
+
+export type AuthIdentity =
+  | { Wallet: Wallet }
+  | { WebAuthn: WebAuthn }
+  | { OIDC: OIDCAuthIdentity }
+  | { Account: string };
 
 export interface Auth {
-  auth_type: string;
-  auth_key_id: string;
-  auth_data: WebAutahnAuthData | EthereumAuthData | SolanaAuthData;
+  auth_identity: AuthIdentity;
+  auth_data: WebAutahnAuthData | EthereumAuthData | SolanaAuthData | OIDCData;
 }
 
 export interface UserOperation {
+  account_id: string;
   auth: Auth;
-  transaction: Transaction;
+  selected_auth_identity?: AuthIdentity;
+  payloads: SignPayloadsRequest;
+}
+
+export interface Account {
+  nonce: number;
+  auth_identities: AuthIdentity[];
 }
 
 type AbstractContract = Contract & {
-  add_auth_key: (args: { key_id: string, auth_key: string }) => Promise<void>;
-  get_auth_key: (args: { key_id: string }) => Promise<string | null>;
-  get_nonce: () => Promise<number>;
-  set_auth_contract: (args: { auth_type: string, auth_contract_account_id: string }) => Promise<void>;
-  auth: (args: { user_op: UserOperation }, gas?: string) => Promise<void>;
-}
+  new: () => Promise<void>;
+  add_account: (args: {
+    account_id: string;
+    auth_identity: AuthIdentity;
+  }) => Promise<void>;
+  get_account_by_id: (args: { account_id: string }) => Promise<Account | null>;
+  list_account_ids: () => Promise<string[]>;
+  list_auth_identities: (args: {
+    account_id: string;
+  }) => Promise<AuthIdentity[] | null>;
+  send_transaction: (args: {
+    args: { user_op: UserOperation };
+    gas?: string;
+    amount?: string;
+  }) => Promise<void>;
+};
 
 export class AbstractAccountContract {
   private contract: AbstractContract;
@@ -53,43 +85,51 @@ export class AbstractAccountContract {
     account,
     contractId,
   }: {
-    account: Account;
+    account: NearAccount;
     contractId: string;
   }) {
-    this.contract = new Contract(
-      account,
-      contractId,
-      {
-        viewMethods: ['get_auth_key', 'get_nonce'],
-        changeMethods: ['add_auth_key', 'set_auth_contract', 'auth'],
-        useLocalViewExecution: false
-      }
-    ) as unknown as AbstractContract;
+    this.contract = new Contract(account, contractId, {
+      viewMethods: [
+        "get_account_by_id",
+        "list_account_ids",
+        "list_auth_identities",
+      ],
+      changeMethods: ["new", "add_account", "send_transaction"],
+      useLocalViewExecution: false,
+    }) as unknown as AbstractContract;
   }
 
-  async addAuthKey(keyId: string, authKey: string): Promise<void> {
-    return await this.contract.add_auth_key({
-      key_id: keyId,
-      auth_key: authKey
+  async new(): Promise<void> {
+    return await this.contract.new();
+  }
+
+  async addAccount(
+    accountId: string,
+    authIdentity: AuthIdentity
+  ): Promise<void> {
+    return await this.contract.add_account({
+      account_id: accountId,
+      auth_identity: authIdentity,
     });
   }
 
-  async getAuthKey(keyId: string): Promise<string | null> {
-    return await this.contract.get_auth_key({ key_id: keyId });
+  async getAccountById(accountId: string): Promise<Account | null> {
+    return await this.contract.get_account_by_id({ account_id: accountId });
   }
 
-  async getNonce(): Promise<number> {
-    return await this.contract.get_nonce();
+  async listAccountIds(): Promise<string[]> {
+    return await this.contract.list_account_ids();
   }
 
-  async setAuthContract(authType: string, authContractAccountId: string): Promise<void> {
-    return await this.contract.set_auth_contract({
-      auth_type: authType,
-      auth_contract_account_id: authContractAccountId
+  async listAuthIdentities(accountId: string): Promise<AuthIdentity[] | null> {
+    return await this.contract.list_auth_identities({ account_id: accountId });
+  }
+
+  async sendTransaction(userOp: UserOperation): Promise<void> {
+    return await this.contract.send_transaction({
+      args: { user_op: userOp },
+      gas: "300000000000000",
+      amount: "10", // TODO: Use dynamic fee
     });
-  }
-
-  async auth(userOp: UserOperation): Promise<void> {
-    return await this.contract.auth({ user_op: userOp }, "300000000000000");
   }
 }

@@ -9,12 +9,7 @@ export type P256Credential = {
   rawId: Hex;
   clientData: ClientData;
   authenticatorData: Hex;
-  signature: P256Signature;
-};
-
-export type P256Signature = {
-  r: Hex;
-  s: Hex;
+  signature: string;
 };
 
 export type ClientData = {
@@ -24,9 +19,8 @@ export type ClientData = {
   crossOrigin?: boolean;
 };
 
-
 export interface WebAutahnAuthData {
-  signature: P256Signature;
+  signature: string;
   authenticator_data: string;
   client_data: string;
 }
