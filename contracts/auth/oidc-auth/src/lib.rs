@@ -1,13 +1,16 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use interfaces::oidc_auth::{OIDCAuthIdentity, OIDCData};
-use jwt_simple::prelude::{NoCustomClaims, RS256PublicKey, RSAPublicKeyLike};
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
-    log, near,
+    log, near_bindgen,
     serde::{Deserialize, Serialize},
     store::LookupMap,
 };
 use schemars::JsonSchema;
+
+use rsa::signature::Verifier;
+use rsa::{pkcs1v15::VerifyingKey, BigUint, RsaPublicKey};
+use sha2::Sha256;
 
 #[derive(Debug, BorshDeserialize, BorshSerialize, Deserialize, Serialize, JsonSchema, Clone)]
 #[serde(crate = "near_sdk::serde")]
@@ -20,7 +23,8 @@ pub struct PublicKey {
     pub use_: String,
 }
 
-#[near(contract_state)]
+#[near_bindgen]
+#[derive(BorshDeserialize, BorshSerialize)]
 pub struct OIDCAuthContract {
     pub google_keys: LookupMap<String, PublicKey>,
     pub facebook_keys: LookupMap<String, PublicKey>,
@@ -35,38 +39,41 @@ impl Default for OIDCAuthContract {
     }
 }
 
-#[near]
+#[near_bindgen]
 impl OIDCAuthContract {
     #[init(ignore_state)]
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Validates OIDC token by checking issuer, aud, email, and nonce, then verifying the RSA signature.
+    /// Returns true if valid, false otherwise.
     pub fn validate_oidc_token(
         &self,
         oidc_data: OIDCData,
         oidc_auth_identity: OIDCAuthIdentity,
     ) -> bool {
+        // Split the token into header, payload, signature
         let parts: Vec<&str> = oidc_data.token.split('.').collect();
         if parts.len() != 3 {
             return false;
         }
 
+        // Decode payload JSON
         let payload_json = match URL_SAFE_NO_PAD.decode(parts[1]) {
             Ok(json) => json,
             Err(_) => return false,
         };
-
         let payload: serde_json::Value = match serde_json::from_slice(&payload_json) {
             Ok(p) => p,
             Err(_) => return false,
         };
 
+        // Check issuer, audience, email, nonce
         let token_issuer = match payload["iss"].as_str() {
             Some(issuer) => issuer,
             None => return false,
         };
-
         if token_issuer != oidc_auth_identity.issuer {
             return false;
         }
@@ -95,67 +102,124 @@ impl OIDCAuthContract {
             return false;
         }
 
+        // Select the corresponding key set
         let key_set = match token_issuer {
             "https://accounts.google.com" => &self.google_keys,
             "https://www.facebook.com" => &self.facebook_keys,
             _ => return false,
         };
 
+        // Decode header JSON to get kid
         let header_json = match URL_SAFE_NO_PAD.decode(parts[0]) {
             Ok(json) => json,
             Err(_) => return false,
         };
-
         let header: serde_json::Value = match serde_json::from_slice(&header_json) {
             Ok(h) => h,
             Err(_) => return false,
         };
-
         let kid = match header["kid"].as_str() {
             Some(k) => k,
             None => return false,
         };
 
+        // Retrieve the public key from storage
         let public_key = match key_set.get(kid) {
             Some(key) => key,
             None => return false,
         };
 
+        // Create RSA public key from components
+        log!("Creating RSA public key from components");
+        log!("n (base64): {}", &public_key.n);
+        log!("e (base64): {}", &public_key.e);
+
         let n = match URL_SAFE_NO_PAD.decode(&public_key.n) {
-            Ok(decoded) => decoded,
-            Err(_) => return false,
+            Ok(n) => {
+                log!("Successfully decoded n, length: {} bytes", n.len());
+                n
+            }
+            Err(e) => {
+                log!("Failed to decode n: {:?}", e);
+                return false;
+            }
         };
 
         let e = match URL_SAFE_NO_PAD.decode(&public_key.e) {
-            Ok(decoded) => decoded,
-            Err(_) => return false,
+            Ok(e) => {
+                log!("Successfully decoded e, length: {} bytes", e.len());
+                e
+            }
+            Err(e) => {
+                log!("Failed to decode e: {:?}", e);
+                return false;
+            }
         };
 
-        // The lines bellow cause InstantiateError when calling methods on the contract
-        let rs_public_key = match RS256PublicKey::from_components(&n, &e) {
-            Ok(key) => key,
-            Err(_) => return false,
+        let rsa_pubkey =
+            match RsaPublicKey::new(BigUint::from_bytes_be(&n), BigUint::from_bytes_be(&e)) {
+                Ok(key) => {
+                    log!("Successfully created RSA public key");
+                    key
+                }
+                Err(e) => {
+                    log!("Failed to create RSA public key: {:?}", e);
+                    return false;
+                }
+            };
+
+        // Create verifying key with SHA256
+        let verifying_key = VerifyingKey::<Sha256>::new(rsa_pubkey);
+        log!("Created verifying key");
+
+        // Get message (header.payload) and signature
+        let parts: Vec<&str> = oidc_data.token.split('.').collect();
+        if parts.len() != 3 {
+            log!("Invalid token format: wrong number of parts");
+            return false;
+        }
+
+        let message = format!("{}.{}", parts[0], parts[1]);
+        log!("Message to verify: {}", message);
+
+        let signature = match URL_SAFE_NO_PAD.decode(parts[2]) {
+            Ok(sig) => {
+                log!(
+                    "Successfully decoded signature, length: {} bytes",
+                    sig.len()
+                );
+                sig
+            }
+            Err(e) => {
+                log!("Failed to decode signature: {:?}", e);
+                return false;
+            }
         };
 
-        match rs_public_key.verify_token::<NoCustomClaims>(&oidc_data.token, None) {
-            Ok(_) => true,
-            Err(_) => false,
+        // Verify signature using the Verifier trait
+        match verifying_key.verify(
+            message.as_bytes(),
+            &rsa::pkcs1v15::Signature::try_from(signature.as_slice()).unwrap(),
+        ) {
+            Ok(_) => {
+                log!("Signature verification successful!");
+                true
+            }
+            Err(e) => {
+                log!("Signature verification failed: {:?}", e);
+                false
+            }
         }
     }
 
-    // pub fn update_google_keys(&mut self, keys: KeySet) {
-    //     log!("Updating Google keys");
-    //     self.google_keys = keys;
+    // Optional: add methods to update google_keys/facebook_keys, e.g.:
+    // pub fn update_google_key(&mut self, kid: String, key: PublicKey) {
+    //     self.google_keys.insert(&kid, &key);
     // }
-
-    // pub fn update_facebook_keys(&mut self, keys: KeySet) {
-    //     log!("Updating Facebook keys");
-    //     self.facebook_keys = keys;
+    //
+    // pub fn update_facebook_key(&mut self, kid: String, key: PublicKey) {
+    //     self.facebook_keys.insert(&kid, &key);
     // }
-
-    pub fn logany(&self, any: String) {
-        log!("{}", any);
-    }
 }
 
 #[cfg(test)]
