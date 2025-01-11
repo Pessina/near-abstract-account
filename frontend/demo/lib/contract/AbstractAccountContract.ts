@@ -1,7 +1,8 @@
 import { Contract, Account as NearAccount } from "near-api-js";
-import { WebAutahnAuthData } from "../auth/WebAuthn/types";
-import { EthereumAuthData } from "../auth/Ethereum/types";
-import { SolanaAuthData } from "../auth/Solana/types";
+import { WebAuthnAuthData, WebAuthnAuthIdentity } from "../auth/WebAuthn/types";
+import { EthereumAuthData, EthereumAuthIdentity } from "../auth/Ethereum/types";
+import { SolanaAuthData, SolanaAuthIdentity } from "../auth/Solana/types";
+import { OIDCAuthIdentity } from "../auth/OIDC/types";
 
 export interface SignRequest {
   payload: number[];
@@ -14,22 +15,9 @@ export interface SignPayloadsRequest {
   payloads: SignRequest[];
 }
 
-export type WalletType = "Ethereum" | "Solana";
-
-export interface Wallet {
-  wallet_type: WalletType;
-  public_key: string;
-}
-
 export interface WebAuthn {
   key_id: string;
   compressed_public_key?: string;
-}
-
-export interface OIDCAuthIdentity {
-  client_id: string;
-  issuer: string;
-  email: string;
 }
 
 export interface OIDCData {
@@ -38,14 +26,15 @@ export interface OIDCData {
 }
 
 export type AuthIdentity =
-  | { Wallet: Wallet }
-  | { WebAuthn: WebAuthn }
-  | { OIDC: OIDCAuthIdentity }
+  | EthereumAuthIdentity
+  | SolanaAuthIdentity
+  | WebAuthnAuthIdentity
+  | OIDCAuthIdentity
   | { Account: string };
 
 export interface Auth {
   auth_identity: AuthIdentity;
-  auth_data: WebAutahnAuthData | EthereumAuthData | SolanaAuthData | OIDCData;
+  auth_data: WebAuthnAuthData | EthereumAuthData | SolanaAuthData | OIDCData;
 }
 
 export interface UserOperation {

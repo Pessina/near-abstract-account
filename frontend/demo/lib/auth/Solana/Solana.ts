@@ -1,11 +1,12 @@
-import type { BaseMessageSignerWalletAdapter } from '@solana/wallet-adapter-base';
-import { 
+import type { BaseMessageSignerWalletAdapter } from "@solana/wallet-adapter-base";
+import {
   PhantomWalletAdapter,
   SolflareWalletAdapter,
-} from '@solana/wallet-adapter-wallets';
-import { SolanaWalletType, SolanaAuthData } from './types';
+} from "@solana/wallet-adapter-wallets";
+import { SolanaWalletType, SolanaAuthData, SolanaAuthIdentity } from "./types";
+import { AuthIdentity } from "../AuthIdentity";
 
-export class Solana {
+export class Solana extends AuthIdentity<SolanaAuthIdentity, SolanaAuthData> {
   private static wallet: BaseMessageSignerWalletAdapter | null = null;
   private static selectedWallet: SolanaWalletType | null = null;
 
@@ -26,7 +27,7 @@ export class Solana {
 
   private static async getWallet(): Promise<BaseMessageSignerWalletAdapter> {
     if (!this.selectedWallet) {
-      throw new Error('No wallet selected. Call setWallet() first');
+      throw new Error("No wallet selected. Call setWallet() first");
     }
 
     if (!this.wallet) {
@@ -39,49 +40,55 @@ export class Solana {
         await this.wallet.connect();
       } catch (error) {
         this.wallet = null;
-        throw new Error(`Failed to connect to ${this.selectedWallet}: ${error}`);
+        throw new Error(
+          `Failed to connect to ${this.selectedWallet}: ${error}`
+        );
       }
     }
 
     return this.wallet;
   }
 
-  public static isAvailable(): boolean {
-    if (typeof window === 'undefined') return false;
+  private static isAvailable(): boolean {
+    if (typeof window === "undefined") return false;
     if (!this.selectedWallet) return false;
 
     const detector = this.WALLET_DETECTORS[this.selectedWallet];
     return detector();
   }
 
-  public static async signMessage(message: string): Promise<SolanaAuthData | null> {
-    if (!this.isAvailable()) return null;
+  public async getAuthIdentity(): Promise<SolanaAuthIdentity | null> {
+    if (!Solana.isAvailable()) return null;
 
     try {
-      const wallet = await this.getWallet();
-      if (!wallet.publicKey) throw new Error('Wallet not connected');
+      const wallet = await Solana.getWallet();
+      return {
+        Wallet: {
+          wallet_type: "Solana",
+          public_key: wallet.publicKey?.toBase58() ?? "",
+        },
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  public async sign(message: string): Promise<SolanaAuthData | null> {
+    if (!Solana.isAvailable()) return null;
+
+    try {
+      const wallet = await Solana.getWallet();
+      if (!wallet.publicKey) throw new Error("Wallet not connected");
 
       const encodedMessage = new TextEncoder().encode(message);
       const signature = await wallet.signMessage(encodedMessage);
 
       return {
-        message,
-        signature: Buffer.from(signature).toString('base64'),
-        publicKey: wallet.publicKey.toBase58()
+        signature: Buffer.from(signature).toString("base64"),
+        publicKey: wallet.publicKey.toBase58(),
       };
     } catch (error) {
-      console.error('Failed to sign message:', error);
-      return null;
-    }
-  }
-
-  public static async getPublicKey(): Promise<string | null> {
-    if (!this.isAvailable()) return null;
-
-    try {
-      const wallet = await this.getWallet();
-      return wallet.publicKey?.toBase58() ?? null;
-    } catch {
+      console.error("Failed to sign message:", error);
       return null;
     }
   }

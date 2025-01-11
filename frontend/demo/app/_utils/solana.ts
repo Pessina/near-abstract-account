@@ -1,6 +1,6 @@
 import { AbstractAccountContract } from "@/lib/contract/AbstractAccountContract";
 import canonicalize from "canonicalize";
-import { Solana } from "@/lib/auth/Solana";
+import { Solana } from "@/lib/auth/Solana/Solana";
 import type { SolanaWalletType } from "@/lib/auth/Solana/types";
 import { mockTransaction } from "@/lib/constants";
 
@@ -19,25 +19,16 @@ export const handleSolanaRegister = async ({
 }) => {
   setIsPending(true);
   try {
+    const solana = new Solana();
     Solana.setWallet(wallet);
 
-    if (!Solana.isAvailable()) {
-      setStatus("Solana wallet is not supported by this browser");
+    const authIdentity = await solana.getAuthIdentity();
+    if (!authIdentity) {
+      setStatus("Failed to get Solana public key");
       return;
     }
 
-    const publicKey = await Solana.getPublicKey();
-    if (!publicKey || !contract) {
-      setStatus("Failed to get Solana public key or initialize contract");
-      return;
-    }
-
-    await contract.addAccount(accountId, {
-      Wallet: {
-        wallet_type: "Solana",
-        public_key: publicKey,
-      },
-    });
+    await contract.addAccount(accountId, authIdentity);
     setStatus("Solana address registration successful!");
   } catch (error) {
     console.error(error);
@@ -62,6 +53,7 @@ export const handleSolanaAuthenticate = async ({
 }) => {
   setIsPending(true);
   try {
+    const solana = new Solana();
     Solana.setWallet(wallet);
 
     const account = await contract.getAccountById(accountId);
@@ -70,8 +62,8 @@ export const handleSolanaAuthenticate = async ({
       return;
     }
 
-    const publicKey = await Solana.getPublicKey();
-    if (!publicKey) {
+    const authIdentity = await solana.getAuthIdentity();
+    if (!authIdentity) {
       setStatus("Failed to get Solana public key");
       return;
     }
@@ -84,7 +76,7 @@ export const handleSolanaAuthenticate = async ({
       return;
     }
 
-    const solanaData = await Solana.signMessage(canonical);
+    const solanaData = await solana.sign(canonical);
     if (!solanaData) {
       setStatus("Failed to sign message");
       return;
@@ -94,12 +86,7 @@ export const handleSolanaAuthenticate = async ({
       account_id: accountId,
       selected_auth_identity: undefined,
       auth: {
-        auth_identity: {
-          Wallet: {
-            wallet_type: "Solana",
-            public_key: publicKey,
-          },
-        },
+        auth_identity: authIdentity,
         auth_data: solanaData,
       },
       payloads: transaction,

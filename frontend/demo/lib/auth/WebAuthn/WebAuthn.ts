@@ -1,36 +1,32 @@
-// TODO: code copied from: https://github.com/passkeys-4337/smart-wallet
-// Check the license requirements and include it in the project if you still use it later
-
+import { AuthIdentity } from "../AuthIdentity";
+import { WebAuthnAuthIdentity, P256Credential } from "./types";
+import { parseSignature } from "./utils";
+import cbor from "cbor";
 import crypto from "crypto";
 import { toHex } from "viem";
-import cbor from "cbor";
 import { parseAuthenticatorData } from "@simplewebauthn/server/helpers";
-import { CreateCredential, P256Credential } from "./types";
-import { parseSignature } from "./utils";
 
-export class WebAuthn {
+export class WebAuthn extends AuthIdentity<
+  WebAuthnAuthIdentity,
+  P256Credential
+> {
   private static _generateRandomBytes(): Buffer {
     return crypto.randomBytes(16);
   }
 
-  public static isSupportedByBrowser(): boolean {
-    console.log(
-      "isSupportedByBrowser",
-      window?.PublicKeyCredential !== undefined &&
-        typeof window.PublicKeyCredential === "function"
-    );
+  private static isSupportedByBrowser(): boolean {
     return (
       window?.PublicKeyCredential !== undefined &&
       typeof window.PublicKeyCredential === "function"
     );
   }
 
-  public static async create({
-    username,
+  async getAuthIdentity({
+    id,
   }: {
-    username: string;
-  }): Promise<CreateCredential | null> {
-    this.isSupportedByBrowser();
+    id: string;
+  }): Promise<WebAuthnAuthIdentity | null> {
+    WebAuthn.isSupportedByBrowser();
 
     const options: PublicKeyCredentialCreationOptions = {
       timeout: 60000,
@@ -39,9 +35,9 @@ export class WebAuthn {
         id: window.location.hostname,
       },
       user: {
-        id: this._generateRandomBytes(),
-        name: username,
-        displayName: username,
+        id: WebAuthn._generateRandomBytes(),
+        name: id,
+        displayName: id,
       },
       pubKeyCredParams: [{ alg: -7, type: "public-key" }], // ES256
       authenticatorSelection: {
@@ -84,15 +80,15 @@ export class WebAuthn {
     const compressedPublicKey = prefix + x.slice(2); // Remove '0x' from x before concatenating
 
     return {
-      rawId: toHex(new Uint8Array(cred.rawId)),
-      compressedPublicKey,
+      key_id: toHex(new Uint8Array(cred.rawId)),
+      compressed_public_key: compressedPublicKey,
     };
   }
 
-  public static async get(
-    challenge: Uint8Array
-  ): Promise<P256Credential | null> {
-    this.isSupportedByBrowser();
+  async sign(message: string): Promise<P256Credential | null> {
+    WebAuthn.isSupportedByBrowser();
+
+    const challenge = Uint8Array.from(message, (c) => c.charCodeAt(0));
 
     const options: PublicKeyCredentialRequestOptions = {
       timeout: 60000,

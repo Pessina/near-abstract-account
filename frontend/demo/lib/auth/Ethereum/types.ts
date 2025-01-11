@@ -1,4 +1,10 @@
 export interface EthereumAuthData {
-  message: string;
   signature: string;
 }
+
+export type EthereumAuthIdentity = {
+  Wallet: {
+    wallet_type: "Ethereum";
+    public_key: string;
+  };
+};

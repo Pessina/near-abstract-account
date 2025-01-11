@@ -18,26 +18,16 @@ export const handleEthereumRegister = async ({
 }) => {
   setIsPending(true);
   try {
-    if (!Ethereum.isSupportedByBrowser()) {
-      setStatus("Ethereum wallet is not supported by this browser");
-      return;
-    }
-
+    const ethereum = new Ethereum();
     Ethereum.setWallet(wallet);
 
-    const compressedPublicKey = await Ethereum.getCompressedPublicKey();
-
-    if (!compressedPublicKey) {
+    const authIdentity = await ethereum.getAuthIdentity();
+    if (!authIdentity) {
       setStatus("Failed to get compressed public key");
       return;
     }
 
-    await contract.addAccount(accountId, {
-      Wallet: {
-        wallet_type: "Ethereum",
-        public_key: compressedPublicKey,
-      },
-    });
+    await contract.addAccount(accountId, authIdentity);
     setStatus("Ethereum address registration successful!");
   } catch (error) {
     console.error(error);
@@ -62,6 +52,7 @@ export const handleEthereumAuthenticate = async ({
 }) => {
   setIsPending(true);
   try {
+    const ethereum = new Ethereum();
     Ethereum.setWallet(wallet);
 
     const account = await contract.getAccountById(accountId);
@@ -78,18 +69,14 @@ export const handleEthereumAuthenticate = async ({
       return;
     }
 
-    const ethereumData = await Ethereum.signMessage(canonical);
+    const ethereumData = await ethereum.sign(canonical);
     if (!ethereumData) {
       setStatus("Failed to sign message");
       return;
     }
 
-    const compressedPublicKey = await Ethereum.getCompressedPublicKey(
-      canonical,
-      ethereumData.signature
-    );
-
-    if (!compressedPublicKey) {
+    const authIdentity = await ethereum.getAuthIdentity();
+    if (!authIdentity) {
       setStatus("Failed to get compressed public key");
       return;
     }
@@ -98,12 +85,7 @@ export const handleEthereumAuthenticate = async ({
       account_id: accountId,
       selected_auth_identity: undefined,
       auth: {
-        auth_identity: {
-          Wallet: {
-            wallet_type: "Ethereum",
-            public_key: compressedPublicKey,
-          },
-        },
+        auth_identity: authIdentity,
         auth_data: ethereumData,
       },
       payloads: transaction,

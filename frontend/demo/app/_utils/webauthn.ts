@@ -18,25 +18,14 @@ export const handlePasskeyRegister = async ({
 }) => {
   setIsPending(true);
   try {
-    if (!WebAuthn.isSupportedByBrowser()) {
-      setStatus("WebAuthn is not supported by this browser");
-      return;
-    }
-
-    const credential = await WebAuthn.create({ username });
-    if (!credential || !contract) {
+    const webAuthn = new WebAuthn();
+    const authIdentity = await webAuthn.getAuthIdentity({ id: username });
+    if (!authIdentity || !contract) {
       setStatus("Failed to create credential or initialize contract");
       return;
     }
 
-    console.log("credential", credential);
-
-    await contract.addAccount(accountId, {
-      WebAuthn: {
-        key_id: credential.rawId,
-        compressed_public_key: credential.compressedPublicKey,
-      },
-    });
+    await contract.addAccount(accountId, authIdentity);
     setStatus("Passkey registration successful!");
   } catch (error) {
     console.error(error);
@@ -73,30 +62,24 @@ export const handlePasskeyAuthenticate = async ({
       return;
     }
 
-    const challenge = new TextEncoder().encode(canonical);
-    const challengeHash = await crypto.subtle.digest("SHA-256", challenge);
-
-    const credential = await WebAuthn.get(new Uint8Array(challengeHash));
-    if (!credential) {
-      setStatus("Failed to get credential");
+    const webAuthn = new WebAuthn();
+    const signature = await webAuthn.sign(canonical);
+    if (!signature) {
+      setStatus("Failed to sign message");
       return;
     }
-
-    console.log("credential", credential);
 
     await contract.sendTransaction({
       account_id: accountId,
       selected_auth_identity: undefined,
       auth: {
         auth_identity: {
-          WebAuthn: {
-            key_id: credential.rawId,
-          },
+          key_id: signature.rawId,
         },
         auth_data: {
-          signature: credential.signature,
-          authenticator_data: credential.authenticatorData,
-          client_data: JSON.stringify(credential.clientData),
+          signature: signature.signature,
+          authenticator_data: signature.authenticatorData,
+          client_data: JSON.stringify(signature.clientData),
         },
       },
       payloads: transaction,

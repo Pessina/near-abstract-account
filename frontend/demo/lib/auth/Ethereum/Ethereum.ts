@@ -8,11 +8,15 @@ import {
   keccak256,
   toBytes,
 } from "viem";
-import { EthereumAuthData } from "./types";
+import { EthereumAuthData, EthereumAuthIdentity } from "./types";
+import { AuthIdentity } from "../AuthIdentity";
 
 export type WalletType = "metamask" | "okx";
 
-export class Ethereum {
+export class Ethereum extends AuthIdentity<
+  EthereumAuthIdentity,
+  EthereumAuthData
+> {
   private static walletClient: WalletClient | null = null;
   private static selectedWallet: WalletType | null = null;
 
@@ -53,36 +57,43 @@ export class Ethereum {
     return this.walletClient;
   }
 
-  public static isSupportedByBrowser(): boolean {
+  private static isSupportedByBrowser(): boolean {
     return (
       typeof window !== "undefined" &&
       (window.ethereum !== undefined || window.okxwallet !== undefined)
     );
   }
 
-  public static async requestAccounts(): Promise<`0x${string}`[]> {
-    if (!this.isSupportedByBrowser()) {
-      throw new Error("No supported Ethereum wallet found");
-    }
-
-    try {
-      const client = await this.getWalletClient();
-      return await client.requestAddresses();
-    } catch (error) {
-      console.error("Error requesting accounts:", error);
-      throw error;
-    }
-  }
-
-  public static async signMessage(
-    message: string
-  ): Promise<EthereumAuthData | null> {
-    if (!this.isSupportedByBrowser()) {
+  async getAuthIdentity(): Promise<EthereumAuthIdentity | null> {
+    if (!Ethereum.isSupportedByBrowser()) {
       return null;
     }
 
     try {
-      const client = await this.getWalletClient();
+      const compressedPublicKey = await Ethereum.getCompressedPublicKey();
+      if (!compressedPublicKey) {
+        return null;
+      }
+
+      return {
+        Wallet: {
+          wallet_type: "Ethereum",
+          public_key: compressedPublicKey,
+        },
+      };
+    } catch (error) {
+      console.error("Error getting auth identity:", error);
+      return null;
+    }
+  }
+
+  async sign(message: string): Promise<EthereumAuthData | null> {
+    if (!Ethereum.isSupportedByBrowser()) {
+      return null;
+    }
+
+    try {
+      const client = await Ethereum.getWalletClient();
       const [address] = await client.getAddresses();
       const signature = await client.signMessage({
         account: address,
@@ -94,7 +105,6 @@ export class Ethereum {
       }
 
       return {
-        message,
         signature,
       };
     } catch (error) {
@@ -103,7 +113,7 @@ export class Ethereum {
     }
   }
 
-  public static async getCompressedPublicKey(
+  private static async getCompressedPublicKey(
     message?: string,
     signature?: string
   ): Promise<string | null> {

@@ -1,8 +1,13 @@
-
-export type SolanaWalletType = 'phantom' | 'solflare';
+export type SolanaWalletType = "phantom" | "solflare";
 
 export interface SolanaAuthData {
-  message: string;
   signature: string;
   publicKey: string;
 }
+
+export type SolanaAuthIdentity = {
+  Wallet: {
+    wallet_type: "Solana";
+    public_key: string;
+  };
+};
