@@ -26,21 +26,26 @@ export interface WebAuthn {
   compressed_public_key?: string;
 }
 
-export interface OIDC {
+export interface OIDCAuthIdentity {
   client_id: string;
   issuer: string;
   email: string;
 }
 
+export interface OIDCData {
+  token: string;
+  message: string;
+}
+
 export type AuthIdentity =
   | { Wallet: Wallet }
   | { WebAuthn: WebAuthn }
-  | { OIDC: OIDC }
+  | { OIDC: OIDCAuthIdentity }
   | { Account: string };
 
 export interface Auth {
   auth_identity: AuthIdentity;
-  auth_data: WebAutahnAuthData | EthereumAuthData | SolanaAuthData;
+  auth_data: WebAutahnAuthData | EthereumAuthData | SolanaAuthData | OIDCData;
 }
 
 export interface UserOperation {

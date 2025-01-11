@@ -21,7 +21,7 @@ const GoogleButton = ({ onSuccess, onError }: GoogleButtonProps) => {
           onError?.();
         }}
         nonce="test_123_felipe"
-        locale='en-US'
+        locale='pt_BR'
         useOneTap
       />
     </div>

@@ -4,7 +4,12 @@ import { Button } from "@/components/ui/button"
 import { useFacebookAuth } from '@/hooks/useFacebookAuth';
 import { useState } from "react";
 
-export default function FacebookButton() {
+type FacebookButtonProps = {
+    text: string;
+    onSuccess: (token: string) => void;
+}
+
+export default function FacebookButton({ text, onSuccess }: FacebookButtonProps) {
     const [isLoading, setIsLoading] = useState(false);
     const { initiateLogin } = useFacebookAuth({
         scope: 'email',
@@ -12,6 +17,11 @@ export default function FacebookButton() {
         onSuccess: (idToken) => {
             console.log('Successfully logged in with Facebook', idToken);
             setIsLoading(false);
+            if (idToken) {
+                onSuccess(idToken);
+            } else {
+                console.error('No token received from Facebook');
+            }
         },
         onError: (error) => {
             console.error('Error logging in with Facebook', error);
@@ -29,7 +39,7 @@ export default function FacebookButton() {
 
     return (
         <Button onClick={handleLogin} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-            {isLoading ? 'Loading...' : 'Login with Facebook'}
+            {isLoading ? 'Loading...' : text}
         </Button>
     );
 }

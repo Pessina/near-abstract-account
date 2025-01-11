@@ -17,7 +17,8 @@ import GoogleButton from "@/components/GoogleButton"
 import FacebookButton from "@/components/FacebookButton"
 import AuthButton from "@/components/AuthButton"
 import GoogleProvider from "./_providers/GoogleProvider";
-
+import { handleOIDCRegister, handleOIDCAuthenticate } from "./_utils/oidc"
+import UpdateOIDCKeys from "./_components/UpdateOIDCKeys"
 
 type FormValues = {
   username: string
@@ -67,7 +68,7 @@ export default function AuthDemo() {
             <div className="flex flex-col gap-6">
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Account Management</h3>
-                <div className="flex space-x-4">
+                <div className="flex flex-col gap-4">
                   <Button
                     onClick={async () => {
                       if (!contract) return;
@@ -97,6 +98,7 @@ export default function AuthDemo() {
                   >
                     List Auth Identities
                   </Button>
+                  <UpdateOIDCKeys />
                 </div>
               </div>
               <div className="space-y-4">
@@ -145,8 +147,72 @@ export default function AuthDemo() {
               </div>
               <div className="flex flex-col gap-4">
                 <h3 className="text-lg font-semibold">Social Login</h3>
-                <GoogleButton />
-                <FacebookButton />
+                <div className="flex gap-2">
+                  <GoogleButton
+                    onSuccess={(response) => {
+                      if (!contract) return;
+                      handleOIDCRegister({
+                        contract,
+                        setStatus,
+                        setIsPending,
+                        token: response.credential || '',
+                        clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
+                        issuer: 'https://accounts.google.com',
+                        email: 'fs.pessina@gmail.com',
+                        accountId: username
+                      });
+                    }}
+                  />
+                  <GoogleButton
+                    onSuccess={(response) => {
+                      if (!contract) return;
+                      handleOIDCAuthenticate({
+                        contract,
+                        setStatus,
+                        setIsPending,
+                        token: response.credential || '',
+                        clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
+                        issuer: 'https://accounts.google.com',
+                        email: 'fs.pessina@gmail.com',
+                        accountId: username
+                      });
+                    }}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <FacebookButton
+                    text="Register with Facebook"
+                    onSuccess={(token) => {
+                      if (!contract) return;
+                      handleOIDCRegister({
+                        contract,
+                        setStatus,
+                        setIsPending,
+                        token,
+                        clientId: process.env.NEXT_PUBLIC_FACEBOOK_APP_ID || '',
+                        issuer: 'https://www.facebook.com',
+                        email: 'fs.pessina@gmail.com',
+                        accountId: username
+                      });
+                    }}
+                  />
+                  <FacebookButton
+                    text="Authenticate with Facebook"
+                    onSuccess={(token) => {
+                      if (!contract) return;
+                      handleOIDCAuthenticate({
+                        contract,
+                        setStatus,
+                        setIsPending,
+                        token,
+                        clientId: process.env.NEXT_PUBLIC_FACEBOOK_APP_ID || '',
+                        issuer: 'https://www.facebook.com',
+                        email: 'fs.pessina@gmail.com',
+                        accountId: username
+                      });
+                    }}
+                  />
+                </div>
               </div>
               <div className="space-y-4 md:col-span-2">
                 <h3 className="text-lg font-semibold">Wallet Authentication</h3>
