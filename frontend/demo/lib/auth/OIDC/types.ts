@@ -1,7 +1,9 @@
 export interface OIDCAuthIdentity {
-  client_id: string;
-  issuer: string;
-  email: string;
+  OIDC: {
+    client_id: string;
+    issuer: string;
+    email: string;
+  };
 }
 
 export interface OIDCAuthData {

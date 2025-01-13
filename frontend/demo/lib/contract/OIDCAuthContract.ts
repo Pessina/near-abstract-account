@@ -1,5 +1,6 @@
 import { Contract, Account as NearAccount } from "near-api-js";
-import { OIDCAuthIdentity, OIDCData } from "./AbstractAccountContract";
+import { OIDCData } from "./AbstractAccountContract";
+import { OIDCAuthIdentity } from "./types";
 
 type OIDCAuthContractType = Contract & {
   new: () => Promise<void>;

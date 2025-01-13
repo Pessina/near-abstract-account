@@ -14,12 +14,6 @@ export interface SignPayloadsRequest {
   contract_id: string;
   payloads: SignRequest[];
 }
-
-export interface WebAuthn {
-  key_id: string;
-  compressed_public_key?: string;
-}
-
 export interface OIDCData {
   token: string;
   message: string;
@@ -29,8 +23,7 @@ export type AuthIdentity =
   | EthereumAuthIdentity
   | SolanaAuthIdentity
   | WebAuthnAuthIdentity
-  | OIDCAuthIdentity
-  | { Account: string };
+  | OIDCAuthIdentity;
 
 export interface Auth {
   auth_identity: AuthIdentity;
