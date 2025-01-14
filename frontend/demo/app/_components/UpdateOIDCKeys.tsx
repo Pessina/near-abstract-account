@@ -34,52 +34,60 @@ export default function UpdateOIDCKeys() {
   const fetchAndUpdateKeys = async () => {
     try {
       setIsLoading(true);
-      setStatus("Fetching Google keys...");
+      setStatus("Fetching keys...");
 
-      const [googleResponse, facebookResponse] = await Promise.all([
-        fetch("/api/oidc/google/keys"),
-        fetch("/api/oidc/facebook/keys")
-      ]);
+      const providers = [
+        {
+          name: "Google",
+          url: "/api/oidc/google/keys",
+          issuer: "https://accounts.google.com"
+        },
+        {
+          name: "Facebook",
+          url: "/api/oidc/facebook/keys",
+          issuer: "https://www.facebook.com"
+        },
+        {
+          name: "Auth0",
+          url: "/api/oidc/auth0/keys",
+          issuer: "https://dev-um3ne30lucm6ehqq.us.auth0.com"
+        }
+      ];
 
-      const [googleData, facebookData] = await Promise.all([
-        googleResponse.json(),
-        facebookResponse.json()
-      ]);
+      const responses = await Promise.all(
+        providers.map(provider => fetch(provider.url))
+      );
 
-      if (!googleResponse.ok) {
-        throw new Error(googleData.error || 'Failed to fetch Google keys');
-      }
+      const data = await Promise.all(
+        responses.map(response => response.json())
+      );
 
-      if (!facebookResponse.ok) {
-        throw new Error(facebookData.error || 'Failed to fetch Facebook keys');
-      }
+      responses.forEach((response, i) => {
+        if (!response.ok) {
+          throw new Error(data[i].error || `Failed to fetch ${providers[i].name} keys`);
+        }
+      });
 
-      const googleKeys: PublicKey[] = googleData.keys.map((key: PublicKey) => ({
-        kid: key.kid,
-        n: key.n,
-        e: key.e,
-        alg: key.alg,
-        kty: key.kty,
-        use: key.use || "",
-      }));
+      const formattedKeys = data.map(providerData =>
+        providerData.keys.map((key: PublicKey) => ({
+          kid: key.kid,
+          n: key.n,
+          e: key.e,
+          alg: key.alg,
+          kty: key.kty,
+          use: key.use || "",
+        }))
+      );
 
-      const facebookKeys: PublicKey[] = facebookData.keys.map((key: PublicKey) => ({
-        kid: key.kid,
-        n: key.n,
-        e: key.e,
-        alg: key.alg,
-        kty: key.kty,
-        use: key.use || "",
-      }));
+      await Promise.all(
+        providers.map((provider, i) =>
+          contract?.updateKeys(provider.issuer, formattedKeys[i])
+        )
+      );
 
-      await Promise.all([
-        contract?.updateKeys("https://accounts.google.com", googleKeys),
-        contract?.updateKeys("https://www.facebook.com", facebookKeys)
-      ]);
-
-      setStatus("Successfully updated Google keys");
+      setStatus("Successfully updated keys");
     } catch (error) {
-      setStatus(`Error updating Google keys: ${error}`);
+      setStatus(`Error updating keys: ${error}`);
     } finally {
       setIsLoading(false);
     }
@@ -88,7 +96,8 @@ export default function UpdateOIDCKeys() {
   const getKeys = async () => {
     const googleKeys = await contract?.getKeys("https://accounts.google.com")
     const facebookKeys = await contract?.getKeys("https://www.facebook.com")
-    console.log({ facebookKeys, googleKeys })
+    const auth0Keys = await contract?.getKeys("https://dev-um3ne30lucm6ehqq.us.auth0.com")
+    console.log({ facebookKeys, googleKeys, auth0Keys })
   }
 
   return (

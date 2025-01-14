@@ -9,7 +9,7 @@ members = [
 ]
 
 [workspace.dependencies]
-near-sdk = "5.7.0"
+near-sdk = "5.1.0"
 p256 = "0.13.2"
 sha2 = "0.10.8"
 hex = "0.4.3"

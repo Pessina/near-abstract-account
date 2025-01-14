@@ -162,7 +162,11 @@ impl OIDCAuthContract {
             panic!("Invalid number of keys");
         }
 
-        let mut key_set = IterableSet::new(issuer.clone().into_bytes());
+        // let mut key_set = IterableSet::new(issuer.clone().into_bytes());
+        let mut key_set = self
+            .pub_keys
+            .remove(&issuer)
+            .unwrap_or_else(|| IterableSet::new(issuer.clone().into_bytes()));
         key_set.clear();
         key_set.insert(keys[0].clone());
         key_set.insert(keys[1].clone());
@@ -171,12 +175,12 @@ impl OIDCAuthContract {
     }
 
     pub fn get_keys(&self, issuer: String) -> Vec<PublicKey> {
-        self.pub_keys
-            .get(&issuer)
-            .unwrap()
-            .iter()
-            .cloned()
-            .collect()
+        let keys = self.pub_keys.get(&issuer);
+
+        match keys {
+            Some(keys) => keys.iter().cloned().collect(),
+            None => vec![],
+        }
     }
 }
 
