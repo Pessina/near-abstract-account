@@ -162,7 +162,6 @@ impl OIDCAuthContract {
             panic!("Invalid number of keys");
         }
 
-        // let mut key_set = IterableSet::new(issuer.clone().into_bytes());
         let mut key_set = self
             .pub_keys
             .remove(&issuer)
