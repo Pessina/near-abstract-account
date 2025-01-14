@@ -4,17 +4,26 @@ use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     near,
     serde::{Deserialize, Serialize},
-    store::LookupMap,
+    store::{IterableSet, LookupMap},
 };
 use rsa::{pkcs1v15::VerifyingKey, signature::Verifier, BigUint, RsaPublicKey};
 use schemars::JsonSchema;
 use sha2::Sha256;
 
-const GOOGLE_KEY_PREFIX: &[u8] = b"g";
-const FACEBOOK_KEY_PREFIX: &[u8] = b"f";
+const KEY_PREFIX: &[u8] = b"k";
 
 #[derive(
-    Debug, BorshDeserialize, BorshSerialize, Deserialize, Serialize, JsonSchema, Clone, PartialEq,
+    Debug,
+    BorshDeserialize,
+    BorshSerialize,
+    Deserialize,
+    Serialize,
+    JsonSchema,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
 )]
 #[serde(crate = "near_sdk::serde")]
 pub struct PublicKey {
@@ -29,15 +38,13 @@ pub struct PublicKey {
 
 #[near(contract_state)]
 pub struct OIDCAuthContract {
-    google_keys: LookupMap<String, PublicKey>,
-    facebook_keys: LookupMap<String, PublicKey>,
+    pub_keys: LookupMap<String, IterableSet<PublicKey>>,
 }
 
 impl Default for OIDCAuthContract {
     fn default() -> Self {
         Self {
-            google_keys: LookupMap::new(GOOGLE_KEY_PREFIX),
-            facebook_keys: LookupMap::new(FACEBOOK_KEY_PREFIX),
+            pub_keys: LookupMap::new(KEY_PREFIX),
         }
     }
 }
@@ -92,11 +99,7 @@ impl OIDCAuthContract {
             return false;
         }
 
-        let key_set = match token_issuer {
-            "https://accounts.google.com" => &self.google_keys,
-            "https://www.facebook.com" => &self.facebook_keys,
-            _ => return false,
-        };
+        let key_set = self.pub_keys.get(token_issuer).expect("Issuer not found");
 
         let header_json = if let Ok(json) = URL_SAFE_NO_PAD.decode(header_b64) {
             json
@@ -109,10 +112,9 @@ impl OIDCAuthContract {
             return false;
         };
         let kid = header["kid"].as_str().unwrap_or_default();
-        let public_key = if let Some(pk) = key_set.get(kid) {
-            pk
-        } else {
-            return false;
+        let public_key = match key_set.iter().find(|pk| pk.kid == kid) {
+            Some(pk) => pk,
+            None => return false,
         };
 
         let n = if let Ok(n) = URL_SAFE_NO_PAD.decode(&public_key.n) {
@@ -155,12 +157,26 @@ impl OIDCAuthContract {
        - This should be updated on a secure way: decentralized oracles, zk, zk tls, dao...
        - The old keys should be cleaned up when new keys are added
     */
-    pub fn update_google_key(&mut self, kid: String, key: PublicKey) {
-        self.google_keys.insert(kid, key);
+    pub fn update_keys(&mut self, issuer: String, keys: Vec<PublicKey>) {
+        if keys.len() != 2 {
+            panic!("Invalid number of keys");
+        }
+
+        let mut key_set = IterableSet::new(issuer.clone().into_bytes());
+        key_set.clear();
+        key_set.insert(keys[0].clone());
+        key_set.insert(keys[1].clone());
+
+        self.pub_keys.insert(issuer, key_set);
     }
 
-    pub fn update_facebook_key(&mut self, kid: String, key: PublicKey) {
-        self.facebook_keys.insert(kid, key);
+    pub fn get_keys(&self, issuer: String) -> Vec<PublicKey> {
+        self.pub_keys
+            .get(&issuer)
+            .unwrap()
+            .iter()
+            .cloned()
+            .collect()
     }
 }
 
@@ -171,42 +187,48 @@ mod tests {
     fn get_test_contract() -> OIDCAuthContract {
         let mut contract = OIDCAuthContract::default();
 
-        contract.google_keys.insert("89ce3598c473af1bda4bff95e6c8736450206fba".to_string(), 
-                PublicKey {
-                    e: "AQAB".to_string(),
-                    kid: "89ce3598c473af1bda4bff95e6c8736450206fba".to_string(),
-                    use_: "sig".to_string(),
-                    kty: "RSA".to_string(),
-                    n: "wvLUmyAlRhJkFgok97rojtg0xkqsQ6CPPoqRUSXDIYcjfVWMy1Z4hk_-90Y554KTuADfT_0FA46FWb-pr4Scm00gB3CnM8wGLZiaUeDUOu84_Zjh-YPVAua6hz6VFa7cpOUOQ5ZCxCkEQMjtrmei21a6ijy5LS1n9fdiUsjOuYWZSoIQCUj5ow5j2asqYYLRfp0OeymYf6vnttYwz3jS54Xe7tYHW2ZJ_DLCja6mz-9HzIcJH5Tmv5tQRhAUs3aoPKoCQ8ceDHMblDXNV2hBpkv9B6Pk5QVkoDTyEs7lbPagWQ1uz6bdkxM-DnjcMUJ2nh80R_DcbhyqkK4crNrM1w".to_string(),
-                    alg: "RS256".to_string(),
-                });
-        contract.google_keys.insert("dd125d5f462fbc6014aedab81ddf3bcedab70847".to_string(), 
-                PublicKey {
-                    e: "AQAB".to_string(),
-                    kid: "dd125d5f462fbc6014aedab81ddf3bcedab70847".to_string(),
-                    use_: "sig".to_string(),
-                    kty: "RSA".to_string(),
-                    n: "jwstqI4w2drqbTTVRDriFqepwVVI1y05D5TZCmGvgMK5hyOsVW0tBRiY9Jk9HKDRue3vdXiMgarwqZEDOyOA0rpWh-M76eauFhRl9lTXd5gkX0opwh2-dU1j6UsdWmMa5OpVmPtqXl4orYr2_3iAxMOhHZ_vuTeD0KGeAgbeab7_4ijyLeJ-a8UmWPVkglnNb5JmG8To77tSXGcPpBcAFpdI_jftCWr65eL1vmAkPNJgUTgI4sGunzaybf98LSv_w4IEBc3-nY5GfL-mjPRqVCRLUtbhHO_5AYDpqGj6zkKreJ9-KsoQUP6RrAVxkNuOHV9g1G-CHihKsyAifxNN2Q".to_string(),
-                    alg: "RS256".to_string(),
-                });
-        contract.facebook_keys.insert("aec39658e5442376611f0698a886df9606c03a7c".to_string(), 
-                PublicKey {
-                    e: "AQAB".to_string(),
-                    kid: "aec39658e5442376611f0698a886df9606c03a7c".to_string(),
-                    use_: "sig".to_string(),
-                    kty: "RSA".to_string(),
-                    n: "yJnCLmLeCs9hiijCmP2wTzNcV0N73wVbm0rmh2QZu6m5RoHCbeVPNDsqNsfYvPCZG0-l_AteOEDu1mBOs9q9wyZ5pAlO1voFuIh8UCpkbPxDZoWXdI9hTv1U70RdN9SrGf552GfvOBNSOAAlAiJdPsTrQ3yIlopDsYk87yD5CeHERKWz4oIF0F5bPe7uZfJxKQM97o2m-UeI56lueHT1s_me7UY7zLu5pwHX-s_ZPBb4JZUlMJdCnhzQS_m5oS6XAWX8EiFc-GPn-_V0fG3LSxW6cOq1kbRae2i78yT7qK0i80BpRQ3U4wwIcK5IfY4NZoACvtoLkf82KTw7tysQoQ".to_string(),
-                    alg: "RS256".to_string(),
-                });
-        contract.facebook_keys.insert("1e43d9e5cde459139a9d5327dd89992685a0154a".to_string(), 
-                PublicKey {
-                    e: "AQAB".to_string(),
-                    kid: "1e43d9e5cde459139a9d5327dd89992685a0154a".to_string(),
-                    use_: "sig".to_string(),
-                    kty: "RSA".to_string(),
-                    n: "oodq2r5oXMj8VWU2RTxKXqIqtRuPIz3pa6dDHF7TYkaTMhi23tP2AF8I4FcovgsrtWnz8v-Ax20apjZEaKPLHxFPTITPqjuZ-XVkTiBpY2y6xXTZ4N3TohbxY0C9TMcdpdK357hSwnmYPkOT6HlAxFadud60wTu_DyGkWvKhz3km-9tX93JfbHVsn5dbZ42atqFXqwXbWj9MvVYHgF7tK3NeVBg_DJSTS1owP5OpH6xJMI6q6ANldtqHQU7AhGQmwOo_LSrUwdjG9hejjckG8ju3XPjEa6gDVIKYQFcO1am9SXVN5HaXmX8H3n2BaNb2Rhl_zgNwXAMgJVEJ3e5_KQ".to_string(),
-                    alg: "RS256".to_string(),
-                });
+        let mut google_keys = IterableSet::new(b"1");
+        google_keys.insert(PublicKey {
+            e: "AQAB".to_string(),
+            kid: "89ce3598c473af1bda4bff95e6c8736450206fba".to_string(),
+            use_: "sig".to_string(),
+            kty: "RSA".to_string(),
+            n: "wvLUmyAlRhJkFgok97rojtg0xkqsQ6CPPoqRUSXDIYcjfVWMy1Z4hk_-90Y554KTuADfT_0FA46FWb-pr4Scm00gB3CnM8wGLZiaUeDUOu84_Zjh-YPVAua6hz6VFa7cpOUOQ5ZCxCkEQMjtrmei21a6ijy5LS1n9fdiUsjOuYWZSoIQCUj5ow5j2asqYYLRfp0OeymYf6vnttYwz3jS54Xe7tYHW2ZJ_DLCja6mz-9HzIcJH5Tmv5tQRhAUs3aoPKoCQ8ceDHMblDXNV2hBpkv9B6Pk5QVkoDTyEs7lbPagWQ1uz6bdkxM-DnjcMUJ2nh80R_DcbhyqkK4crNrM1w".to_string(),
+            alg: "RS256".to_string(),
+        });
+        google_keys.insert(PublicKey {
+            e: "AQAB".to_string(),
+            kid: "dd125d5f462fbc6014aedab81ddf3bcedab70847".to_string(),
+            use_: "sig".to_string(),
+            kty: "RSA".to_string(),
+            n: "jwstqI4w2drqbTTVRDriFqepwVVI1y05D5TZCmGvgMK5hyOsVW0tBRiY9Jk9HKDRue3vdXiMgarwqZEDOyOA0rpWh-M76eauFhRl9lTXd5gkX0opwh2-dU1j6UsdWmMa5OpVmPtqXl4orYr2_3iAxMOhHZ_vuTeD0KGeAgbeab7_4ijyLeJ-a8UmWPVkglnNb5JmG8To77tSXGcPpBcAFpdI_jftCWr65eL1vmAkPNJgUTgI4sGunzaybf98LSv_w4IEBc3-nY5GfL-mjPRqVCRLUtbhHO_5AYDpqGj6zkKreJ9-KsoQUP6RrAVxkNuOHV9g1G-CHihKsyAifxNN2Q".to_string(),
+            alg: "RS256".to_string(),
+        });
+
+        let mut facebook_keys = IterableSet::new(b"2");
+        facebook_keys.insert(PublicKey {
+            e: "AQAB".to_string(),
+            kid: "aec39658e5442376611f0698a886df9606c03a7c".to_string(),
+            use_: "sig".to_string(),
+            kty: "RSA".to_string(),
+            n: "yJnCLmLeCs9hiijCmP2wTzNcV0N73wVbm0rmh2QZu6m5RoHCbeVPNDsqNsfYvPCZG0-l_AteOEDu1mBOs9q9wyZ5pAlO1voFuIh8UCpkbPxDZoWXdI9hTv1U70RdN9SrGf552GfvOBNSOAAlAiJdPsTrQ3yIlopDsYk87yD5CeHERKWz4oIF0F5bPe7uZfJxKQM97o2m-UeI56lueHT1s_me7UY7zLu5pwHX-s_ZPBb4JZUlMJdCnhzQS_m5oS6XAWX8EiFc-GPn-_V0fG3LSxW6cOq1kbRae2i78yT7qK0i80BpRQ3U4wwIcK5IfY4NZoACvtoLkf82KTw7tysQoQ".to_string(),
+            alg: "RS256".to_string(),
+        });
+        facebook_keys.insert(PublicKey {
+            e: "AQAB".to_string(),
+            kid: "1e43d9e5cde459139a9d5327dd89992685a0154a".to_string(),
+            use_: "sig".to_string(),
+            kty: "RSA".to_string(),
+            n: "oodq2r5oXMj8VWU2RTxKXqIqtRuPIz3pa6dDHF7TYkaTMhi23tP2AF8I4FcovgsrtWnz8v-Ax20apjZEaKPLHxFPTITPqjuZ-XVkTiBpY2y6xXTZ4N3TohbxY0C9TMcdpdK357hSwnmYPkOT6HlAxFadud60wTu_DyGkWvKhz3km-9tX93JfbHVsn5dbZ42atqFXqwXbWj9MvVYHgF7tK3NeVBg_DJSTS1owP5OpH6xJMI6q6ANldtqHQU7AhGQmwOo_LSrUwdjG9hejjckG8ju3XPjEa6gDVIKYQFcO1am9SXVN5HaXmX8H3n2BaNb2Rhl_zgNwXAMgJVEJ3e5_KQ".to_string(),
+            alg: "RS256".to_string(),
+        });
+
+        contract
+            .pub_keys
+            .insert("https://www.facebook.com".to_string(), facebook_keys);
+        contract
+            .pub_keys
+            .insert("https://accounts.google.com".to_string(), google_keys);
         contract
     }
 

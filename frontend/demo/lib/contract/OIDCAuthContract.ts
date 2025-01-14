@@ -8,8 +8,8 @@ type OIDCAuthContractType = Contract & {
     oidc_data: OIDCData;
     oidc_auth_identity: OIDCAuthIdentity;
   }) => Promise<boolean>;
-  update_google_key: (args: { kid: string; key: PublicKey }) => Promise<void>;
-  update_facebook_key: (args: { kid: string; key: PublicKey }) => Promise<void>;
+  update_keys: (args: { issuer: string; keys: PublicKey[] }) => Promise<void>;
+  get_keys: (args: { issuer: string }) => Promise<PublicKey[]>;
 };
 
 interface PublicKey {
@@ -32,8 +32,8 @@ export class OIDCAuthContract {
     contractId: string;
   }) {
     this.contract = new Contract(account, contractId, {
-      viewMethods: ["validate_oidc_token"],
-      changeMethods: ["new", "update_google_key", "update_facebook_key"],
+      viewMethods: ["validate_oidc_token", "get_keys"],
+      changeMethods: ["new", "update_keys"],
       useLocalViewExecution: false,
     }) as unknown as OIDCAuthContractType;
   }
@@ -52,17 +52,20 @@ export class OIDCAuthContract {
     });
   }
 
-  async updateGoogleKey(kid: string, key: PublicKey): Promise<void> {
-    return await this.contract.update_google_key({
-      kid,
-      key,
+  async updateKeys(issuer: string, keys: PublicKey[]): Promise<void> {
+    if (keys.length !== 2) {
+      throw new Error("Invalid number of keys");
+    }
+
+    return await this.contract.update_keys({
+      issuer,
+      keys,
     });
   }
 
-  async updateFacebookKey(kid: string, key: PublicKey): Promise<void> {
-    return await this.contract.update_facebook_key({
-      kid,
-      key,
+  async getKeys(issuer: string): Promise<PublicKey[]> {
+    return await this.contract.get_keys({
+      issuer,
     });
   }
 }

@@ -31,30 +31,51 @@ export default function UpdateOIDCKeys() {
     setupContract()
   }, [])
 
-  const fetchAndUpdateGoogleKeys = async () => {
+  const fetchAndUpdateKeys = async () => {
     try {
       setIsLoading(true);
       setStatus("Fetching Google keys...");
 
-      const response = await fetch("/api/oidc/google/keys");
-      const data = await response.json();
+      const [googleResponse, facebookResponse] = await Promise.all([
+        fetch("/api/oidc/google/keys"),
+        fetch("/api/oidc/facebook/keys")
+      ]);
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch Google keys');
+      const [googleData, facebookData] = await Promise.all([
+        googleResponse.json(),
+        facebookResponse.json()
+      ]);
+
+      if (!googleResponse.ok) {
+        throw new Error(googleData.error || 'Failed to fetch Google keys');
       }
 
-      for (const key of data.keys) {
-        const publicKey: PublicKey = {
-          kid: key.kid,
-          n: key.n,
-          e: key.e,
-          alg: key.alg,
-          kty: key.kty,
-          use: key.use || "",
-        };
-
-        await contract?.updateGoogleKey(key.kid, publicKey);
+      if (!facebookResponse.ok) {
+        throw new Error(facebookData.error || 'Failed to fetch Facebook keys');
       }
+
+      const googleKeys: PublicKey[] = googleData.keys.map((key: PublicKey) => ({
+        kid: key.kid,
+        n: key.n,
+        e: key.e,
+        alg: key.alg,
+        kty: key.kty,
+        use: key.use || "",
+      }));
+
+      const facebookKeys: PublicKey[] = facebookData.keys.map((key: PublicKey) => ({
+        kid: key.kid,
+        n: key.n,
+        e: key.e,
+        alg: key.alg,
+        kty: key.kty,
+        use: key.use || "",
+      }));
+
+      await Promise.all([
+        contract?.updateKeys("https://accounts.google.com", googleKeys),
+        contract?.updateKeys("https://www.facebook.com", facebookKeys)
+      ]);
 
       setStatus("Successfully updated Google keys");
     } catch (error) {
@@ -64,47 +85,20 @@ export default function UpdateOIDCKeys() {
     }
   };
 
-  const fetchAndUpdateFacebookKeys = async () => {
-    try {
-      setIsLoading(true);
-      setStatus("Fetching Facebook keys...");
-
-      const response = await fetch("/api/oidc/facebook/keys");
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch Facebook keys');
-      }
-
-      for (const key of data.keys) {
-        const publicKey: PublicKey = {
-          kid: key.kid,
-          n: key.n,
-          e: key.e,
-          alg: key.alg,
-          kty: key.kty,
-          use: key.use || "",
-        };
-
-        await contract?.updateFacebookKey(key.kid, publicKey);
-      }
-
-      setStatus("Successfully updated Facebook keys");
-    } catch (error) {
-      setStatus(`Error updating Facebook keys: ${error}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const getKeys = async () => {
+    const googleKeys = await contract?.getKeys("https://accounts.google.com")
+    const facebookKeys = await contract?.getKeys("https://www.facebook.com")
+    console.log({ facebookKeys, googleKeys })
+  }
 
   return (
     <div className="space-y-4">
       <div className="flex space-x-4">
-        <Button onClick={fetchAndUpdateGoogleKeys} disabled={isLoading}>
-          Update Google Keys
+        <Button onClick={fetchAndUpdateKeys} disabled={isLoading}>
+          Update Keys
         </Button>
-        <Button onClick={fetchAndUpdateFacebookKeys} disabled={isLoading}>
-          Update Facebook Keys
+        <Button onClick={getKeys}>
+          Get keys
         </Button>
       </div>
       {status && <p className="text-sm text-gray-500">{status}</p>}
