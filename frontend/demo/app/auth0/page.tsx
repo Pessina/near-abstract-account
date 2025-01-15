@@ -3,12 +3,12 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import auth0 from "auth0-js";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
-import { EVM, utils } from "signet.js";
+import { EVM, RSVSignature, utils } from "signet.js";
 import canonicalize from "canonicalize";
 import { AbstractAccountContract } from "@/lib/contract/AbstractAccountContract";
 import initNear from "@/lib/near";
@@ -18,26 +18,33 @@ interface TransactionForm {
   value: string;
 }
 
+const AA_ACCOUNT_ID = "felipe"
+
+const AUTH_IDENTITY = {
+  OIDC: {
+    client_id: 'iApbopHWvSi84JgD7FPn23NowKle9UnR',
+    issuer: 'https://dev-um3ne30lucm6ehqq.us.auth0.com/',
+    email: 'fs.pessina@gmail.com',
+  }
+}
+
+const storeNonce = (nonce: string) => {
+  localStorage.setItem("nonce", nonce)
+}
+
+const getNonce = () => {
+  return localStorage.getItem("nonce")
+}
+
 const Auth0 = () => {
   const { register, handleSubmit, formState: { errors } } = useForm<TransactionForm>();
-  const [contract, setContract] = useState<AbstractAccountContract | null>(null)
 
-  useEffect(() => {
-    const setupContract = async () => {
-      try {
-        const { account } = await initNear()
-        const contractInstance = new AbstractAccountContract({
-          account,
-          contractId: process.env.NEXT_PUBLIC_ABSTRACT_ACCOUNT_CONTRACT as string
-        })
-
-        setContract(contractInstance)
-      } catch (error) {
-        console.error("Failed to initialize contract:", error)
-      }
-    }
-
-    setupContract()
+  const getContract = useCallback(async () => {
+    const { account } = await initNear()
+    return new AbstractAccountContract({
+      account,
+      contractId: process.env.NEXT_PUBLIC_ABSTRACT_ACCOUNT_CONTRACT as string
+    })
   }, [])
 
   const chainSigContract = useMemo(() => new utils.chains.near.ChainSignatureContract({
@@ -48,7 +55,7 @@ const Auth0 = () => {
   const evmChain = useMemo(() => new EVM({
     rpcUrl: process.env.NEXT_PUBLIC_INFURA_RPC_URL as string,
     contract: chainSigContract,
-  }), []);
+  }), [chainSigContract]);
 
   const auth0Instance = useMemo(
     () =>
@@ -59,39 +66,64 @@ const Auth0 = () => {
     []
   );
 
+  const processTransaction = useCallback(async (nonce: string, idToken: string) => {
+    try {
+      const contract = await getContract()
+      const signature = await contract?.sendTransaction({
+        account_id: AA_ACCOUNT_ID,
+        selected_auth_identity: undefined,
+        auth: {
+          auth_identity: AUTH_IDENTITY,
+          auth_data: {
+            message: nonce,
+            token: idToken,
+          },
+        },
+        payloads: JSON.parse(nonce),
+      })
+
+      const rsvSignature: RSVSignature = utils.cryptography.toRSV(signature)
+
+      const transaction = evmChain.getTransaction('transaction', { remove: true })
+
+      if (!transaction) {
+        throw new Error("Transaction not found")
+      }
+
+      const txHex = evmChain.addSignature({
+        transaction,
+        mpcSignatures: [rsvSignature],
+      })
+
+      const txHash = await evmChain.broadcastTx(txHex)
+
+      console.log({ txHash })
+
+    } catch (error) {
+      console.error("Failed to process transaction:", error)
+    }
+
+    if (idToken) {
+      console.log("ID Token:", idToken);
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, [evmChain, getContract]);
+
   useEffect(() => {
     const hash = window.location.hash;
     if (hash) {
       const params = new URLSearchParams(hash.substring(1));
       const idToken = params.get("id_token");
 
-      if (idToken) {
-        console.log("ID Token:", idToken);
-        window.history.replaceState(null, "", window.location.pathname);
+      const nonce = getNonce()
+
+      if (!nonce || !idToken) {
+        throw new Error("Nonce or ID Token is required")
       }
 
-      // contract?.sendTransaction({
-      //   account_id: accountId,
-      //   selected_auth_identity: undefined,
-      //   auth: {
-      //     auth_identity: {
-      //       OIDC: {
-      //         client_id: clientId,
-      //         issuer: issuer,
-      //         email: email,
-      //       },
-      //     },
-      //     auth_data: {
-      //       message: nonce,
-      //       token: token,
-      //     },
-      //   },
-      //   payloads: mockTransaction(),
-      // })
-
-
+      processTransaction(nonce, idToken)
     }
-  }, []);
+  }, [processTransaction]);
 
   const signOut = () => {
     auth0Instance.logout({
@@ -102,7 +134,7 @@ const Auth0 = () => {
   const onSubmit = async (data: TransactionForm) => {
     const { address } = await evmChain.deriveAddressAndPublicKey(
       process.env.NEXT_PUBLIC_NEAR_ACCOUNT_ID as string,
-      "m",
+      "",
     )
 
     const { transaction, mpcPayloads } = await evmChain.getMPCPayloadAndTransaction({
@@ -110,6 +142,8 @@ const Auth0 = () => {
       to: data.to,
       value: data.value,
     })
+
+    evmChain.setTransaction(transaction, 'transaction')
 
     const nonce = canonicalize({
       contract_id: process.env.NEXT_PUBLIC_SIGNER_CONTRACT as string,
@@ -122,13 +156,28 @@ const Auth0 = () => {
       ],
     })
 
+    if (!nonce) {
+      throw new Error("Nonce is required")
+    }
+
+    storeNonce(nonce)
+
     auth0Instance.authorize({
       nonce,
       redirectUri: "http://localhost:3000/auth0",
       responseType: "id_token",
       scope: "openid profile email",
     });
+
   };
+
+  const addAuthMethod = async () => {
+    const contract = await getContract()
+    contract.addAccount(
+      AA_ACCOUNT_ID,
+      AUTH_IDENTITY
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
@@ -175,7 +224,6 @@ const Auth0 = () => {
                 </Alert>
               )}
             </div>
-
             <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white">
               Submit Transaction
             </Button>
@@ -184,6 +232,9 @@ const Auth0 = () => {
         <CardFooter className="flex justify-between">
           <Button onClick={signOut} variant="outline" className="bg-gray-700 text-gray-100 border-gray-600 hover:bg-gray-600">
             Sign Out
+          </Button>
+          <Button onClick={addAuthMethod} variant="outline" className="bg-gray-700 text-gray-100 border-gray-600 hover:bg-gray-600">
+            Add Auth Method
           </Button>
         </CardFooter>
       </Card>

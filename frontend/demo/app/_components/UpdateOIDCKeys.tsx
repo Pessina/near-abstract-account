@@ -50,7 +50,7 @@ export default function UpdateOIDCKeys() {
         {
           name: "Auth0",
           url: "/api/oidc/auth0/keys",
-          issuer: "https://dev-um3ne30lucm6ehqq.us.auth0.com"
+          issuer: "https://dev-um3ne30lucm6ehqq.us.auth0.com/"
         }
       ];
 

@@ -42,6 +42,16 @@ export interface Account {
   auth_identities: AuthIdentity[];
 }
 
+export interface Signature {
+  big_r: {
+    affine_point: string;
+  };
+  s: {
+    scalar: string;
+  };
+  recovery_id: number;
+}
+
 type AbstractContract = Contract & {
   new: () => Promise<void>;
   add_account: (args: {
@@ -57,7 +67,7 @@ type AbstractContract = Contract & {
     args: { user_op: UserOperation };
     gas?: string;
     amount?: string;
-  }) => Promise<void>;
+  }) => Promise<Signature>;
 };
 
 export class AbstractAccountContract {
@@ -107,7 +117,7 @@ export class AbstractAccountContract {
     return await this.contract.list_auth_identities({ account_id: accountId });
   }
 
-  async sendTransaction(userOp: UserOperation): Promise<void> {
+  async sendTransaction(userOp: UserOperation): Promise<Signature> {
     return await this.contract.send_transaction({
       args: { user_op: userOp },
       gas: "300000000000000",
