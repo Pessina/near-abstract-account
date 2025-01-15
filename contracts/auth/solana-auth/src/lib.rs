@@ -2,7 +2,7 @@ use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use bs58;
 use ed25519_dalek::{Signature, VerifyingKey};
-use interfaces::solana_auth::SolanaData;
+use interfaces::auth::wallet::WalletValidationData;
 use near_sdk::{env, near};
 
 #[near(contract_state)]
@@ -12,7 +12,7 @@ pub struct SolanaAuthContract {}
 #[near]
 impl SolanaAuthContract {
     /// Validates a Solana signature using ed25519 curve
-    pub fn validate_solana_signature(&self, solana_data: SolanaData, public_key: String) -> bool {
+    pub fn verify(&self, solana_data: WalletValidationData, public_key: String) -> bool {
         let (verifying_key, message, signature) = match (
             self.create_verifying_key(&public_key),
             self.prepare_message(&solana_data.message),
@@ -74,7 +74,6 @@ impl SolanaAuthContract {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use interfaces::solana_auth::SolanaData;
 
     fn get_test_public_key() -> String {
         "4yrrTFWWVUdbr1AZz9o7D4CfRmZThTqtfzyQ7KojUb8u".to_string()
@@ -85,12 +84,12 @@ mod tests {
         let contract = SolanaAuthContract::default();
         let public_key = get_test_public_key();
 
-        let solana_data = SolanaData {
+        let solana_data = WalletValidationData {
             message: "{\"actions\":[{\"Transfer\":{\"deposit\":\"1000000000000000000000\"}},{\"FunctionCall\":{\"args\":\"{\\\"request\\\":{\\\"path\\\":\\\"ethereum,1\\\",\\\"payload\\\":[0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1],\\\"key_version\\\":0}}\",\"deposit\":\"250000000000000000000000\",\"gas\":\"50000000000000\",\"method_name\":\"sign\"}}],\"nonce\":\"9\",\"receiver_id\":\"v1.signer-prod.testnet\"}".to_string(),
             signature: "hMqxC3gElo4ZvXrk/k24qoTO2fLVF6Vr1lMoCI8l/SucxAt82TgYBfbYu1ovYKtYxY9GTwH1+168oZMTLGjBBw==".to_string(),
         };
 
-        assert!(contract.validate_solana_signature(solana_data, public_key));
+        assert!(contract.verify(solana_data, public_key));
     }
 
     #[test]
@@ -98,12 +97,12 @@ mod tests {
         let contract = SolanaAuthContract::default();
         let wrong_public_key = "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin".to_string();
 
-        let solana_data = SolanaData {
+        let solana_data = WalletValidationData {
             message: "{\"actions\":[{\"Transfer\":{\"deposit\":\"1000000000000000000000\"}},{\"FunctionCall\":{\"args\":\"{\\\"request\\\":{\\\"path\\\":\\\"ethereum,1\\\",\\\"payload\\\":[0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1],\\\"key_version\\\":0}}\",\"deposit\":\"250000000000000000000000\",\"gas\":\"50000000000000\",\"method_name\":\"sign\"}}],\"nonce\":\"9\",\"receiver_id\":\"v1.signer-prod.testnet\"}".to_string(),
             signature: "hMqxC3gElo4ZvXrk/k24qoTO2fLVF6Vr1lMoCI8l/SucxAt82TgYBfbYu1ovYKtYxY9GTwH1+168oZMTLGjBBw==".to_string(),
         };
 
-        assert!(!contract.validate_solana_signature(solana_data, wrong_public_key));
+        assert!(!contract.verify(solana_data, wrong_public_key));
     }
 
     #[test]
@@ -111,11 +110,11 @@ mod tests {
         let contract = SolanaAuthContract::default();
         let public_key = get_test_public_key();
 
-        let solana_data = SolanaData {
+        let solana_data = WalletValidationData {
             message: "Tampered message".to_string(),
             signature: "hMqxC3gElo4ZvXrk/k24qoTO2fLVF6Vr1lMoCI8l/SucxAt82TgYBfbYu1ovYKtYxY9GTwH1+168oZMTLGjBBw==".to_string(),
         };
 
-        assert!(!contract.validate_solana_signature(solana_data, public_key));
+        assert!(!contract.verify(solana_data, public_key));
     }
 }

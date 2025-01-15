@@ -1,3 +1,3 @@
 pub mod account;
-pub mod auth_identities;
+pub mod auth_identity;
 pub mod transaction;

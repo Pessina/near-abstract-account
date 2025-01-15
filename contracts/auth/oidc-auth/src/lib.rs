@@ -1,5 +1,5 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
-use interfaces::oidc_auth::{OIDCAuthIdentity, OIDCData};
+use interfaces::auth::oidc::{OIDCAuthIdentity, OIDCValidationData};
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     near,
@@ -60,9 +60,9 @@ impl OIDCAuthContract {
         TODO:
         - Define a struct for the oidc and keys to avoid direct json field access
     */
-    pub fn validate_oidc_token(
+    pub fn verify(
         &self,
-        oidc_data: OIDCData,
+        oidc_data: OIDCValidationData,
         oidc_auth_identity: OIDCAuthIdentity,
     ) -> bool {
         let parts: Vec<&str> = oidc_data.token.split('.').collect();
@@ -90,10 +90,21 @@ impl OIDCAuthContract {
         if token_client_id != oidc_auth_identity.client_id {
             return false;
         }
-        let token_email = payload["email"].as_str().unwrap_or_default();
-        if token_email != oidc_auth_identity.email {
-            return false;
+
+        let token_email = payload["email"].as_str();
+        let token_sub = payload["sub"].as_str();
+
+        match (
+            token_email,
+            token_sub,
+            &oidc_auth_identity.email,
+            &oidc_auth_identity.sub,
+        ) {
+            (Some(email), _, Some(expected_email), _) if email == expected_email => {}
+            (_, Some(sub), _, Some(expected_sub)) if sub == expected_sub => {}
+            _ => return false,
         }
+
         let token_nonce = payload["nonce"].as_str().unwrap_or_default();
         if token_nonce != oidc_data.message {
             return false;
@@ -155,7 +166,6 @@ impl OIDCAuthContract {
     /*
        TODO:
        - This should be updated on a secure way: decentralized oracles, zk, zk tls, dao...
-       - The old keys should be cleaned up when new keys are added
     */
     pub fn update_keys(&mut self, issuer: String, keys: Vec<PublicKey>) {
         if keys.len() != 2 {
@@ -238,7 +248,7 @@ mod tests {
     #[test]
     fn validate_google_token_should_succeed() {
         let contract: OIDCAuthContract = get_test_contract();
-        let oidc_data =  OIDCData{
+        let oidc_data =  OIDCValidationData{
             token: "eyJhbGciOiJSUzI1NiIsImtpZCI6Ijg5Y2UzNTk4YzQ3M2FmMWJkYTRiZmY5NWU2Yzg3MzY0NTAyMDZmYmEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI3Mzk5MTEwNjk3OTctaWRwMDYyODY2OTY0Z2JuZG82NjkzaDMydGdhNWN2bDEuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI3Mzk5MTEwNjk3OTctaWRwMDYyODY2OTY0Z2JuZG82NjkzaDMydGdhNWN2bDEuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMTc5MDI4NTUzNzMxNTc0MTAzMzAiLCJlbWFpbCI6ImZzLnBlc3NpbmFAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5vbmNlIjoidGVzdF8xMjNfZmVsaXBlIiwibmJmIjoxNzM2NTIzMjM2LCJuYW1lIjoiRmVsaXBlIFBlc3NpbmEiLCJwaWN0dXJlIjoiaHR0cHM6Ly9saDMuZ29vZ2xldXNlcmNvbnRlbnQuY29tL2EvQUNnOG9jSktKYlV5QlZxQ0J2NHFWR09EU25WVGdMSFBLTjB0Vk9NSU1YVml1a2dyZC0wdGZlZFU9czk2LWMiLCJnaXZlbl9uYW1lIjoiRmVsaXBlIiwiZmFtaWx5X25hbWUiOiJQZXNzaW5hIiwiaWF0IjoxNzM2NTIzNTM2LCJleHAiOjE3MzY1MjcxMzYsImp0aSI6ImY3MjdlZjg1MGFhNzNmMDQ3ZmQwNjY5OWIwNjk3YTIwMDIzYWViYWMifQ.nlRKhlzBhHVpYejoSkH_S9ZOeAejlhvnL5u-94AzsREIhzuKroJbPp9jEHuvvki5dJozc-FzXx9lfpjT17X6PT0hJOM86QUE05RkmV9WkrVSr8trr1zbHY6dieii9tzj7c01pXsLJTa2FvTonmJAxDteVt_vsZFl7-pRWmyXKLMk4CFv9AZx20-uj5pDLuj-F5IkAk_cpXBuMJYh5PQeNBDk22d5svDTQkuwUAH5N9sssXRzDNdv92snGu4AykpmoPIJeSmc3EY-RW0TB5bAnwXH0E3keAjv84yrNYjnovYn2FRqKbTKxNxN4XUgWU_P0oRYCzckJznwz4tStaYZ2A".to_string(),
             message: "test_123_felipe".to_string()
         };
@@ -247,16 +257,17 @@ mod tests {
             client_id: "739911069797-idp062866964gbndo6693h32tga5cvl1.apps.googleusercontent.com"
                 .to_string(),
             issuer: "https://accounts.google.com".to_string(),
-            email: "fs.pessina@gmail.com".to_string(),
+            email: Some("fs.pessina@gmail.com".to_string()),
+            sub: None,
         };
 
-        assert!(contract.validate_oidc_token(oidc_data, oidc_auth_identity));
+        assert!(contract.verify(oidc_data, oidc_auth_identity));
     }
 
     #[test]
     fn validate_facebook_token_should_succeed() {
         let contract = get_test_contract();
-        let oidc_data =  OIDCData{
+        let oidc_data =  OIDCValidationData{
             token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImFlYzM5NjU4ZTU0NDIzNzY2MTFmMDY5OGE4ODZkZjk2MDZjMDNhN2MifQ.eyJpc3MiOiJodHRwczpcL1wvd3d3LmZhY2Vib29rLmNvbSIsImF1ZCI6IjIxMDM0OTYyMjAwNDU4NDMiLCJzdWIiOiI5MDAxMTQ1NzQzMjcwMjgwIiwiaWF0IjoxNzM2NTIzNDczLCJleHAiOjE3MzY1MjcwNzMsImp0aSI6ImpYZ1kuZjNhMzczNzY3NjRmZDY0NGQyY2YzYmIxYWNjODIzZTRhNzc3ZmZjZGU5NmM1MzIzMzI0MjZkNmIzZDg4OWJiNyIsIm5vbmNlIjoidGVzdF8xMjNfZmVsaXBlIiwiYXRfaGFzaCI6InRwQXo0ZWZUQ2RsVUExcU14aE5BN2ciLCJlbWFpbCI6ImZzLnBlc3NpbmFcdTAwNDBnbWFpbC5jb20iLCJnaXZlbl9uYW1lIjoiRmVsaXBlIiwiZmFtaWx5X25hbWUiOiJQZXNzaW5hIiwibmFtZSI6IkZlbGlwZSBQZXNzaW5hIiwicGljdHVyZSI6Imh0dHBzOlwvXC9wbGF0Zm9ybS1sb29rYXNpZGUuZmJzYnguY29tXC9wbGF0Zm9ybVwvcHJvZmlsZXBpY1wvP2FzaWQ9OTAwMTE0NTc0MzI3MDI4MCZoZWlnaHQ9MTAwJndpZHRoPTEwMCZleHQ9MTczOTExNTQ3MyZoYXNoPUFiYjZSVHNBcndlcXdYTFZWMXpHNUZPcCJ9.lKLW6JvLxyafBYXVNPj0uGc_Fu_DG3yz1k4JjPtBNXsHOL47KBpx3OEtYE19OMMGbUAwX8XakpuDtviTwnMLp-SIvryYyoJQJbP61oph3IoVTXOvBeIBUJZhCCeZdP-CcBsBPFG_wih2jXc-2Zog8apQCkMkoHLO9X2Y3y6d2QAU_5Dn46p5dBfYNcEz-AFmsgb-soHPtEvEhHjyAMu22Be6aHHfmP9HG6QgimbWmro56aZ1EI33ra15jo4yqPInSCgq5SEdVd5ukDZiD_QVAbGOn0VX7SC4m8JbRqLWNpL_6L3DmR0L2Xqd0U15PGtx87gm5DOqa6e7j6R2A2LQJQ".to_string(),
             message: "test_123_felipe".to_string()
         };
@@ -264,16 +275,17 @@ mod tests {
         let oidc_auth_identity = OIDCAuthIdentity {
             client_id: "2103496220045843".to_string(),
             issuer: "https://www.facebook.com".to_string(),
-            email: "fs.pessina@gmail.com".to_string(),
+            email: Some("fs.pessina@gmail.com".to_string()),
+            sub: None,
         };
 
-        assert!(contract.validate_oidc_token(oidc_data, oidc_auth_identity));
+        assert!(contract.verify(oidc_data, oidc_auth_identity));
     }
 
     #[test]
     fn validate_google_token_should_fail_signature_invalid() {
         let contract = get_test_contract();
-        let oidc_data =  OIDCData{
+        let oidc_data =  OIDCValidationData{
             token: "eyJhbGciOiJSUzI1NiIsImtpZCI6Ijg5Y2UzNTk4YzQ3M2FmMWJkYTRiZmY5NWU2Yzg3MzY0NTAyMDZmYmEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI3Mzk5MTEwNjk3OTctaWRwMDYyODY2OTY0Z2JuZG82NjkzaDMydGdhNWN2bDEuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI3Mzk5MTEwNjk3OTctaWRwMDYyODY2OTY0Z2JuZG82NjkzaDMydGdhNWN2bDEuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMTc5MDI4NTUzNzMxNTc0MTAzMzAiLCJlbWFpbCI6ImZzLnBlc3NpbmFAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5iZiI6MTczNjUxMTQ1OCwibmFtZSI6IkZlbGlwZSBQZXNzaW5hIiwicGljdHVyZSI6Imh0dHBzOi8vbGgzLmdvb2dsZXVzZXJjb250ZW50LmNvbS9hL0FDZzhvY0pLSmJVeUJWcUNCdjRxVkdPRFNuVlRnTEhQS04wdFZPTUlNWFZpdWtncmQtMHRmZWRVPXM5Ni1jIiwiZ2l2ZW5fbmFtZSI6IkZlbGlwZSIsImZhbWlseV9uYW1lIjoiUGVzc2luYSIsImlhdCI6MTczNjUxMTc1OCwiZXhwIjoxNzM2NTE1MzU4LCJqdGkiOiI4NTQ0YzMwZGQ2MjA3NzM3NDQ1ZjRlMWE1MGYxMjA0Nzk1YmVkMWJmIn0.YrQny7qVn6dWa_ojGPCHJshT_pofwjIFTmhqQA5nR_-T3p0Wi7RCSg4dJ138yTZAxmcwwEzjT3m9oOSKxlzPDRROOdXCOx0ljwgzsTKqq3JuzOB8bRdT3NmY4E9cr4NLzkR-99JQvYeOLV46q_uxytJ20deyE-4OP4qbKhyc_ZILVitJ8Vus5yB68eGLhZwO6Ew9k8FZGy11xJLUuGjhwZ6cg-peFjWaj3uk8H_nN-UyF_iPzhxVcsndyiB6O9h2JS9mEg-Xzj8wuEzRQ1SqTLQjMjMWmZ1KhY7KkQhb8vrGLzk8cuR_fnOKTwv0N7qHjrahLxejBNlmAkfg123Fsg".to_string(),
             message: "".to_string()
         };
@@ -282,16 +294,17 @@ mod tests {
             client_id: "739911069797-idp062866964gbndo6693h32tga5cvl1.apps.googleusercontent.com"
                 .to_string(),
             issuer: "https://accounts.google.com".to_string(),
-            email: "fs.pessina@gmail.com".to_string(),
+            email: Some("fs.pessina@gmail.com".to_string()),
+            sub: None,
         };
 
-        assert!(!contract.validate_oidc_token(oidc_data, oidc_auth_identity));
+        assert!(!contract.verify(oidc_data, oidc_auth_identity));
     }
 
     #[test]
     fn validate_facebook_token_should_fail_signature_invalid() {
         let contract = get_test_contract();
-        let oidc_data =  OIDCData{
+        let oidc_data =  OIDCValidationData{
             token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImFlYzM5NjU4ZTU0NDIzNzY2MTFmMDY5OGE4ODZkZjk2MDZjMDNhN2MifQ.eyJpc3MiOiJodHRwczpcL1wvd3d3LmZhY2Vib29rLmNvbSIsImF1ZCI6IjIxMDM0OTYyMjAwNDU4NDMiLCJzdWIiOiI5MDAxMTQ1NzQzMjcwMjgwIiwiaWF0IjoxNzM2NTE0MjU4LCJleHAiOjE3MzY1MTc4NTgsImp0aSI6IjJ5aWUuZmQzOTc0ZjIyMDU2Njk4YWQxMzMyY2IxY2JhOTVhMGJiYzdiZjM0ZDM5YTJjMzAwMmRmZDM1MDk5MTEwNzkzOCIsIm5vbmNlIjoiIiwiYXRfaGFzaCI6Im5LSTB5NTRtUTVSOHJLMXZSNUEtWEEiLCJlbWFpbCI6ImZzLnBlc3NpbmFcdTAwNDBnbWFpbC5jb20iLCJnaXZlbl9uYW1lIjoiRmVsaXBlIiwiZmFtaWx5X25hbWUiOiJQZXNzaW5hIiwibmFtZSI6IkZlbGlwZSBQZXNzaW5hIiwicGljdHVyZSI6Imh0dHBzOlwvXC9wbGF0Zm9ybS1sb29rYXNpZGUuZmJzYnguY29tXC9wbGF0Zm9ybVwvcHJvZmlsZXBpY1wvP2FzaWQ9OTAwMTE0NTc0MzI3MDI4MCZoZWlnaHQ9MTAwJndpZHRoPTEwMCZleHQ9MTczOTEwNjI1OCZoYXNoPUFiYnNqYzdham5ZWXFMYXJMWHdnLVlNTyJ9.VeZRS6yn6wBsAduWn7DabLE01WiGmEBeCTDYJsHbKCsisV6J1Eugym6GN10BYCUxY9yp4wePIpXa-fdbz31HX-HReC-xPLM2DIry4MIx8xgZeNTzoktuEd0v2EHqjChtZOWPKYHtv58HOTojMCUtekOZkVenbGxHh-kritvqkq-l1q8PxOPMrJnOL4c0Ie7-Rl2UJH-doTALCSLa4F6EI1HQgFB8zk8aEN5a_nPq0QJBFzHK8F-4yTy_WqaQ2sgi-rHoE9qaK6SCOTfHcYjPEbX2Y9YM48FV9eoWHaxmb_FF81zd7UEd8WsjOhJj_f9nNLqQKUZG3NgYfs123LTHyQ".to_string(),
             message: "".to_string()
         };
@@ -299,9 +312,10 @@ mod tests {
         let oidc_auth_identity = OIDCAuthIdentity {
             client_id: "2103496220045843".to_string(),
             issuer: "https://www.facebook.com".to_string(),
-            email: "fs.pessina@gmail.com".to_string(),
+            email: Some("fs.pessina@gmail.com".to_string()),
+            sub: None,
         };
 
-        assert!(!contract.validate_oidc_token(oidc_data, oidc_auth_identity));
+        assert!(!contract.verify(oidc_data, oidc_auth_identity));
     }
 }

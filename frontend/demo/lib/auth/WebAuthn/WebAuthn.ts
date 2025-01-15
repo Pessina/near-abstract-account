@@ -40,7 +40,7 @@ export class WebAuthn extends AuthIdentity<
         displayName: id,
       },
       pubKeyCredParams: [{ alg: -7, type: "public-key" }], // ES256
-      authenticatorSelection: {
+      AuthIdentityelection: {
         requireResidentKey: true,
         userVerification: "required",
         authenticatorAttachment: "platform",

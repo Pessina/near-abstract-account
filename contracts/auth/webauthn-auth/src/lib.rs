@@ -1,5 +1,5 @@
 use hex;
-use interfaces::webauthn_auth::WebAuthnData;
+use interfaces::auth::webauthn::WebAuthnValidationData;
 use near_sdk::{log, near};
 use p256::{
     ecdsa::{signature::Verifier, Signature as P256Signature, VerifyingKey},
@@ -15,9 +15,9 @@ pub struct WebAuthnAuthContract {}
 #[near]
 impl WebAuthnAuthContract {
     /// Validates a WebAuthn passkey signature using the P-256 elliptic curve.
-    pub fn validate_p256_signature(
+    pub fn verify_p256(
         &self,
-        webauthn_data: WebAuthnData,
+        webauthn_data: WebAuthnValidationData,
         compressed_public_key: String,
     ) -> bool {
         let (verifying_key, signed_data, signature) = match (
@@ -61,7 +61,10 @@ impl WebAuthnAuthContract {
     }
 
     #[inline(always)]
-    fn prepare_signed_data(&self, webauthn_data: &WebAuthnData) -> Result<Vec<u8>, String> {
+    fn prepare_signed_data(
+        &self,
+        webauthn_data: &WebAuthnValidationData,
+    ) -> Result<Vec<u8>, String> {
         let auth_bytes = hex::decode(
             webauthn_data
                 .authenticator_data
@@ -81,10 +84,7 @@ impl WebAuthnAuthContract {
     }
 
     #[inline(always)]
-    fn create_signature(
-        &self,
-        signature: &String,
-    ) -> Result<P256Signature, String> {
+    fn create_signature(&self, signature: &String) -> Result<P256Signature, String> {
         let sig_bytes = hex::decode(signature.strip_prefix("0x").unwrap_or(signature))
             .map_err(|_| "Invalid hex encoding in signature")?;
 
@@ -105,25 +105,25 @@ mod tests {
     fn validate_signature_should_succeed() {
         let contract = WebAuthnAuthContract::default();
         let compressed_public_key = get_compressed_public_key();
-        let webauthn_data = WebAuthnData {
+        let webauthn_data = WebAuthnValidationData {
             signature:"0xf77969b7eaeaaed4b9a5cc5636b3755259d29d1406d8e852a8ce43dc74644da11453962702ea21a9efdd4a7077e39fcd754e3d01579493cf972f0151b6672f1f".to_string(),
             authenticator_data: "0x49960de5880e8c687434170f6476605b8fe4aeb9a28632c7995cf3ba831d97631900000000".to_string(),
             client_data: r#"{"type":"webauthn.get","challenge":"tAuyPmQcczI8CFoTekJz5iITeP80zcJ60VTC4sYz5s8","origin":"http://localhost:3000","crossOrigin":false}"#.to_string(),
         };
 
-        assert!(contract.validate_p256_signature(webauthn_data, compressed_public_key));
+        assert!(contract.verify_p256(webauthn_data, compressed_public_key));
     }
 
     #[test]
     fn validate_signature_should_fail() {
         let contract = WebAuthnAuthContract::default();
         let compressed_public_key = get_compressed_public_key();
-        let webauthn_data = WebAuthnData {
+        let webauthn_data = WebAuthnValidationData {
             signature: "0x563a2aba62db8a60c0877a87a2c6db9637bba0b7d8fd505628947e763371c01669ac141b8bc054d27a5cee9438ac7f6f11537523a6ab8affc0557b634f082cea".to_string(),
             authenticator_data: "49960de5880e8c687434170f6476605b8fe4aeb9a28632c7995cf3ba831d97631d00000000".to_string(),
             client_data: r#"{"type":"webauthn.get","challenge":"cmFuZG9tLWNoYWxsZW5nZQ","origin":"http://localhost:3000","crossOrigin":false}"#.to_string(),
         };
 
-        assert!(!contract.validate_p256_signature(webauthn_data, compressed_public_key));
+        assert!(!contract.verify_p256(webauthn_data, compressed_public_key));
     }
 }

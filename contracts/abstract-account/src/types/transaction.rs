@@ -1,9 +1,8 @@
 use crate::mods::transaction::SignPayloadsRequest;
+use crate::types::auth_identity::AuthIdentity;
 use near_sdk::serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
 use serde_json::Value;
-
-use super::auth_identities::AuthIdentity;
 
 #[derive(Deserialize, Serialize, JsonSchema, Clone)]
 #[serde(crate = "near_sdk::serde")]
@@ -17,6 +16,6 @@ pub struct UserOp {
 #[derive(Deserialize, Serialize, JsonSchema, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub struct Auth {
-    pub auth_identity: AuthIdentity,
-    pub auth_data: Value,
+    pub authenticator: AuthIdentity,
+    pub credentials: Value,
 }

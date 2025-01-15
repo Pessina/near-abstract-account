@@ -2725,7 +2725,9 @@ dependencies = [
 name = "interfaces"
 version = "0.1.0"
 dependencies = [
+ "borsh",
  "getrandom 0.2.15",
+ "hex 0.4.3",
  "near-sdk",
  "schemars",
 ]

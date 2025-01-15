@@ -1,19 +1,14 @@
 mod mods;
-mod traits;
 mod types;
 
-use interfaces::oidc_auth::OIDCAuthIdentity;
+use interfaces::auth::wallet::WalletType;
 use mods::transaction::SignPayloadsRequest;
 use near_sdk::{
     env, near, require,
     store::{IterableMap, LookupMap},
     AccountId, Promise,
 };
-use types::{
-    account::Account,
-    auth_identities::{AuthIdentity, WalletType},
-    transaction::UserOp,
-};
+use types::{account::Account, auth_identity::AuthIdentity, transaction::UserOp};
 
 #[near(contract_state)]
 pub struct AbstractAccountContract {
@@ -102,7 +97,7 @@ impl AbstractAccountContract {
         let account = self.accounts.get_mut(&user_op.account_id).unwrap();
 
         require!(
-            account.has_auth_identity(&user_op.auth.auth_identity),
+            account.has_auth_identity(&user_op.auth.authenticator),
             "Auth identity not found in account"
         );
 
@@ -114,11 +109,11 @@ impl AbstractAccountContract {
                 );
                 selected_auth_identity
             } else {
-                user_op.auth.auth_identity.clone()
+                user_op.auth.authenticator.clone()
             };
 
         // TODO: check if the close is needed
-        let auth_identity = user_op.auth.auth_identity.clone();
+        let auth_identity = user_op.auth.authenticator.clone();
         let payloads = user_op.payloads.clone();
 
         let promise = match auth_identity {
@@ -147,32 +142,30 @@ impl AbstractAccountContract {
             }
             AuthIdentity::Wallet(wallet) => match wallet.wallet_type {
                 WalletType::Ethereum => {
-                    match self.handle_ethereum_auth(user_op, wallet.public_key.clone()) {
+                    match self.handle_wallet_auth(
+                        user_op,
+                        wallet.public_key.clone(),
+                        "ethereum".to_string(),
+                    ) {
                         Ok(promise) => promise,
                         Err(e) => env::panic_str(&e),
                     }
                 }
                 WalletType::Solana => {
-                    match self.handle_solana_auth(user_op, wallet.public_key.clone()) {
+                    match self.handle_wallet_auth(
+                        user_op,
+                        wallet.public_key.clone(),
+                        "solana".to_string(),
+                    ) {
                         Ok(promise) => promise,
                         Err(e) => env::panic_str(&e),
                     }
                 }
             },
-            AuthIdentity::OIDC(oidc) => {
-                // TODO: Should not need to rebuild OIDCAuthIdentity
-                match self.handle_oidc_auth(
-                    user_op,
-                    OIDCAuthIdentity {
-                        client_id: oidc.client_id.clone(),
-                        issuer: oidc.issuer.clone(),
-                        email: oidc.email.clone(),
-                    },
-                ) {
-                    Ok(promise) => promise,
-                    Err(e) => env::panic_str(&e),
-                }
-            }
+            AuthIdentity::OIDC(oidc) => match self.handle_oidc_auth(user_op, oidc) {
+                Ok(promise) => promise,
+                Err(e) => env::panic_str(&e),
+            },
             AuthIdentity::Account(_) => env::panic_str("Account auth type not yet supported"),
         };
 
