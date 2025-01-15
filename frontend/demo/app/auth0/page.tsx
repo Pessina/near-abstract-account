@@ -28,6 +28,10 @@ const AUTH_IDENTITY = {
   }
 }
 
+const buildPath = (accountId: string, path: string) => {
+  return `${accountId},${path}`
+}
+
 const storeNonce = (nonce: string) => {
   localStorage.setItem("nonce", nonce)
 }
@@ -133,9 +137,11 @@ const Auth0 = () => {
 
   const onSubmit = async (data: TransactionForm) => {
     const { address } = await evmChain.deriveAddressAndPublicKey(
-      process.env.NEXT_PUBLIC_NEAR_ACCOUNT_ID as string,
-      "",
+      process.env.NEXT_PUBLIC_ABSTRACT_ACCOUNT_CONTRACT as string,
+      buildPath(AUTH_IDENTITY.OIDC.email, ""),
     )
+
+    console.log({ address })
 
     const { transaction, mpcPayloads } = await evmChain.getMPCPayloadAndTransaction({
       from: address,
