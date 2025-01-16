@@ -52,6 +52,7 @@ impl Path for AuthIdentity {
     Clone,
     Ord,
     PartialOrd,
+    Hash,
 )]
 #[serde(crate = "near_sdk::serde")]
 pub enum AuthIdentityNames {

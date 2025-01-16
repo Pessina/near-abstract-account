@@ -1,7 +1,8 @@
 mod contract_account;
-mod contract_contracts;
 mod mods;
 mod types;
+
+use std::collections::HashMap;
 
 use interfaces::auth::wallet::WalletType;
 use mods::transaction::SignPayloadsRequest;
@@ -13,6 +14,9 @@ use near_sdk::{
 use types::auth_identity::AuthIdentityNames;
 use types::{account::Account, auth_identity::AuthIdentity, transaction::UserOp};
 
+const KEY_PREFIX_ACCOUNTS: &[u8] = b"q";
+const KEY_PREFIX_AUTH_CONTRACTS: &[u8] = b"a";
+
 #[near(contract_state)]
 pub struct AbstractAccountContract {
     owner: AccountId,
@@ -23,7 +27,7 @@ pub struct AbstractAccountContract {
 
 impl Default for AbstractAccountContract {
     fn default() -> Self {
-        let mut auth_contracts = LookupMap::new(b"q");
+        let mut auth_contracts = LookupMap::new(KEY_PREFIX_AUTH_CONTRACTS);
         auth_contracts.insert(
             AuthIdentityNames::WebAuthn,
             "felipe-webauthn-contract.testnet".parse().unwrap(),
@@ -42,7 +46,7 @@ impl Default for AbstractAccountContract {
         );
 
         Self {
-            accounts: IterableMap::new(b"e"),
+            accounts: IterableMap::new(KEY_PREFIX_ACCOUNTS),
             owner: env::predecessor_account_id(),
             auth_contracts,
             signer_account: "v1.signer-prod.testnet".parse().unwrap(),
@@ -53,16 +57,23 @@ impl Default for AbstractAccountContract {
 #[near]
 impl AbstractAccountContract {
     #[init(ignore_state)]
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new(
+        auth_contracts: Option<HashMap<AuthIdentityNames, String>>,
+        signer_account: Option<String>,
+    ) -> Self {
+        let mut contract = Self::default();
 
-    #[private]
-    pub fn assert_owner(&self) {
-        require!(
-            env::predecessor_account_id() == self.owner,
-            "Access denied: caller is not the owner"
-        );
+        if let Some(contracts) = auth_contracts {
+            for (key, value) in contracts {
+                contract.auth_contracts.insert(key, value.parse().unwrap());
+            }
+        }
+
+        if let Some(signer) = signer_account {
+            contract.signer_account = signer.parse().unwrap();
+        }
+
+        contract
     }
 
     // TODO: get_account_by_auth_identity
@@ -92,7 +103,7 @@ impl AbstractAccountContract {
                 user_op.auth.authenticator.clone()
             };
 
-        // TODO: check if the close is needed
+        // TODO: check if the clone is needed
         let auth_identity = user_op.auth.authenticator.clone();
         let payloads = user_op.payloads.clone();
 
