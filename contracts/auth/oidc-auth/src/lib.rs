@@ -299,4 +299,6 @@ mod tests {
 
         assert!(!contract.verify(oidc_data, oidc_auth_identity));
     }
+
+    // TODO: Include test for sub and email
 }

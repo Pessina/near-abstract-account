@@ -2,15 +2,15 @@ mod contract_account;
 mod mods;
 mod types;
 
-use std::collections::HashMap;
-
 use interfaces::auth::wallet::WalletType;
 use mods::transaction::SignPayloadsRequest;
 use near_sdk::{
     env, near, require,
+    serde::{Deserialize, Serialize},
     store::{IterableMap, LookupMap},
     AccountId, Promise,
 };
+use schemars::JsonSchema;
 use types::auth_identity::AuthIdentityNames;
 use types::{account::Account, auth_identity::AuthIdentity, transaction::UserOp};
 
@@ -54,18 +54,28 @@ impl Default for AbstractAccountContract {
     }
 }
 
+#[derive(Deserialize, Serialize, JsonSchema)]
+#[serde(crate = "near_sdk::serde")]
+pub struct AuthContractConfig {
+    pub auth_type: AuthIdentityNames,
+    pub contract_id: String,
+}
+
 #[near]
 impl AbstractAccountContract {
     #[init(ignore_state)]
     pub fn new(
-        auth_contracts: Option<HashMap<AuthIdentityNames, String>>,
+        auth_contracts: Option<Vec<AuthContractConfig>>,
         signer_account: Option<String>,
     ) -> Self {
         let mut contract = Self::default();
 
         if let Some(contracts) = auth_contracts {
-            for (key, value) in contracts {
-                contract.auth_contracts.insert(key, value.parse().unwrap());
+            for contract_config in contracts {
+                contract.auth_contracts.insert(
+                    contract_config.auth_type,
+                    contract_config.contract_id.parse().unwrap(),
+                );
             }
         }
 
