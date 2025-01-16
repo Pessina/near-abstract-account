@@ -67,28 +67,23 @@ impl OIDCAuthContract {
     ) -> bool {
         let parts: Vec<&str> = oidc_data.token.split('.').collect();
         if parts.len() != 3 {
-            return false;
+            panic!("Invalid JWT format - token must have 3 parts");
         }
         let (header_b64, payload_b64, sig_b64) = (parts[0], parts[1], parts[2]);
 
-        let payload_json = if let Ok(json) = URL_SAFE_NO_PAD.decode(payload_b64) {
-            json
-        } else {
-            return false;
-        };
-        let payload: serde_json::Value = if let Ok(p) = serde_json::from_slice(&payload_json) {
-            p
-        } else {
-            return false;
-        };
+        let payload_json = URL_SAFE_NO_PAD
+            .decode(payload_b64)
+            .expect("Failed to decode JWT payload");
+        let payload: serde_json::Value =
+            serde_json::from_slice(&payload_json).expect("Failed to parse JWT payload as JSON");
 
         let token_issuer = payload["iss"].as_str().unwrap_or_default();
         if token_issuer != oidc_auth_identity.issuer {
-            return false;
+            panic!("Token issuer does not match expected issuer");
         }
         let token_client_id = payload["aud"].as_str().unwrap_or_default();
         if token_client_id != oidc_auth_identity.client_id {
-            return false;
+            panic!("Token audience does not match expected client ID");
         }
 
         let token_email = payload["email"].as_str();
@@ -102,63 +97,49 @@ impl OIDCAuthContract {
         ) {
             (Some(email), _, Some(expected_email), _) if email == expected_email => {}
             (_, Some(sub), _, Some(expected_sub)) if sub == expected_sub => {}
-            _ => return false,
+            _ => panic!("Token email/subject does not match expected values"),
         }
 
         let token_nonce = payload["nonce"].as_str().unwrap_or_default();
         if token_nonce != oidc_data.message {
-            return false;
+            panic!("Token nonce does not match expected message");
         }
 
         let key_set = self.pub_keys.get(token_issuer).expect("Issuer not found");
 
-        let header_json = if let Ok(json) = URL_SAFE_NO_PAD.decode(header_b64) {
-            json
-        } else {
-            return false;
-        };
-        let header: serde_json::Value = if let Ok(h) = serde_json::from_slice(&header_json) {
-            h
-        } else {
-            return false;
-        };
+        let header_json = URL_SAFE_NO_PAD
+            .decode(header_b64)
+            .expect("Failed to decode JWT header");
+        let header: serde_json::Value =
+            serde_json::from_slice(&header_json).expect("Failed to parse JWT header as JSON");
+
         let kid = header["kid"].as_str().unwrap_or_default();
-        let public_key = match key_set.iter().find(|pk| pk.kid == kid) {
-            Some(pk) => pk,
-            None => return false,
-        };
+        let public_key = key_set
+            .iter()
+            .find(|pk| pk.kid == kid)
+            .expect("Key ID not found in issuer's key set");
 
-        let n = if let Ok(n) = URL_SAFE_NO_PAD.decode(&public_key.n) {
-            n
-        } else {
-            return false;
-        };
-        let e = if let Ok(e) = URL_SAFE_NO_PAD.decode(&public_key.e) {
-            e
-        } else {
-            return false;
-        };
+        let n = URL_SAFE_NO_PAD
+            .decode(&public_key.n)
+            .expect("Failed to decode public key modulus");
+        let e = URL_SAFE_NO_PAD
+            .decode(&public_key.e)
+            .expect("Failed to decode public key exponent");
 
-        let rsa_pubkey = if let Ok(key) =
-            RsaPublicKey::new(BigUint::from_bytes_be(&n), BigUint::from_bytes_be(&e))
-        {
-            key
-        } else {
-            return false;
-        };
+        let rsa_pubkey = RsaPublicKey::new(BigUint::from_bytes_be(&n), BigUint::from_bytes_be(&e))
+            .expect("Failed to construct RSA public key");
 
         let verifying_key = VerifyingKey::<Sha256>::new(rsa_pubkey);
         let message = format!("{}.{}", header_b64, payload_b64);
-        let signature = if let Ok(sig) = URL_SAFE_NO_PAD.decode(sig_b64) {
-            sig
-        } else {
-            return false;
-        };
+        let signature = URL_SAFE_NO_PAD
+            .decode(sig_b64)
+            .expect("Failed to decode JWT signature");
 
         verifying_key
             .verify(
                 message.as_bytes(),
-                &rsa::pkcs1v15::Signature::try_from(signature.as_slice()).unwrap(),
+                &rsa::pkcs1v15::Signature::try_from(signature.as_slice())
+                    .expect("Failed to parse signature"),
             )
             .is_ok()
     }

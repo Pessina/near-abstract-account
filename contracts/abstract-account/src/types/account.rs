@@ -19,4 +19,8 @@ impl Account {
     pub fn has_auth_identity(&self, auth_identity: &AuthIdentity) -> bool {
         self.auth_identities.contains(auth_identity)
     }
+
+    pub fn add_auth_identity(&mut self, auth_identity: AuthIdentity) {
+        self.auth_identities.push(auth_identity);
+    }
 }

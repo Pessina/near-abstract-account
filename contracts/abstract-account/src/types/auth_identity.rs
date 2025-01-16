@@ -37,3 +37,27 @@ impl Path for AuthIdentity {
         }
     }
 }
+
+// TODO: This should be implemented on a better way, probably on impl AuthIdentity
+
+#[derive(
+    Debug,
+    BorshDeserialize,
+    BorshSerialize,
+    Deserialize,
+    Serialize,
+    JsonSchema,
+    PartialEq,
+    Eq,
+    Clone,
+    Ord,
+    PartialOrd,
+)]
+#[serde(crate = "near_sdk::serde")]
+pub enum AuthIdentityNames {
+    EthereumWallet,
+    SolanaWallet,
+    WebAuthn,
+    OIDC,
+    Account,
+}

@@ -1,3 +1,5 @@
+mod contract_account;
+mod contract_contracts;
 mod mods;
 mod types;
 
@@ -8,13 +10,14 @@ use near_sdk::{
     store::{IterableMap, LookupMap},
     AccountId, Promise,
 };
+use types::auth_identity::AuthIdentityNames;
 use types::{account::Account, auth_identity::AuthIdentity, transaction::UserOp};
 
 #[near(contract_state)]
 pub struct AbstractAccountContract {
     owner: AccountId,
     accounts: IterableMap<String, Account>, // account_id -> account (auth_identities)
-    auth_contracts: LookupMap<String, AccountId>,
+    auth_contracts: LookupMap<AuthIdentityNames, AccountId>,
     signer_account: AccountId,
 }
 
@@ -22,19 +25,19 @@ impl Default for AbstractAccountContract {
     fn default() -> Self {
         let mut auth_contracts = LookupMap::new(b"q");
         auth_contracts.insert(
-            "webauthn".to_string(),
+            AuthIdentityNames::WebAuthn,
             "felipe-webauthn-contract.testnet".parse().unwrap(),
         );
         auth_contracts.insert(
-            "ethereum".to_string(),
+            AuthIdentityNames::EthereumWallet,
             "felipe-ethereum-contract.testnet".parse().unwrap(),
         );
         auth_contracts.insert(
-            "solana".to_string(),
+            AuthIdentityNames::SolanaWallet,
             "felipe-solana-contract.testnet".parse().unwrap(),
         );
         auth_contracts.insert(
-            "oidc".to_string(),
+            AuthIdentityNames::OIDC,
             "felipe-oidc-contract.testnet".parse().unwrap(),
         );
 
@@ -62,36 +65,13 @@ impl AbstractAccountContract {
         );
     }
 
-    pub fn add_account(&mut self, account_id: String, auth_identity: AuthIdentity) {
-        if self.accounts.contains_key(&account_id) {
-            env::panic_str("Account already exists");
-        }
-
-        self.accounts
-            .insert(account_id, Account::new(vec![auth_identity]));
-    }
-
-    pub fn get_account_by_id(&self, account_id: String) -> Option<&Account> {
-        self.accounts.get(&account_id)
-    }
-
-    pub fn list_account_ids(&self) -> Vec<String> {
-        self.accounts.iter().map(|(key, _)| key.clone()).collect()
-    }
-
-    pub fn list_auth_identities(&self, account_id: String) -> Option<Vec<AuthIdentity>> {
-        self.accounts
-            .get(&account_id)
-            .map(|account| account.auth_identities.clone())
-    }
-
     // TODO: get_account_by_auth_identity
-    // TODO: add_auth_identity
 
     pub fn build_account_path(&self, account_id: String, path: String) -> String {
         format!("{},{}", account_id, path)
     }
 
+    // TODO: it should be auth function that check the auth identity and then call the send_transaction, add_auth_identity, delete_auth_identity
     #[payable]
     pub fn send_transaction(&mut self, user_op: UserOp) -> Promise {
         let account = self.accounts.get_mut(&user_op.account_id).unwrap();
@@ -145,7 +125,7 @@ impl AbstractAccountContract {
                     match self.handle_wallet_auth(
                         user_op,
                         wallet.public_key.clone(),
-                        "ethereum".to_string(),
+                        AuthIdentityNames::EthereumWallet,
                     ) {
                         Ok(promise) => promise,
                         Err(e) => env::panic_str(&e),
@@ -155,7 +135,7 @@ impl AbstractAccountContract {
                     match self.handle_wallet_auth(
                         user_op,
                         wallet.public_key.clone(),
-                        "solana".to_string(),
+                        AuthIdentityNames::SolanaWallet,
                     ) {
                         Ok(promise) => promise,
                         Err(e) => env::panic_str(&e),

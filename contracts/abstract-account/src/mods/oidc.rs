@@ -1,4 +1,5 @@
 use crate::mods::external_contracts::{oidc_auth, VALIDATE_ETH_SIGNATURE_GAS};
+use crate::types::auth_identity::AuthIdentityNames;
 use crate::types::transaction::UserOp;
 use crate::AbstractAccountContract;
 use interfaces::auth::oidc::{OIDCAuthIdentity, OIDCCredentials, OIDCValidationData};
@@ -25,7 +26,7 @@ impl AbstractAccountContract {
 
         let oidc_contract = self
             .auth_contracts
-            .get("oidc")
+            .get(&AuthIdentityNames::OIDC)
             .ok_or("OIDC contract not configured")?;
 
         Ok(oidc_auth::ext(oidc_contract.clone())

@@ -1,4 +1,5 @@
 use crate::mods::external_contracts::{webauthn_auth, VALIDATE_P256_SIGNATURE_GAS};
+use crate::types::auth_identity::AuthIdentityNames;
 use crate::types::transaction::UserOp;
 use crate::AbstractAccountContract;
 use base64::engine::{general_purpose::URL_SAFE_NO_PAD, Engine};
@@ -42,7 +43,7 @@ impl AbstractAccountContract {
 
         let webauthn_contract = self
             .auth_contracts
-            .get("webauthn")
+            .get(&AuthIdentityNames::WebAuthn)
             .ok_or("WebAuthn contract not configured")?;
 
         Ok(webauthn_auth::ext(webauthn_contract.clone())
