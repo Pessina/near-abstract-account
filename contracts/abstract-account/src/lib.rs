@@ -89,14 +89,12 @@ impl AbstractAccountContract {
     pub fn auth(&mut self, user_op: UserOp) -> Promise {
         let account = self.accounts.get_mut(&user_op.account_id).unwrap();
 
-        log!("account: {:?}", env::attached_deposit());
-
         require!(
             account.has_auth_identity(&user_op.auth.authenticator),
             "Auth identity not found in account"
         );
 
-        let selected_auth_identity =
+        let mut selected_auth_identity =
             if let Some(selected_auth_identity) = user_op.selected_auth_identity.clone() {
                 require!(
                     account.has_auth_identity(&selected_auth_identity),
@@ -130,6 +128,10 @@ impl AbstractAccountContract {
                     .compressed_public_key
                     .as_ref()
                     .expect("WebAuthn public key not found");
+
+                if let AuthIdentity::WebAuthn(ref mut webauthn) = selected_auth_identity {
+                    webauthn.compressed_public_key = Some(compressed_public_key.to_string());
+                }
 
                 match self.handle_webauthn_auth(user_op, compressed_public_key.to_string()) {
                     Ok(promise) => promise,

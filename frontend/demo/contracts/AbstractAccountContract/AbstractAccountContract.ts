@@ -74,7 +74,7 @@ type AbstractContract = Contract & {
   get_all_contracts: () => Promise<string[]>;
   get_signer_account: () => Promise<string>;
   auth: (args: {
-    user_op: UserOperation;
+    args: { user_op: UserOperation };
     gas?: string;
     amount?: string;
   }) => Promise<Signature>;
@@ -176,7 +176,7 @@ export class AbstractAccountContract {
 
   async auth(userOp: UserOperation): Promise<Signature> {
     return await this.contract.auth({
-      user_op: userOp,
+      args: { user_op: userOp },
       gas: "300000000000000",
       amount: "10", // TODO: Use dynamic fee
     });
