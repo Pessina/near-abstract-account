@@ -5,7 +5,7 @@ mod utils;
 
 use interfaces::auth::wallet::WalletType;
 use near_sdk::{
-    env, log, near, require,
+    env, near, require,
     serde::{Deserialize, Serialize},
     store::IterableMap,
     AccountId, Promise,
