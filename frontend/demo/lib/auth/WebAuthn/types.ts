@@ -1,10 +1,5 @@
 import { Hex } from "viem";
 
-export interface WebAuthnAuthIdentity {
-  key_id: string;
-  compressed_public_key?: string;
-}
-
 export type P256Credential = {
   rawId: Hex;
   clientData: ClientData;
@@ -18,9 +13,3 @@ export type ClientData = {
   origin: string;
   crossOrigin?: boolean;
 };
-
-export interface WebAuthnAuthData {
-  signature: string;
-  authenticator_data: string;
-  client_data: string;
-}

@@ -1,8 +1,8 @@
-import { AbstractAccountContract } from "@/lib/contract/AbstractAccountContract";
+import { AbstractAccountContract } from "@/contracts/AbstractAccountContract/AbstractAccountContract";
 import canonicalize from "canonicalize";
-import { Solana } from "@/lib/auth/Solana/Solana";
-import type { SolanaWalletType } from "@/lib/auth/Solana/types";
+import { Solana, SolanaWalletType } from "@/lib/auth/Solana/Solana";
 import { mockTransaction } from "@/lib/constants";
+import { WalletType as AuthIdentityWalletType } from "@/contracts/AbstractAccountContract/types/auth";
 
 export const handleSolanaRegister = async ({
   contract,
@@ -82,14 +82,23 @@ export const handleSolanaAuthenticate = async ({
       return;
     }
 
-    await contract.sendTransaction({
+    await contract.auth({
       account_id: accountId,
       selected_auth_identity: undefined,
       auth: {
-        auth_identity: authIdentity,
-        auth_data: solanaData,
+        authenticator: {
+          Wallet: {
+            wallet_type: AuthIdentityWalletType.Solana,
+            public_key: authIdentity.Wallet.public_key,
+          },
+        },
+        credentials: {
+          signature: solanaData.signature,
+        },
       },
-      payloads: transaction,
+      transaction: {
+        Sign: transaction,
+      },
     });
 
     setStatus("Solana authentication successful!");

@@ -10,8 +10,7 @@ import { AlertCircle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { EVM, RSVSignature, utils } from "signet.js";
 import canonicalize from "canonicalize";
-import { AbstractAccountContract } from "@/lib/contract/AbstractAccountContract";
-import initNear from "@/lib/near";
+import { useAbstractAccountContract } from "@/contracts/AbstractAccountContract/useAbstractAccountContract";
 
 interface TransactionForm {
   to: string;
@@ -43,13 +42,8 @@ const getNonce = () => {
 const Auth0 = () => {
   const { register, handleSubmit, formState: { errors } } = useForm<TransactionForm>();
 
-  const getContract = useCallback(async () => {
-    const { account } = await initNear()
-    return new AbstractAccountContract({
-      account,
-      contractId: process.env.NEXT_PUBLIC_ABSTRACT_ACCOUNT_CONTRACT as string
-    })
-  }, [])
+  const { contract } = useAbstractAccountContract();
+
 
   const chainSigContract = useMemo(() => new utils.chains.near.ChainSignatureContract({
     contractId: process.env.NEXT_PUBLIC_SIGNER_CONTRACT as string,
@@ -72,19 +66,21 @@ const Auth0 = () => {
 
   const processTransaction = useCallback(async (nonce: string, idToken: string) => {
     try {
-      const contract = await getContract()
-      const signature = await contract?.sendTransaction({
+      const signature = await contract?.auth({
         account_id: AA_ACCOUNT_ID,
         selected_auth_identity: undefined,
         auth: {
-          auth_identity: AUTH_IDENTITY,
-          auth_data: {
-            message: nonce,
+          authenticator: AUTH_IDENTITY,
+          credentials: {
             token: idToken,
           },
         },
-        payloads: JSON.parse(nonce),
+        transaction: JSON.parse(nonce),
       })
+
+      if (!signature) {
+        throw new Error("Signature is required")
+      }
 
       const rsvSignature: RSVSignature = utils.cryptography.toRSV(signature)
 
@@ -111,7 +107,7 @@ const Auth0 = () => {
       console.log("ID Token:", idToken);
       window.history.replaceState(null, "", window.location.pathname);
     }
-  }, [evmChain, getContract]);
+  }, [evmChain, contract]);
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -178,8 +174,7 @@ const Auth0 = () => {
   };
 
   const addAuthMethod = async () => {
-    const contract = await getContract()
-    contract.addAccount(
+    contract?.addAccount(
       AA_ACCOUNT_ID,
       AUTH_IDENTITY
     )

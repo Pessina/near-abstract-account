@@ -1,13 +1,11 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState } from "react"
 import { useForm } from "react-hook-form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { AbstractAccountContract } from "@/lib/contract/AbstractAccountContract"
-import initNear from "@/lib/near"
 import { handlePasskeyAuthenticate } from "./_utils/webauthn"
 import { handlePasskeyRegister } from "./_utils/webauthn"
 import { handleEthereumAuthenticate } from "./_utils/ethereum"
@@ -21,15 +19,16 @@ import { handleOIDCRegister, handleOIDCAuthenticate } from "./_utils/oidc"
 import UpdateOIDCKeys from "./_components/UpdateOIDCKeys"
 import { mockTransaction } from "@/lib/constants"
 import canonicalize from "canonicalize"
+import { useAbstractAccountContract } from "@/contracts/AbstractAccountContract/useAbstractAccountContract"
 
 type FormValues = {
   username: string
 }
 
 export default function AuthDemo() {
-  const [contract, setContract] = useState<AbstractAccountContract | null>(null)
   const [status, setStatus] = useState("")
   const [isPending, setIsPending] = useState(false)
+  const { contract } = useAbstractAccountContract();
 
   const { register, watch } = useForm<FormValues>({
     defaultValues: {
@@ -38,25 +37,6 @@ export default function AuthDemo() {
   })
 
   const username = watch("username")
-
-  useEffect(() => {
-    const setupContract = async () => {
-      try {
-        const { account } = await initNear()
-        const contractInstance = new AbstractAccountContract({
-          account,
-          contractId: process.env.NEXT_PUBLIC_ABSTRACT_ACCOUNT_CONTRACT as string
-        })
-
-        setContract(contractInstance)
-      } catch (error) {
-        console.error("Failed to initialize contract:", error)
-        setStatus("Failed to initialize contract")
-      }
-    }
-
-    setupContract()
-  }, [])
 
   return (
     <GoogleProvider>
@@ -178,7 +158,6 @@ export default function AuthDemo() {
                         issuer: 'https://accounts.google.com',
                         email: 'fs.pessina@gmail.com',
                         accountId: username,
-                        nonce: canonicalize(mockTransaction()) ?? ''
                       });
                     }}
                   />
@@ -214,7 +193,6 @@ export default function AuthDemo() {
                         issuer: 'https://www.facebook.com',
                         email: 'fs.pessina@gmail.com',
                         accountId: username,
-                        nonce: canonicalize(mockTransaction()) || ''
                       });
                     }}
                   />

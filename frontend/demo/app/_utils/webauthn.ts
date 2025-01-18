@@ -1,6 +1,6 @@
 import { WebAuthn } from "@/lib/auth/WebAuthn/WebAuthn";
 import canonicalize from "canonicalize";
-import { AbstractAccountContract } from "@/lib/contract/AbstractAccountContract";
+import { AbstractAccountContract } from "@/contracts/AbstractAccountContract/AbstractAccountContract";
 import { mockTransaction } from "@/lib/constants";
 
 export const handlePasskeyRegister = async ({
@@ -56,7 +56,7 @@ export const handlePasskeyAuthenticate = async ({
 
     const transaction = mockTransaction();
 
-    const canonical = canonicalize(transaction);
+    const canonical = canonicalize({ Sign: transaction });
     if (!canonical) {
       setStatus("Failed to canonicalize transaction");
       return;
@@ -69,20 +69,24 @@ export const handlePasskeyAuthenticate = async ({
       return;
     }
 
-    await contract.sendTransaction({
+    await contract.auth({
       account_id: accountId,
       selected_auth_identity: undefined,
       auth: {
-        auth_identity: {
-          key_id: signature.rawId,
+        authenticator: {
+          WebAuthn: {
+            key_id: signature.rawId,
+          },
         },
-        auth_data: {
+        credentials: {
           signature: signature.signature,
           authenticator_data: signature.authenticatorData,
           client_data: JSON.stringify(signature.clientData),
         },
       },
-      payloads: transaction,
+      transaction: {
+        Sign: transaction,
+      },
     });
 
     setStatus("Passkey authentication successful!");

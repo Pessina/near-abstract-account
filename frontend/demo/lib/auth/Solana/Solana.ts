@@ -3,10 +3,19 @@ import {
   PhantomWalletAdapter,
   SolflareWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
-import { SolanaWalletType, SolanaAuthData, SolanaAuthIdentity } from "./types";
 import { AuthIdentity } from "../AuthIdentity";
+import {
+  WalletAuthIdentity,
+  WalletCredentials,
+  WalletType as AuthIdentityWalletType,
+} from "@/contracts/AbstractAccountContract/types/auth";
 
-export class Solana extends AuthIdentity<SolanaAuthIdentity, SolanaAuthData> {
+export type SolanaWalletType = "phantom" | "solflare";
+
+export class Solana extends AuthIdentity<
+  WalletAuthIdentity,
+  WalletCredentials
+> {
   private static wallet: BaseMessageSignerWalletAdapter | null = null;
   private static selectedWallet: SolanaWalletType | null = null;
 
@@ -57,14 +66,14 @@ export class Solana extends AuthIdentity<SolanaAuthIdentity, SolanaAuthData> {
     return detector();
   }
 
-  public async getAuthIdentity(): Promise<SolanaAuthIdentity | null> {
+  public async getAuthIdentity(): Promise<WalletAuthIdentity | null> {
     if (!Solana.isAvailable()) return null;
 
     try {
       const wallet = await Solana.getWallet();
       return {
         Wallet: {
-          wallet_type: "Solana",
+          wallet_type: AuthIdentityWalletType.Solana,
           public_key: wallet.publicKey?.toBase58() ?? "",
         },
       };
@@ -73,7 +82,7 @@ export class Solana extends AuthIdentity<SolanaAuthIdentity, SolanaAuthData> {
     }
   }
 
-  public async sign(message: string): Promise<SolanaAuthData | null> {
+  public async sign(message: string): Promise<WalletCredentials | null> {
     if (!Solana.isAvailable()) return null;
 
     try {
@@ -85,7 +94,6 @@ export class Solana extends AuthIdentity<SolanaAuthIdentity, SolanaAuthData> {
 
       return {
         signature: Buffer.from(signature).toString("base64"),
-        publicKey: wallet.publicKey.toBase58(),
       };
     } catch (error) {
       console.error("Failed to sign message:", error);

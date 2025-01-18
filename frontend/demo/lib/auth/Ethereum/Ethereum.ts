@@ -8,14 +8,18 @@ import {
   keccak256,
   toBytes,
 } from "viem";
-import { EthereumAuthData, EthereumAuthIdentity } from "./types";
 import { AuthIdentity } from "../AuthIdentity";
+import {
+  WalletAuthIdentity,
+  WalletCredentials,
+  WalletType as AuthIdentityWalletType,
+} from "@/contracts/AbstractAccountContract/types/auth";
 
 export type WalletType = "metamask" | "okx";
 
 export class Ethereum extends AuthIdentity<
-  EthereumAuthIdentity,
-  EthereumAuthData
+  WalletAuthIdentity,
+  WalletCredentials
 > {
   private static walletClient: WalletClient | null = null;
   private static selectedWallet: WalletType | null = null;
@@ -64,7 +68,7 @@ export class Ethereum extends AuthIdentity<
     );
   }
 
-  async getAuthIdentity(): Promise<EthereumAuthIdentity | null> {
+  async getAuthIdentity(): Promise<WalletAuthIdentity | null> {
     if (!Ethereum.isSupportedByBrowser()) {
       return null;
     }
@@ -77,7 +81,7 @@ export class Ethereum extends AuthIdentity<
 
       return {
         Wallet: {
-          wallet_type: "Ethereum",
+          wallet_type: AuthIdentityWalletType.Ethereum,
           public_key: compressedPublicKey,
         },
       };
@@ -87,7 +91,7 @@ export class Ethereum extends AuthIdentity<
     }
   }
 
-  async sign(message: string): Promise<EthereumAuthData | null> {
+  async sign(message: string): Promise<WalletCredentials | null> {
     if (!Ethereum.isSupportedByBrowser()) {
       return null;
     }

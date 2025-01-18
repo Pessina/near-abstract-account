@@ -1,4 +1,4 @@
-import { AbstractAccountContract } from "@/lib/contract/AbstractAccountContract";
+import { AbstractAccountContract } from "@/contracts/AbstractAccountContract/AbstractAccountContract";
 import { mockTransaction } from "@/lib/constants";
 
 export const handleOIDCRegister = async ({
@@ -46,7 +46,6 @@ export const handleOIDCAuthenticate = async ({
   issuer,
   email,
   accountId,
-  nonce,
 }: {
   contract: AbstractAccountContract;
   setStatus: (status: string) => void;
@@ -56,7 +55,6 @@ export const handleOIDCAuthenticate = async ({
   issuer: string;
   email: string;
   accountId: string;
-  nonce: string;
 }) => {
   setIsPending(true);
   try {
@@ -66,23 +64,24 @@ export const handleOIDCAuthenticate = async ({
       return;
     }
 
-    await contract.sendTransaction({
+    await contract.auth({
       account_id: accountId,
       selected_auth_identity: undefined,
       auth: {
-        auth_identity: {
+        authenticator: {
           OIDC: {
             client_id: clientId,
             issuer: issuer,
             email: email,
           },
         },
-        auth_data: {
-          message: nonce,
+        credentials: {
           token: token,
         },
       },
-      payloads: mockTransaction(),
+      transaction: {
+        Sign: mockTransaction(),
+      },
     });
 
     setStatus(`OIDC authentication successful!`);

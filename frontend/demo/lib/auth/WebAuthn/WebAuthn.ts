@@ -1,11 +1,11 @@
 import { AuthIdentity } from "../AuthIdentity";
-import { WebAuthnAuthIdentity, P256Credential } from "./types";
+import { P256Credential } from "./types";
 import { parseSignature } from "./utils";
 import cbor from "cbor";
 import crypto from "crypto";
 import { toHex } from "viem";
 import { parseAuthenticatorData } from "@simplewebauthn/server/helpers";
-
+import { WebAuthnAuthIdentity } from "@/contracts/AbstractAccountContract/types/auth";
 export class WebAuthn extends AuthIdentity<
   WebAuthnAuthIdentity,
   P256Credential
@@ -40,7 +40,7 @@ export class WebAuthn extends AuthIdentity<
         displayName: id,
       },
       pubKeyCredParams: [{ alg: -7, type: "public-key" }], // ES256
-      AuthIdentityelection: {
+      authenticatorSelection: {
         requireResidentKey: true,
         userVerification: "required",
         authenticatorAttachment: "platform",
@@ -80,15 +80,22 @@ export class WebAuthn extends AuthIdentity<
     const compressedPublicKey = prefix + x.slice(2); // Remove '0x' from x before concatenating
 
     return {
-      key_id: toHex(new Uint8Array(cred.rawId)),
-      compressed_public_key: compressedPublicKey,
+      WebAuthn: {
+        key_id: toHex(new Uint8Array(cred.rawId)),
+        compressed_public_key: compressedPublicKey,
+      },
     };
   }
 
   async sign(message: string): Promise<P256Credential | null> {
     WebAuthn.isSupportedByBrowser();
 
-    const challenge = Uint8Array.from(message, (c) => c.charCodeAt(0));
+    const challenge = new Uint8Array(
+      await window.crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(message)
+      )
+    );
 
     const options: PublicKeyCredentialRequestOptions = {
       timeout: 60000,

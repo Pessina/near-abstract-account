@@ -1,11 +1,11 @@
 import { Contract, Account as NearAccount } from "near-api-js";
-import { OIDCData } from "./AbstractAccountContract";
-import { OIDCAuthIdentity } from "./types";
+import { OIDCAuthIdentity } from "../types";
+import { OIDCCredentials } from "../AbstractAccountContract/AbstractAccountContract";
 
 type OIDCAuthContractType = Contract & {
   new: () => Promise<void>;
   validate_oidc_token: (args: {
-    oidc_data: OIDCData;
+    oidc_data: OIDCCredentials;
     oidc_auth_identity: OIDCAuthIdentity;
   }) => Promise<boolean>;
   update_keys: (args: { issuer: string; keys: PublicKey[] }) => Promise<void>;
@@ -43,7 +43,7 @@ export class OIDCAuthContract {
   }
 
   async validateOIDCToken(
-    oidcData: OIDCData,
+    oidcData: OIDCCredentials,
     oidcAuthIdentity: OIDCAuthIdentity
   ): Promise<boolean> {
     return await this.contract.validate_oidc_token({

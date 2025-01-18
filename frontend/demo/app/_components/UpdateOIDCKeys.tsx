@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { OIDCAuthContract } from "@/lib/contract/OIDCAuthContract";
-import initNear from "@/lib/near";
+import { useOIDCAuthContract } from "@/contracts/OIDCAuthContract/useOIDCAuthContract";
 
 interface PublicKey {
   kid: string;
@@ -15,21 +14,9 @@ interface PublicKey {
 }
 
 export default function UpdateOIDCKeys() {
-  const [contract, setContract] = useState<OIDCAuthContract | null>(null)
+  const { contract } = useOIDCAuthContract();
   const [status, setStatus] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    const setupContract = async () => {
-      const { account } = await initNear()
-      const oidcContractInstance = new OIDCAuthContract({
-        account,
-        contractId: process.env.NEXT_PUBLIC_OIDC_AUTH_CONTRACT as string
-      })
-      setContract(oidcContractInstance)
-    }
-    setupContract()
-  }, [])
 
   const fetchAndUpdateKeys = async () => {
     try {

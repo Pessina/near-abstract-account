@@ -1,4 +1,4 @@
-import { SignPayloadsRequest } from "../contract/AbstractAccountContract";
+import { SignPayloadsRequest } from "@/contracts/AbstractAccountContract/types/transaction";
 
 export const mockTransaction = (): SignPayloadsRequest => ({
   contract_id: process.env.NEXT_PUBLIC_SIGNER_CONTRACT as string,

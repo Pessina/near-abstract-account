@@ -5,7 +5,7 @@ mod utils;
 
 use interfaces::auth::wallet::WalletType;
 use near_sdk::{
-    env, near, require,
+    env, log, near, require,
     serde::{Deserialize, Serialize},
     store::IterableMap,
     AccountId, Promise,
@@ -88,6 +88,8 @@ impl AbstractAccountContract {
     #[payable]
     pub fn auth(&mut self, user_op: UserOp) -> Promise {
         let account = self.accounts.get_mut(&user_op.account_id).unwrap();
+
+        log!("account: {:?}", env::attached_deposit());
 
         require!(
             account.has_auth_identity(&user_op.auth.authenticator),

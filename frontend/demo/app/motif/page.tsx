@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import auth0 from "auth0-js";
 import canonicalize from "canonicalize";
 import { useCallback, useEffect, useMemo } from "react";
-import { encodeFunctionData, toBytes } from "viem";
+import { toBytes } from "viem";
 
 export default function MotifPage() {
   const auth0Instance = useMemo(
@@ -184,56 +184,4 @@ export default function MotifPage() {
   );
 }
 
-const ABI = [
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: false,
-        internalType: "string",
-        name: "_state",
-        type: "string",
-      },
-      {
-        indexed: false,
-        internalType: "address",
-        name: "_user",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "_timestamp",
-        type: "uint256",
-      },
-    ],
-    name: "StateChanged",
-    type: "event",
-  },
-  {
-    inputs: [
-      {
-        internalType: "string",
-        name: "_state",
-        type: "string",
-      },
-    ],
-    name: "setState",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "state",
-    outputs: [
-      {
-        internalType: "string",
-        name: "",
-        type: "string",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-];
+

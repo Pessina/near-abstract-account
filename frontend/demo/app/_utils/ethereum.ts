@@ -1,8 +1,8 @@
-import { AbstractAccountContract } from "@/lib/contract/AbstractAccountContract";
 import canonicalize from "canonicalize";
 import { Ethereum, WalletType } from "@/lib/auth/Ethereum/Ethereum";
 import { mockTransaction } from "@/lib/constants";
-
+import { AbstractAccountContract } from "@/contracts/AbstractAccountContract/AbstractAccountContract";
+import { WalletType as AuthIdentityWalletType } from "@/contracts/AbstractAccountContract/types/auth";
 export const handleEthereumRegister = async ({
   contract,
   setStatus,
@@ -27,7 +27,12 @@ export const handleEthereumRegister = async ({
       return;
     }
 
-    await contract.addAccount(accountId, authIdentity);
+    await contract.addAccount(accountId, {
+      Wallet: {
+        wallet_type: AuthIdentityWalletType.Ethereum,
+        public_key: authIdentity.Wallet.public_key,
+      },
+    });
     setStatus("Ethereum address registration successful!");
   } catch (error) {
     console.error(error);
@@ -81,14 +86,15 @@ export const handleEthereumAuthenticate = async ({
       return;
     }
 
-    await contract.sendTransaction({
+    await contract.auth({
       account_id: accountId,
-      selected_auth_identity: undefined,
       auth: {
-        auth_identity: authIdentity,
-        auth_data: ethereumData,
+        authenticator: authIdentity,
+        credentials: ethereumData,
       },
-      payloads: transaction,
+      transaction: {
+        Sign: transaction,
+      },
     });
 
     setStatus("Ethereum authentication successful!");

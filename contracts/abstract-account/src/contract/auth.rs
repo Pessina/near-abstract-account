@@ -10,7 +10,7 @@ use interfaces::auth::{
     wallet::{WalletCredentials, WalletValidationData},
     webauthn::{WebAuthnCredentials, WebAuthnValidationData},
 };
-use near_sdk::{env, require, Promise};
+use near_sdk::{env, log, require, Promise};
 use serde_json_canonicalizer;
 
 impl AbstractAccountContract {
@@ -98,8 +98,8 @@ impl AbstractAccountContract {
             .as_str()
             .ok_or("Missing challenge in client data")?;
 
-        let canonical = Self::get_message_to_sign(&user_op)?;
-        let transaction_hash = URL_SAFE_NO_PAD.encode(env::sha256(canonical.as_bytes()));
+        let message = Self::get_message_to_sign(&user_op)?;
+        let transaction_hash = URL_SAFE_NO_PAD.encode(env::sha256(message.as_bytes()));
 
         require!(
             client_challenge == transaction_hash,
