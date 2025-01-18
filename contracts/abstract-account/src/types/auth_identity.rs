@@ -39,7 +39,6 @@ impl Path for AuthIdentity {
 }
 
 // TODO: This should be implemented on a better way, probably on impl AuthIdentity
-
 #[derive(
     Debug,
     BorshDeserialize,

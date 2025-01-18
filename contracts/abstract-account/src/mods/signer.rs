@@ -1,5 +1,8 @@
 use near_sdk::{
-    borsh::{BorshDeserialize, BorshSerialize}, ext_contract, serde::{Deserialize, Serialize}, AccountId, Gas, PromiseOrValue
+    borsh::{BorshDeserialize, BorshSerialize},
+    ext_contract,
+    serde::{Deserialize, Serialize},
+    AccountId, Gas, PromiseOrValue,
 };
 use schemars::JsonSchema;
 

@@ -1,5 +1,6 @@
 use crate::*;
 
+#[near]
 impl AbstractAccountContract {
     pub fn add_account(&mut self, account_id: String, auth_identity: AuthIdentity) {
         if self.accounts.contains_key(&account_id) {
@@ -10,17 +11,25 @@ impl AbstractAccountContract {
             .insert(account_id, Account::new(vec![auth_identity]));
     }
 
+    #[private]
     pub fn delete_account(&mut self, account_id: String) {
-        // TODO: Include auth validation
         self.accounts.remove(&account_id);
     }
 
+    #[private]
     pub fn add_auth_identity(&mut self, account_id: String, auth_identity: AuthIdentity) {
-        // TODO: Include auth validation
         self.accounts
             .get_mut(&account_id)
             .unwrap()
             .add_auth_identity(auth_identity);
+    }
+
+    #[private]
+    pub fn remove_auth_identity(&mut self, account_id: String, auth_identity: AuthIdentity) {
+        self.accounts
+            .get_mut(&account_id)
+            .unwrap()
+            .remove_auth_identity(auth_identity);
     }
 
     pub fn get_account_by_id(&self, account_id: String) -> Option<&Account> {
@@ -35,5 +44,13 @@ impl AbstractAccountContract {
         self.accounts
             .get(&account_id)
             .map(|account| account.auth_identities.clone())
+    }
+
+    pub fn get_account_by_auth_identity(&self, auth_identity: AuthIdentity) -> Vec<String> {
+        self.accounts
+            .iter()
+            .filter(|(_, account)| account.has_auth_identity(&auth_identity))
+            .map(|(key, _)| key.clone())
+            .collect()
     }
 }

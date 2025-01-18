@@ -23,4 +23,9 @@ impl Account {
     pub fn add_auth_identity(&mut self, auth_identity: AuthIdentity) {
         self.auth_identities.push(auth_identity);
     }
+
+    pub fn remove_auth_identity(&mut self, auth_identity: AuthIdentity) {
+        self.auth_identities
+            .retain(|identity| identity != &auth_identity);
+    }
 }

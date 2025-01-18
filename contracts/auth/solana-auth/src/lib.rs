@@ -1,5 +1,4 @@
-use base64::engine::general_purpose::STANDARD;
-use base64::Engine;
+use base64::{engine::general_purpose::STANDARD, Engine};
 use bs58;
 use ed25519_dalek::{Signature, VerifyingKey};
 use interfaces::auth::wallet::WalletValidationData;
