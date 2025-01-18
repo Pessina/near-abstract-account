@@ -7,7 +7,7 @@ use interfaces::auth::wallet::WalletType;
 use near_sdk::{
     env, near, require,
     serde::{Deserialize, Serialize},
-    store::{IterableMap, LookupMap},
+    store::IterableMap,
     AccountId, Promise,
 };
 use schemars::JsonSchema;
@@ -20,13 +20,13 @@ const KEY_PREFIX_AUTH_CONTRACTS: &[u8] = b"a";
 #[near(contract_state)]
 pub struct AbstractAccountContract {
     accounts: IterableMap<String, Account>, // account_id -> account (auth_identities)
-    auth_contracts: LookupMap<AuthIdentityNames, AccountId>,
+    auth_contracts: IterableMap<AuthIdentityNames, AccountId>,
     signer_account: AccountId,
 }
 
 impl Default for AbstractAccountContract {
     fn default() -> Self {
-        let mut auth_contracts = LookupMap::new(KEY_PREFIX_AUTH_CONTRACTS);
+        let mut auth_contracts = IterableMap::new(KEY_PREFIX_AUTH_CONTRACTS);
         auth_contracts.insert(
             AuthIdentityNames::WebAuthn,
             "felipe-webauthn-contract.testnet".parse().unwrap(),
