@@ -1,11 +1,10 @@
 "use client";
 
 import { GoogleLogin } from '@react-oauth/google';
-import { CredentialResponse } from '@react-oauth/google';
 
 interface GoogleButtonProps {
-  onSuccess?: (response: CredentialResponse) => void;
-  onError?: () => void;
+  onSuccess: (idToken: string) => void;
+  onError: () => void;
   nonce?: string;
 }
 
@@ -13,14 +12,8 @@ const GoogleButton = ({ onSuccess, onError, nonce }: GoogleButtonProps) => {
   return (
     <div className="w-full">
       <GoogleLogin
-        onSuccess={response => {
-          console.log(response);
-          onSuccess?.(response);
-        }}
-        onError={() => {
-          console.log('Google login failed');
-          onError?.();
-        }}
+        onSuccess={(credential) => onSuccess(credential.clientId ?? '')}
+        onError={onError}
         nonce={nonce}
         locale='pt_BR'
         useOneTap

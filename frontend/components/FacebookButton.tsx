@@ -1,46 +1,42 @@
 'use client'
 
 import { Button } from "@/components/ui/button"
+import { useEnv } from "@/hooks/useEnv";
 import { useFacebookAuth } from '@/hooks/useFacebookAuth';
-import { useState } from "react";
 
 type FacebookButtonProps = {
     text: string;
-    onSuccess: (token: string) => void;
+    onSuccess: (idToken: string) => void;
+    onError: (error: Error) => void;
     nonce?: string;
 }
 
-export default function FacebookButton({ text, onSuccess, nonce }: FacebookButtonProps) {
-    const [isLoading, setIsLoading] = useState(false);
+export default function FacebookButton({ text, onSuccess, onError, nonce }: FacebookButtonProps) {
+    const { facebookAppId } = useEnv()
     const { initiateLogin } = useFacebookAuth({
         scope: 'email',
-        appId: process.env.NEXT_PUBLIC_FACEBOOK_APP_ID || '',
+        appId: facebookAppId,
         onSuccess: (idToken) => {
-            console.log('Successfully logged in with Facebook', idToken);
-            setIsLoading(false);
             if (idToken) {
                 onSuccess(idToken);
             } else {
-                console.error('No token received from Facebook');
+                onError(new Error('No token received from Facebook'));
             }
         },
-        onError: (error) => {
-            console.error('Error logging in with Facebook', error);
-            setIsLoading(false);
+        onError: (error: Error) => {
+            onError(error);
         },
     });
 
     const handleLogin = async () => {
-        setIsLoading(true);
         await initiateLogin({
             nonce: nonce,
         });
-        setIsLoading(false);
     };
 
     return (
-        <Button onClick={handleLogin} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-            {isLoading ? 'Loading...' : text}
+        <Button onClick={handleLogin} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+            {text}
         </Button>
     );
 }

@@ -4,9 +4,9 @@ import {
   WalletType as EthereumWalletType,
 } from "@/lib/auth/Ethereum/Ethereum";
 import { Solana, SolanaWalletType } from "@/lib/auth/Solana/Solana";
-import { mockTransaction, NEAR_MAX_GAS } from "@/lib/constants";
+import { NEAR_MAX_GAS } from "@/lib/constants";
 import { AbstractAccountContractClass } from "@/contracts/AbstractAccountContract/AbstractAccountContract";
-import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth";
+import { Transaction } from "@/contracts/AbstractAccountContract/types/transaction";
 
 type WalletConfig = {
   type: "ethereum" | "solana";
@@ -50,10 +50,12 @@ export const handleWalletAuthenticate = async ({
   contract,
   walletConfig,
   accountId,
+  transaction,
 }: {
   contract: AbstractAccountContractClass;
   walletConfig: WalletConfig;
   accountId: string;
+  transaction: Transaction;
 }) => {
   const wallet = getWalletInstance(walletConfig);
   const account = await contract.getAccountById({
@@ -64,13 +66,7 @@ export const handleWalletAuthenticate = async ({
     throw new Error("Failed to get account");
   }
 
-  const transaction = mockTransaction();
-  const signTransaction = AbstractAccountContractBuilder.transaction.sign({
-    contractId: transaction.contract_id,
-    payloads: transaction.payloads,
-  });
-
-  const canonical = canonicalize(signTransaction);
+  const canonical = canonicalize(transaction);
 
   if (!canonical) {
     throw new Error("Failed to canonicalize transaction");
@@ -91,7 +87,7 @@ export const handleWalletAuthenticate = async ({
           authenticator: authIdentity,
           credentials: walletData,
         },
-        transaction: signTransaction,
+        transaction,
       },
     },
     gas: NEAR_MAX_GAS,

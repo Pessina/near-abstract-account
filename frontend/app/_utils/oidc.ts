@@ -1,100 +1,71 @@
 import { AbstractAccountContractClass } from "@/contracts/AbstractAccountContract/AbstractAccountContract";
+import { Transaction } from "@/contracts/AbstractAccountContract/types/transaction";
 import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth";
-import { mockTransaction } from "@/lib/constants";
 
 export const handleOIDCRegister = async ({
   contract,
-  setStatus,
-  setIsPending,
   clientId,
   issuer,
   email,
   accountId,
 }: {
   contract: AbstractAccountContractClass;
-  setStatus: (status: string) => void;
-  setIsPending: (isPending: boolean) => void;
-  token: string;
   clientId: string;
   issuer: string;
   email: string;
   accountId: string;
 }) => {
-  setIsPending(true);
-  try {
-    await contract.addAccount({
-      args: {
-        account_id: accountId,
-        auth_identity: AbstractAccountContractBuilder.authIdentity.oidc({
-          client_id: clientId,
-          issuer,
-          email,
-        }),
-      },
-    });
-    setStatus(`OIDC registration successful!`);
-  } catch (error) {
-    console.error(error);
-    setStatus(`Error during registration: ${(error as Error).message}`);
-  } finally {
-    setIsPending(false);
-  }
+  await contract.addAccount({
+    args: {
+      account_id: accountId,
+      auth_identity: AbstractAccountContractBuilder.authIdentity.oidc({
+        client_id: clientId,
+        issuer,
+        email,
+      }),
+    },
+  });
 };
 
 export const handleOIDCAuthenticate = async ({
   contract,
-  setStatus,
-  setIsPending,
   token,
   clientId,
   issuer,
   email,
   accountId,
+  transaction,
 }: {
   contract: AbstractAccountContractClass;
-  setStatus: (status: string) => void;
-  setIsPending: (isPending: boolean) => void;
   token: string;
   clientId: string;
   issuer: string;
   email: string;
   accountId: string;
+  transaction: Transaction;
 }) => {
-  setIsPending(true);
-  try {
-    const account = await contract.getAccountById({ account_id: accountId });
-    if (!account) {
-      setStatus("Failed to get account");
-      return;
-    }
+  const account = await contract.getAccountById({ account_id: accountId });
+  if (!account) {
+    throw new Error("Failed to get account");
+  }
 
-    await contract.auth({
-      args: {
-        user_op: {
-          account_id: accountId,
-          selected_auth_identity: undefined,
-          auth: {
-            authenticator: AbstractAccountContractBuilder.authIdentity.oidc({
-              client_id: clientId,
-              issuer,
-              email,
-            }),
-            credentials: {
-              token: token,
-            },
-          },
-          transaction: {
-            Sign: mockTransaction(),
+  await contract.auth({
+    args: {
+      user_op: {
+        account_id: accountId,
+        selected_auth_identity: undefined,
+        auth: {
+          authenticator: AbstractAccountContractBuilder.authIdentity.oidc({
+            client_id: clientId,
+            issuer,
+            email,
+          }),
+          credentials: {
+            token: token,
           },
         },
+        transaction,
       },
-    });
-
-    setStatus(`OIDC authentication successful!`);
-  } catch (error) {
-    console.error(error);
-    setStatus(`Error during authentication: ${(error as Error).message}`);
-  } finally {
-    setIsPending(false);
-  }
+    },
+  });
 };

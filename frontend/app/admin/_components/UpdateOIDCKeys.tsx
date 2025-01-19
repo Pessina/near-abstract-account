@@ -26,17 +26,17 @@ export default function UpdateOIDCKeys() {
       const providers = [
         {
           name: "Google",
-          url: "/api/oidc/google/keys",
+          url: "/api/admin/oidc/google/keys",
           issuer: "https://accounts.google.com"
         },
         {
           name: "Facebook",
-          url: "/api/oidc/facebook/keys",
+          url: "/api/admin/oidc/facebook/keys",
           issuer: "https://www.facebook.com"
         },
         {
           name: "Auth0",
-          url: "/api/oidc/auth0/keys",
+          url: "/api/admin/oidc/auth0/keys",
           issuer: "https://dev-um3ne30lucm6ehqq.us.auth0.com/"
         }
       ];
