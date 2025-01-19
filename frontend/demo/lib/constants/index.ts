@@ -12,3 +12,5 @@ export const mockTransaction = (): SignPayloadsRequest => ({
     },
   ],
 });
+
+export const NEAR_MAX_GAS = "300000000000000";

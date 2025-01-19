@@ -1,109 +1,100 @@
 import canonicalize from "canonicalize";
-import { Ethereum, WalletType } from "@/lib/auth/Ethereum/Ethereum";
-import { mockTransaction } from "@/lib/constants";
-import { AbstractAccountContract } from "@/contracts/AbstractAccountContract/AbstractAccountContract";
-import { WalletType as AuthIdentityWalletType } from "@/contracts/AbstractAccountContract/types/auth";
-export const handleEthereumRegister = async ({
-  contract,
-  setStatus,
-  setIsPending,
-  wallet,
-  accountId,
-}: {
-  contract: AbstractAccountContract;
-  setStatus: (status: string) => void;
-  setIsPending: (isPending: boolean) => void;
-  wallet: WalletType;
-  accountId: string;
-}) => {
-  setIsPending(true);
-  try {
+import {
+  Ethereum,
+  WalletType as EthereumWalletType,
+} from "@/lib/auth/Ethereum/Ethereum";
+import { Solana, SolanaWalletType } from "@/lib/auth/Solana/Solana";
+import { mockTransaction, NEAR_MAX_GAS } from "@/lib/constants";
+import { AbstractAccountContractClass } from "@/contracts/AbstractAccountContract/AbstractAccountContract";
+import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth";
+
+type WalletConfig = {
+  type: "ethereum" | "solana";
+  wallet: EthereumWalletType | SolanaWalletType;
+};
+
+const getWalletInstance = (config: WalletConfig) => {
+  if (config.type === "ethereum") {
     const ethereum = new Ethereum();
-    Ethereum.setWallet(wallet);
-
-    const authIdentity = await ethereum.getAuthIdentity();
-    if (!authIdentity) {
-      setStatus("Failed to get compressed public key");
-      return;
-    }
-
-    await contract.addAccount(accountId, {
-      Wallet: {
-        wallet_type: AuthIdentityWalletType.Ethereum,
-        public_key: authIdentity.Wallet.public_key,
-      },
-    });
-    setStatus("Ethereum address registration successful!");
-  } catch (error) {
-    console.error(error);
-    setStatus(`Error during registration: ${(error as Error).message}`);
-  } finally {
-    setIsPending(false);
+    Ethereum.setWallet(config.wallet as EthereumWalletType);
+    return ethereum;
+  } else {
+    const solana = new Solana();
+    Solana.setWallet(config.wallet as SolanaWalletType);
+    return solana;
   }
 };
 
-export const handleEthereumAuthenticate = async ({
+export const handleWalletRegister = async ({
   contract,
-  setStatus,
-  setIsPending,
-  wallet,
+  walletConfig,
   accountId,
 }: {
-  contract: AbstractAccountContract;
-  setStatus: (status: string) => void;
-  setIsPending: (isPending: boolean) => void;
-  wallet: WalletType;
+  contract: AbstractAccountContractClass;
+  walletConfig: WalletConfig;
   accountId: string;
 }) => {
-  setIsPending(true);
-  try {
-    const ethereum = new Ethereum();
-    Ethereum.setWallet(wallet);
+  const wallet = getWalletInstance(walletConfig);
 
-    const account = await contract.getAccountById(accountId);
-    if (!account) {
-      setStatus("Failed to get account");
-      return;
-    }
-
-    const transaction = mockTransaction();
-
-    const canonical = canonicalize({
-      Sign: transaction,
-    });
-    if (!canonical) {
-      setStatus("Failed to canonicalize transaction");
-      return;
-    }
-
-    const ethereumData = await ethereum.sign(canonical);
-    if (!ethereumData) {
-      setStatus("Failed to sign message");
-      return;
-    }
-
-    const authIdentity = await ethereum.getAuthIdentity();
-    if (!authIdentity) {
-      setStatus("Failed to get compressed public key");
-      return;
-    }
-
-    await contract.auth({
-      account_id: accountId,
-      auth: {
-        authenticator: authIdentity,
-        credentials: ethereumData,
-      },
-      transaction: {
-        Sign: transaction,
-      },
-    });
-
-    setStatus("Ethereum authentication successful!");
-  } catch (error) {
-    console.error(error);
-    setStatus(`Error during authentication: ${(error as Error).message}`);
-  } finally {
-    setIsPending(false);
+  const authIdentity = await wallet.getAuthIdentity();
+  if (!authIdentity) {
+    throw new Error("Failed to get auth identity");
   }
+
+  await contract.addAccount({
+    args: { account_id: accountId, auth_identity: authIdentity },
+  });
+};
+
+export const handleWalletAuthenticate = async ({
+  contract,
+  walletConfig,
+  accountId,
+}: {
+  contract: AbstractAccountContractClass;
+  walletConfig: WalletConfig;
+  accountId: string;
+}) => {
+  const wallet = getWalletInstance(walletConfig);
+  const account = await contract.getAccountById({
+    account_id: accountId,
+  });
+
+  if (!account) {
+    throw new Error("Failed to get account");
+  }
+
+  const transaction = mockTransaction();
+  const signTransaction = AbstractAccountContractBuilder.transaction.sign({
+    contractId: transaction.contract_id,
+    payloads: transaction.payloads,
+  });
+
+  const canonical = canonicalize(signTransaction);
+
+  if (!canonical) {
+    throw new Error("Failed to canonicalize transaction");
+  }
+
+  const walletData = await wallet.sign(canonical);
+  const authIdentity = await wallet.getAuthIdentity();
+
+  if (!authIdentity || !walletData) {
+    throw new Error("Failed to get auth identity or wallet data");
+  }
+
+  await contract.auth({
+    args: {
+      user_op: {
+        account_id: accountId,
+        auth: {
+          authenticator: authIdentity,
+          credentials: walletData,
+        },
+        transaction: signTransaction,
+      },
+    },
+    gas: NEAR_MAX_GAS,
+    amount: "10", // Fee should be dynamic
+  });
 };

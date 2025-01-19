@@ -9,6 +9,7 @@ import {
   WalletCredentials,
   WalletType as AuthIdentityWalletType,
 } from "@/contracts/AbstractAccountContract/types/auth";
+import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth";
 
 export type SolanaWalletType = "phantom" | "solflare";
 
@@ -71,12 +72,10 @@ export class Solana extends AuthIdentity<
 
     try {
       const wallet = await Solana.getWallet();
-      return {
-        Wallet: {
-          wallet_type: AuthIdentityWalletType.Solana,
-          public_key: wallet.publicKey?.toBase58() ?? "",
-        },
-      };
+      return AbstractAccountContractBuilder.authIdentity.wallet({
+        wallet_type: AuthIdentityWalletType.Solana,
+        public_key: wallet.publicKey?.toBase58() ?? "",
+      });
     } catch {
       return null;
     }

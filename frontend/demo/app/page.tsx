@@ -8,9 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { handlePasskeyAuthenticate } from "./_utils/webauthn"
 import { handlePasskeyRegister } from "./_utils/webauthn"
-import { handleEthereumAuthenticate } from "./_utils/ethereum"
-import { handleEthereumRegister } from "./_utils/ethereum"
-import { handleSolanaAuthenticate, handleSolanaRegister } from "./_utils/solana"
+import { handleWalletAuthenticate, handleWalletRegister } from "./_utils/ethereum"
 import GoogleButton from "@/components/GoogleButton"
 import FacebookButton from "@/components/FacebookButton"
 import AuthButton from "@/components/AuthButton"
@@ -38,6 +36,10 @@ export default function AuthDemo() {
 
   const username = watch("username")
 
+  if (!contract) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <GoogleProvider>
       <div className="flex justify-center items-center h-full">
@@ -53,7 +55,6 @@ export default function AuthDemo() {
                 <div className="flex flex-col gap-4">
                   <Button
                     onClick={async () => {
-                      if (!contract) return;
                       try {
                         const accounts = await contract.listAccountIds();
                         setStatus(`Accounts: ${accounts.join(', ')}`);
@@ -69,7 +70,7 @@ export default function AuthDemo() {
                     onClick={async () => {
                       if (!contract || !username) return;
                       try {
-                        const identities = await contract.listAuthIdentities(username);
+                        const identities = await contract.listAuthIdentities({ account_id: username });
                         setStatus(`Auth identities for ${username}: ${JSON.stringify(identities)}`);
                       } catch (error) {
                         setStatus(`Error listing auth identities: ${error}`);
@@ -97,7 +98,6 @@ export default function AuthDemo() {
                 <div className="flex space-x-4">
                   <Button
                     onClick={() => {
-                      if (!contract) return;
                       handlePasskeyRegister({
                         username,
                         contract,
@@ -112,7 +112,6 @@ export default function AuthDemo() {
                   </Button>
                   <Button
                     onClick={() => {
-                      if (!contract) return;
                       handlePasskeyAuthenticate({
                         contract,
                         setStatus,
@@ -132,7 +131,6 @@ export default function AuthDemo() {
                 <div className="flex gap-2">
                   <GoogleButton
                     onSuccess={(response) => {
-                      if (!contract) return;
                       handleOIDCRegister({
                         contract,
                         setStatus,
@@ -150,7 +148,6 @@ export default function AuthDemo() {
                       Sign: mockTransaction(),
                     }) ?? ''}
                     onSuccess={(response) => {
-                      if (!contract) return;
                       handleOIDCAuthenticate({
                         contract,
                         setStatus,
@@ -168,7 +165,6 @@ export default function AuthDemo() {
                   <FacebookButton
                     text="Register with Facebook"
                     onSuccess={(token) => {
-                      if (!contract) return;
                       handleOIDCRegister({
                         contract,
                         setStatus,
@@ -187,7 +183,6 @@ export default function AuthDemo() {
                     }) ?? ''}
                     text="Authenticate with Facebook"
                     onSuccess={(token) => {
-                      if (!contract) return;
                       handleOIDCAuthenticate({
                         contract,
                         setStatus,
@@ -208,13 +203,13 @@ export default function AuthDemo() {
                   <div className="flex gap-2">
                     <AuthButton
                       onClick={() => {
-                        if (!contract) return;
-                        handleEthereumRegister({
+                        handleWalletRegister({
                           contract,
-                          setStatus,
-                          setIsPending,
-                          wallet: 'metamask',
-                          accountId: username
+                          walletConfig: {
+                            type: "ethereum",
+                            wallet: "metamask",
+                          },
+                          accountId: username,
                         });
                       }}
                       imageSrc="/metamask.svg"
@@ -224,12 +219,12 @@ export default function AuthDemo() {
                     />
                     <AuthButton
                       onClick={() => {
-                        if (!contract) return;
-                        handleEthereumAuthenticate({
+                        handleWalletAuthenticate({
                           contract,
-                          setStatus,
-                          setIsPending,
-                          wallet: 'metamask',
+                          walletConfig: {
+                            type: "ethereum",
+                            wallet: "metamask",
+                          },
                           accountId: username
                         });
                       }}
@@ -242,12 +237,12 @@ export default function AuthDemo() {
                   <div className="flex gap-2">
                     <AuthButton
                       onClick={() => {
-                        if (!contract) return;
-                        handleEthereumRegister({
+                        handleWalletRegister({
                           contract,
-                          setStatus,
-                          setIsPending,
-                          wallet: 'okx',
+                          walletConfig: {
+                            type: "ethereum",
+                            wallet: "okx",
+                          },
                           accountId: username
                         });
                       }}
@@ -258,12 +253,12 @@ export default function AuthDemo() {
                     />
                     <AuthButton
                       onClick={() => {
-                        if (!contract) return;
-                        handleEthereumAuthenticate({
+                        handleWalletAuthenticate({
                           contract,
-                          setStatus,
-                          setIsPending,
-                          wallet: 'okx',
+                          walletConfig: {
+                            type: "ethereum",
+                            wallet: "okx",
+                          },
                           accountId: username
                         });
                       }}
@@ -276,12 +271,12 @@ export default function AuthDemo() {
                   <div className="flex gap-2">
                     <AuthButton
                       onClick={() => {
-                        if (!contract) return;
-                        handleSolanaRegister({
+                        handleWalletRegister({
                           contract,
-                          setStatus,
-                          setIsPending,
-                          wallet: 'phantom',
+                          walletConfig: {
+                            type: "solana",
+                            wallet: "phantom",
+                          },
                           accountId: username
                         });
                       }}
@@ -292,12 +287,12 @@ export default function AuthDemo() {
                     />
                     <AuthButton
                       onClick={() => {
-                        if (!contract) return;
-                        handleSolanaAuthenticate({
+                        handleWalletAuthenticate({
                           contract,
-                          setStatus,
-                          setIsPending,
-                          wallet: 'phantom',
+                          walletConfig: {
+                            type: "solana",
+                            wallet: "phantom",
+                          },
                           accountId: username
                         });
                       }}

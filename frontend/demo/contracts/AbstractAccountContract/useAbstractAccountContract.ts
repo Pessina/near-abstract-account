@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { AbstractAccountContract } from "./AbstractAccountContract";
+import { AbstractAccountContractClass } from "./AbstractAccountContract";
 import { useInitNear } from "@/hooks/useInitNear";
 import { useEnv } from "@/hooks/useEnv";
 
 export const useAbstractAccountContract = () => {
-  const [contract, setContract] = useState<AbstractAccountContract | null>(
+  const [contract, setContract] = useState<AbstractAccountContractClass | null>(
     null
   );
   const { near, error, isLoading } = useInitNear();
@@ -18,7 +18,7 @@ export const useAbstractAccountContract = () => {
 
       try {
         const account = await near.account(nearAccountId);
-        const contractInstance = new AbstractAccountContract({
+        const contractInstance = new AbstractAccountContractClass({
           account,
           contractId: abstractAccountContract,
         });

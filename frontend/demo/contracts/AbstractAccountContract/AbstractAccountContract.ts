@@ -1,13 +1,14 @@
 import { Contract, Account as NearAccount } from "near-api-js";
-import { OIDCAuthIdentity } from "../types";
 import {
   WebAuthnAuthIdentity,
   WalletAuthIdentity,
   WebAuthnCredentials,
   WalletCredentials,
   OIDCCredentials,
+  OIDCAuthIdentity,
 } from "./types/auth";
 import { Signature, Transaction } from "./types/transaction";
+import { ContractChangeMethodArgs } from "../types";
 
 export type AuthIdentity =
   | WebAuthnAuthIdentity
@@ -45,24 +46,30 @@ export interface AuthContractConfig {
   contract_id: string;
 }
 
-type AbstractContract = Contract & {
-  new: (args: {
-    auth_contracts?: AuthContractConfig[];
-    signer_account?: string;
-  }) => Promise<void>;
-  add_account: (args: {
-    account_id: string;
-    auth_identity: AuthIdentity;
-  }) => Promise<void>;
-  delete_account: (args: { account_id: string }) => Promise<void>;
-  add_auth_identity: (args: {
-    account_id: string;
-    auth_identity: AuthIdentity;
-  }) => Promise<void>;
-  remove_auth_identity: (args: {
-    account_id: string;
-    auth_identity: AuthIdentity;
-  }) => Promise<void>;
+export type AbstractAccountContract = Contract & {
+  add_account: (
+    args: ContractChangeMethodArgs<{
+      account_id: string;
+      auth_identity: AuthIdentity;
+    }>
+  ) => Promise<void>;
+  delete_account: (
+    args: ContractChangeMethodArgs<{
+      account_id: string;
+    }>
+  ) => Promise<void>;
+  add_auth_identity: (
+    args: ContractChangeMethodArgs<{
+      account_id: string;
+      auth_identity: AuthIdentity;
+    }>
+  ) => Promise<void>;
+  remove_auth_identity: (
+    args: ContractChangeMethodArgs<{
+      account_id: string;
+      auth_identity: AuthIdentity;
+    }>
+  ) => Promise<void>;
   get_account_by_id: (args: { account_id: string }) => Promise<Account | null>;
   list_account_ids: () => Promise<string[]>;
   list_auth_identities: (args: {
@@ -73,15 +80,15 @@ type AbstractContract = Contract & {
   }) => Promise<string[]>;
   get_all_contracts: () => Promise<string[]>;
   get_signer_account: () => Promise<string>;
-  auth: (args: {
-    args: { user_op: UserOperation };
-    gas?: string;
-    amount?: string;
-  }) => Promise<Signature>;
+  auth: (
+    args: ContractChangeMethodArgs<{
+      user_op: UserOperation;
+    }>
+  ) => Promise<Signature>;
 };
 
-export class AbstractAccountContract {
-  private contract: AbstractContract;
+export class AbstractAccountContractClass {
+  private contract: AbstractAccountContract;
 
   constructor({
     account,
@@ -107,78 +114,62 @@ export class AbstractAccountContract {
         "auth",
       ],
       useLocalViewExecution: false,
-    }) as unknown as AbstractContract;
+    }) as unknown as AbstractAccountContract;
   }
 
-  async addAccount(
-    accountId: string,
-    authIdentity: AuthIdentity
-  ): Promise<void> {
-    return await this.contract.add_account({
-      account_id: accountId,
-      auth_identity: authIdentity,
-    });
+  async addAccount(obj: Parameters<AbstractAccountContract["add_account"]>[0]) {
+    return this.contract.add_account(obj);
   }
 
-  async deleteAccount(accountId: string): Promise<void> {
-    return await this.contract.delete_account({
-      account_id: accountId,
-    });
+  async deleteAccount(
+    obj: Parameters<AbstractAccountContract["delete_account"]>[0]
+  ) {
+    return this.contract.delete_account(obj);
   }
 
   async addAuthIdentity(
-    accountId: string,
-    authIdentity: AuthIdentity
-  ): Promise<void> {
-    return await this.contract.add_auth_identity({
-      account_id: accountId,
-      auth_identity: authIdentity,
-    });
+    obj: Parameters<AbstractAccountContract["add_auth_identity"]>[0]
+  ) {
+    return this.contract.add_auth_identity(obj);
   }
 
   async removeAuthIdentity(
-    accountId: string,
-    authIdentity: AuthIdentity
-  ): Promise<void> {
-    return await this.contract.remove_auth_identity({
-      account_id: accountId,
-      auth_identity: authIdentity,
-    });
+    obj: Parameters<AbstractAccountContract["remove_auth_identity"]>[0]
+  ) {
+    return this.contract.remove_auth_identity(obj);
   }
 
-  async getAccountById(accountId: string): Promise<Account | null> {
-    return await this.contract.get_account_by_id({ account_id: accountId });
+  async getAccountById(
+    obj: Parameters<AbstractAccountContract["get_account_by_id"]>[0]
+  ) {
+    return this.contract.get_account_by_id(obj);
   }
 
-  async listAccountIds(): Promise<string[]> {
-    return await this.contract.list_account_ids();
+  async listAccountIds() {
+    return this.contract.list_account_ids();
   }
 
-  async listAuthIdentities(accountId: string): Promise<AuthIdentity[] | null> {
-    return await this.contract.list_auth_identities({ account_id: accountId });
+  async listAuthIdentities(
+    obj: Parameters<AbstractAccountContract["list_auth_identities"]>[0]
+  ) {
+    return this.contract.list_auth_identities(obj);
   }
 
   async getAccountByAuthIdentity(
-    authIdentity: AuthIdentity
-  ): Promise<string[]> {
-    return await this.contract.get_account_by_auth_identity({
-      auth_identity: authIdentity,
-    });
+    obj: Parameters<AbstractAccountContract["get_account_by_auth_identity"]>[0]
+  ) {
+    return this.contract.get_account_by_auth_identity(obj);
   }
 
-  async getAllContracts(): Promise<string[]> {
-    return await this.contract.get_all_contracts();
+  async getAllContracts() {
+    return this.contract.get_all_contracts();
   }
 
-  async getSignerAccount(): Promise<string> {
-    return await this.contract.get_signer_account();
+  async getSignerAccount() {
+    return this.contract.get_signer_account();
   }
 
-  async auth(userOp: UserOperation): Promise<Signature> {
-    return await this.contract.auth({
-      args: { user_op: userOp },
-      gas: "300000000000000",
-      amount: "10", // TODO: Use dynamic fee
-    });
+  async auth(obj: Parameters<AbstractAccountContract["auth"]>[0]) {
+    return this.contract.auth(obj);
   }
 }

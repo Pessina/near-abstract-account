@@ -6,6 +6,8 @@ import crypto from "crypto";
 import { toHex } from "viem";
 import { parseAuthenticatorData } from "@simplewebauthn/server/helpers";
 import { WebAuthnAuthIdentity } from "@/contracts/AbstractAccountContract/types/auth";
+import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth";
+
 export class WebAuthn extends AuthIdentity<
   WebAuthnAuthIdentity,
   P256Credential
@@ -79,12 +81,10 @@ export class WebAuthn extends AuthIdentity<
     const prefix = yLastBit === 0 ? "0x02" : "0x03";
     const compressedPublicKey = prefix + x.slice(2); // Remove '0x' from x before concatenating
 
-    return {
-      WebAuthn: {
-        key_id: toHex(new Uint8Array(cred.rawId)),
-        compressed_public_key: compressedPublicKey,
-      },
-    };
+    return AbstractAccountContractBuilder.authIdentity.webauthn({
+      key_id: toHex(new Uint8Array(cred.rawId)),
+      compressed_public_key: compressedPublicKey,
+    });
   }
 
   async sign(message: string): Promise<P256Credential | null> {

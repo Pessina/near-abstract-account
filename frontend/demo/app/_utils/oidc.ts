@@ -1,4 +1,5 @@
-import { AbstractAccountContract } from "@/contracts/AbstractAccountContract/AbstractAccountContract";
+import { AbstractAccountContractClass } from "@/contracts/AbstractAccountContract/AbstractAccountContract";
+import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth";
 import { mockTransaction } from "@/lib/constants";
 
 export const handleOIDCRegister = async ({
@@ -10,7 +11,7 @@ export const handleOIDCRegister = async ({
   email,
   accountId,
 }: {
-  contract: AbstractAccountContract;
+  contract: AbstractAccountContractClass;
   setStatus: (status: string) => void;
   setIsPending: (isPending: boolean) => void;
   token: string;
@@ -21,11 +22,14 @@ export const handleOIDCRegister = async ({
 }) => {
   setIsPending(true);
   try {
-    await contract.addAccount(accountId, {
-      OIDC: {
-        client_id: clientId,
-        issuer: issuer,
-        email: email,
+    await contract.addAccount({
+      args: {
+        account_id: accountId,
+        auth_identity: AbstractAccountContractBuilder.authIdentity.oidc({
+          client_id: clientId,
+          issuer,
+          email,
+        }),
       },
     });
     setStatus(`OIDC registration successful!`);
@@ -47,7 +51,7 @@ export const handleOIDCAuthenticate = async ({
   email,
   accountId,
 }: {
-  contract: AbstractAccountContract;
+  contract: AbstractAccountContractClass;
   setStatus: (status: string) => void;
   setIsPending: (isPending: boolean) => void;
   token: string;
@@ -58,29 +62,31 @@ export const handleOIDCAuthenticate = async ({
 }) => {
   setIsPending(true);
   try {
-    const account = await contract.getAccountById(accountId);
+    const account = await contract.getAccountById({ account_id: accountId });
     if (!account) {
       setStatus("Failed to get account");
       return;
     }
 
     await contract.auth({
-      account_id: accountId,
-      selected_auth_identity: undefined,
-      auth: {
-        authenticator: {
-          OIDC: {
-            client_id: clientId,
-            issuer: issuer,
-            email: email,
+      args: {
+        user_op: {
+          account_id: accountId,
+          selected_auth_identity: undefined,
+          auth: {
+            authenticator: AbstractAccountContractBuilder.authIdentity.oidc({
+              client_id: clientId,
+              issuer,
+              email,
+            }),
+            credentials: {
+              token: token,
+            },
+          },
+          transaction: {
+            Sign: mockTransaction(),
           },
         },
-        credentials: {
-          token: token,
-        },
-      },
-      transaction: {
-        Sign: mockTransaction(),
       },
     });
 

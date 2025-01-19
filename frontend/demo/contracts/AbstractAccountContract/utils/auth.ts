@@ -1,43 +1,35 @@
 import { AuthIdentity } from "../AbstractAccountContract";
-import { WalletType } from "../types/auth";
+import {
+  OIDCAuthIdentity,
+  WalletAuthIdentity,
+  WebAuthnAuthIdentity,
+} from "../types/auth";
 import { Transaction } from "../types/transaction";
 
-export class AuthBuilder {
-  static auth = {
-    webauthn: (args: {
-      keyId: string;
-      compressedPublicKey: string;
-    }): AuthIdentity => ({
+export class AbstractAccountContractBuilder {
+  static authIdentity = {
+    webauthn: (
+      args: WebAuthnAuthIdentity["WebAuthn"]
+    ): WebAuthnAuthIdentity => ({
       WebAuthn: {
-        key_id: args.keyId,
-        compressed_public_key: args.compressedPublicKey,
+        key_id: args.key_id,
+        compressed_public_key: args.compressed_public_key,
       },
     }),
 
-    wallet: (args: {
-      walletType: WalletType;
-      publicKey: string;
-    }): AuthIdentity => ({
+    wallet: (args: WalletAuthIdentity["Wallet"]): WalletAuthIdentity => ({
       Wallet: {
-        wallet_type: args.walletType,
-        public_key: args.publicKey,
+        wallet_type: args.wallet_type,
+        public_key: args.public_key,
       },
     }),
 
-    oidc: (args: {
-      clientId: string;
-      issuer: string;
-      email: string;
-    }): AuthIdentity => ({
+    oidc: (args: OIDCAuthIdentity["OIDC"]): OIDCAuthIdentity => ({
       OIDC: {
-        client_id: args.clientId,
+        client_id: args.client_id,
         issuer: args.issuer,
         email: args.email,
       },
-    }),
-
-    account: (args: { accountId: string }): AuthIdentity => ({
-      Account: args.accountId,
     }),
   };
 
