@@ -70,7 +70,9 @@ export const handleSolanaAuthenticate = async ({
 
     const transaction = mockTransaction();
 
-    const canonical = canonicalize(transaction);
+    const canonical = canonicalize({
+      Sign: transaction,
+    });
     if (!canonical) {
       setStatus("Failed to canonicalize transaction");
       return;

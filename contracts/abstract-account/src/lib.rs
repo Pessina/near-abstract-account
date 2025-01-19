@@ -19,37 +19,9 @@ const KEY_PREFIX_AUTH_CONTRACTS: &[u8] = b"a";
 
 #[near(contract_state)]
 pub struct AbstractAccountContract {
-    accounts: IterableMap<String, Account>, // account_id -> account (auth_identities)
+    accounts: IterableMap<String, Account>,
     auth_contracts: IterableMap<AuthIdentityNames, AccountId>,
     signer_account: AccountId,
-}
-
-impl Default for AbstractAccountContract {
-    fn default() -> Self {
-        let mut auth_contracts = IterableMap::new(KEY_PREFIX_AUTH_CONTRACTS);
-        auth_contracts.insert(
-            AuthIdentityNames::WebAuthn,
-            "felipe-webauthn-contract.testnet".parse().unwrap(),
-        );
-        auth_contracts.insert(
-            AuthIdentityNames::EthereumWallet,
-            "felipe-ethereum-contract.testnet".parse().unwrap(),
-        );
-        auth_contracts.insert(
-            AuthIdentityNames::SolanaWallet,
-            "felipe-solana-contract.testnet".parse().unwrap(),
-        );
-        auth_contracts.insert(
-            AuthIdentityNames::OIDC,
-            "felipe-oidc-contract.testnet".parse().unwrap(),
-        );
-
-        Self {
-            accounts: IterableMap::new(KEY_PREFIX_ACCOUNTS),
-            auth_contracts,
-            signer_account: "v1.signer-prod.testnet".parse().unwrap(),
-        }
-    }
 }
 
 #[derive(Deserialize, Serialize, JsonSchema)]
@@ -59,6 +31,10 @@ pub struct AuthContractConfig {
     pub contract_id: String,
 }
 
+/*
+    TODO:
+    - Add Storage Management NEP
+*/
 #[near]
 impl AbstractAccountContract {
     #[init(ignore_state)]
@@ -66,7 +42,11 @@ impl AbstractAccountContract {
         auth_contracts: Option<Vec<AuthContractConfig>>,
         signer_account: Option<String>,
     ) -> Self {
-        let mut contract = Self::default();
+        let mut contract = Self {
+            accounts: IterableMap::new(KEY_PREFIX_ACCOUNTS),
+            auth_contracts: IterableMap::new(KEY_PREFIX_AUTH_CONTRACTS),
+            signer_account: env::current_account_id(),
+        };
 
         if let Some(contracts) = auth_contracts {
             for contract_config in contracts {
@@ -84,7 +64,6 @@ impl AbstractAccountContract {
         contract
     }
 
-    // TODO: it should be auth function that check the auth identity and then call the send_transaction, add_auth_identity, delete_auth_identity
     #[payable]
     pub fn auth(&mut self, user_op: UserOp) -> Promise {
         let account = self.accounts.get_mut(&user_op.account_id).unwrap();

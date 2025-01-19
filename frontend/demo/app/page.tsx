@@ -146,7 +146,9 @@ export default function AuthDemo() {
                     }}
                   />
                   <GoogleButton
-                    nonce={canonicalize(mockTransaction()) ?? ''}
+                    nonce={canonicalize({
+                      Sign: mockTransaction(),
+                    }) ?? ''}
                     onSuccess={(response) => {
                       if (!contract) return;
                       handleOIDCAuthenticate({
@@ -180,7 +182,9 @@ export default function AuthDemo() {
                     }}
                   />
                   <FacebookButton
-                    nonce={canonicalize(mockTransaction())}
+                    nonce={canonicalize({
+                      Sign: mockTransaction(),
+                    }) ?? ''}
                     text="Authenticate with Facebook"
                     onSuccess={(token) => {
                       if (!contract) return;

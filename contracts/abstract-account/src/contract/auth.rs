@@ -10,7 +10,7 @@ use interfaces::auth::{
     wallet::{WalletCredentials, WalletValidationData},
     webauthn::{WebAuthnCredentials, WebAuthnValidationData},
 };
-use near_sdk::{env, log, require, Promise};
+use near_sdk::{env, require, Promise};
 use serde_json_canonicalizer;
 
 impl AbstractAccountContract {
