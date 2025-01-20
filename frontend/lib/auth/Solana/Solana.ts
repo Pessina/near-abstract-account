@@ -17,86 +17,73 @@ export class Solana extends AuthIdentity<
   WalletAuthIdentity,
   WalletCredentials
 > {
-  private static wallet: BaseMessageSignerWalletAdapter | null = null;
-  private static selectedWallet: SolanaWalletType | null = null;
+  private wallet: BaseMessageSignerWalletAdapter | null = null;
 
-  private static readonly WALLET_ADAPTERS = {
-    phantom: () => new PhantomWalletAdapter(),
-    solflare: () => new SolflareWalletAdapter(),
-  } as const;
-
-  private static readonly WALLET_DETECTORS = {
-    phantom: () => window?.solana?.isPhantom ?? false,
-    solflare: () => window?.solflare?.isSolflare ?? false,
-  } as const;
-
-  public static setWallet(type: SolanaWalletType): void {
-    this.selectedWallet = type;
-    this.wallet = null;
+  constructor(private walletType: SolanaWalletType) {
+    super();
   }
 
-  private static async getWallet(): Promise<BaseMessageSignerWalletAdapter> {
-    if (!this.selectedWallet) {
-      throw new Error("No wallet selected. Call setWallet() first");
-    }
-
+  private async connectWallet(): Promise<BaseMessageSignerWalletAdapter> {
     if (!this.wallet) {
-      const adapter = this.WALLET_ADAPTERS[this.selectedWallet];
-      this.wallet = adapter();
-    }
+      const adapter =
+        this.walletType === "phantom"
+          ? new PhantomWalletAdapter()
+          : new SolflareWalletAdapter();
 
-    if (!this.wallet.connected) {
-      try {
-        await this.wallet.connect();
-      } catch (error) {
-        this.wallet = null;
-        throw new Error(
-          `Failed to connect to ${this.selectedWallet}: ${error}`
-        );
+      this.wallet = adapter;
+
+      if (!this.wallet.connected) {
+        try {
+          await this.wallet.connect();
+        } catch (error) {
+          this.wallet = null;
+          throw new Error(`Failed to connect to ${this.walletType}: ${error}`);
+        }
       }
     }
 
     return this.wallet;
   }
 
-  private static isAvailable(): boolean {
+  private isAvailable(): boolean {
     if (typeof window === "undefined") return false;
-    if (!this.selectedWallet) return false;
 
-    const detector = this.WALLET_DETECTORS[this.selectedWallet];
-    return detector();
+    return this.walletType === "phantom"
+      ? window?.solana?.isPhantom ?? false
+      : window?.solflare?.isSolflare ?? false;
   }
 
-  public async getAuthIdentity(): Promise<WalletAuthIdentity | null> {
-    if (!Solana.isAvailable()) return null;
+  public async getAuthIdentity(): Promise<WalletAuthIdentity> {
+    if (!this.isAvailable()) throw new Error("Solana wallet not available");
 
-    try {
-      const wallet = await Solana.getWallet();
-      return AbstractAccountContractBuilder.authIdentity.wallet({
-        wallet_type: AuthIdentityWalletType.Solana,
-        public_key: wallet.publicKey?.toBase58() ?? "",
-      });
-    } catch {
-      return null;
-    }
+    const wallet = await this.connectWallet();
+    return AbstractAccountContractBuilder.authIdentity.wallet({
+      wallet_type: AuthIdentityWalletType.Solana,
+      public_key: wallet.publicKey?.toBase58() ?? "",
+    });
   }
 
-  public async sign(message: string): Promise<WalletCredentials | null> {
-    if (!Solana.isAvailable()) return null;
+  public async sign(message: string): Promise<{
+    authIdentity: WalletAuthIdentity;
+    credentials: WalletCredentials;
+  }> {
+    if (!this.isAvailable()) throw new Error("Solana wallet not available");
 
-    try {
-      const wallet = await Solana.getWallet();
-      if (!wallet.publicKey) throw new Error("Wallet not connected");
+    const wallet = await this.connectWallet();
+    if (!wallet.publicKey) throw new Error("Wallet not connected");
 
-      const encodedMessage = new TextEncoder().encode(message);
-      const signature = await wallet.signMessage(encodedMessage);
+    const encodedMessage = new TextEncoder().encode(message);
+    const signature = await wallet.signMessage(encodedMessage);
+    const authIdentity = AbstractAccountContractBuilder.authIdentity.wallet({
+      wallet_type: AuthIdentityWalletType.Solana,
+      public_key: wallet.publicKey?.toBase58() ?? "",
+    });
 
-      return {
+    return {
+      authIdentity,
+      credentials: {
         signature: Buffer.from(signature).toString("base64"),
-      };
-    } catch (error) {
-      console.error("Failed to sign message:", error);
-      return null;
-    }
+      },
+    };
   }
 }

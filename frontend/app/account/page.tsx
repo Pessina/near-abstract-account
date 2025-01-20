@@ -8,15 +8,13 @@ import AuthModal from "@/components/AuthModal"
 import { AuthIdentity } from "@/contracts/AbstractAccountContract/AbstractAccountContract"
 import { Transaction } from "@/contracts/AbstractAccountContract/types/transaction"
 import { Input } from "@/components/ui/input"
-import { handlePasskeyRegister } from "../_utils/webauthn"
-import { handleWalletRegister } from "../_utils/wallet"
-import { handleOIDCRegister } from "../_utils/oidc"
 import AuthButton from "@/components/AuthButton"
 import GoogleButton from "@/components/GoogleButton"
 import FacebookButton from "@/components/FacebookButton"
 import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth"
 import { parseOIDCToken } from "@/lib/utils"
 import { useEnv } from "@/hooks/useEnv"
+import { AuthAdapter } from "../_utils/AuthAdapter"
 
 export default function AccountPage() {
     const [accounts, setAccounts] = useState<string[]>([])
@@ -53,15 +51,87 @@ export default function AccountPage() {
         setAuthModalOpen(true)
     }
 
-    const handleAddAuthIdentity = async (accountId: string, authIdentity: AuthIdentity) => {
-        const transaction = AbstractAccountContractBuilder.transaction.addAuthIdentity({
-            authIdentity
-        })
-        setAuthProps({
-            accountId,
-            transaction
-        })
-        setAuthModalOpen(true)
+    const handlePasskeyRegister = async ({
+        username,
+        accountId,
+    }: {
+        username: string;
+        accountId: string;
+    }) => {
+        const authIdentity = await AuthAdapter.getAuthIdentity({
+            type: "webauthn",
+            config: { username }
+        });
+
+        if (!authIdentity) return;
+
+        await contract.addAccount({
+            args: {
+                account_id: accountId,
+                auth_identity: authIdentity
+            }
+        });
+
+        await loadAccounts();
+    }
+
+    const handleWalletRegister = async ({
+        walletConfig,
+        accountId,
+    }: {
+        walletConfig: { type: "ethereum"; wallet: "metamask" | "okx" } | { type: "solana"; wallet: "phantom" | "solflare" };
+        accountId: string;
+    }) => {
+        const authIdentity = await AuthAdapter.getAuthIdentity({
+            type: "wallet",
+            config: walletConfig
+        });
+
+        if (!authIdentity) return;
+
+        await contract.addAccount({
+            args: {
+                account_id: accountId,
+                auth_identity: authIdentity
+            }
+        });
+
+        await loadAccounts();
+    }
+
+    const handleOIDCRegister = async ({
+        clientId,
+        issuer,
+        email,
+        accountId,
+        sub,
+    }: {
+        clientId: string;
+        issuer: string;
+        email: string | null;
+        accountId: string;
+        sub: string | null;
+    }) => {
+        const authIdentity = await AuthAdapter.getAuthIdentity({
+            type: "oidc",
+            config: {
+                clientId,
+                issuer,
+                email,
+                sub,
+            }
+        });
+
+        if (!authIdentity) return;
+
+        await contract.addAccount({
+            args: {
+                account_id: accountId,
+                auth_identity: authIdentity
+            }
+        });
+
+        await loadAccounts();
     }
 
     const loadAccounts = async () => {
@@ -111,7 +181,6 @@ export default function AccountPage() {
                                     onClick={() => {
                                         handlePasskeyRegister({
                                             username: newAccountId,
-                                            contract,
                                             accountId: newAccountId,
                                         });
                                     }}
@@ -126,7 +195,6 @@ export default function AccountPage() {
                                         onSuccess={(idToken) => {
                                             const { email, issuer } = parseOIDCToken(idToken)
                                             handleOIDCRegister({
-                                                contract,
                                                 clientId: googleClientId,
                                                 issuer: issuer,
                                                 email: email,
@@ -143,7 +211,6 @@ export default function AccountPage() {
                                         onSuccess={(idToken) => {
                                             const { email, issuer } = parseOIDCToken(idToken)
                                             handleOIDCRegister({
-                                                contract,
                                                 clientId: facebookAppId,
                                                 issuer: issuer,
                                                 email: email,
@@ -163,7 +230,6 @@ export default function AccountPage() {
                                     <AuthButton
                                         onClick={() => {
                                             handleWalletRegister({
-                                                contract,
                                                 walletConfig: {
                                                     wallet: "metamask",
                                                     type: "ethereum",
@@ -178,7 +244,6 @@ export default function AccountPage() {
                                     <AuthButton
                                         onClick={() => {
                                             handleWalletRegister({
-                                                contract,
                                                 walletConfig: {
                                                     wallet: "phantom",
                                                     type: "solana",
@@ -188,7 +253,7 @@ export default function AccountPage() {
                                         }}
                                         imageSrc="/sol.svg"
                                         imageAlt="Phantom logo"
-                                        buttonText={`$Register with Phantom`}
+                                        buttonText={`Register with Phantom`}
                                     />
                                 </div>
                             </div>
@@ -204,7 +269,6 @@ export default function AccountPage() {
                                 <div key={accountId} className="flex justify-between items-center p-2 border rounded">
                                     <span>{accountId}</span>
                                     <div className="space-x-2">
-
                                         <Button
                                             onClick={() => loadAuthIdentities(accountId)}
                                             variant="secondary"

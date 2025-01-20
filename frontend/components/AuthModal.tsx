@@ -6,14 +6,13 @@ import { Button } from "@/components/ui/button"
 import GoogleButton from "@/components/GoogleButton"
 import FacebookButton from "@/components/FacebookButton"
 import AuthButton from "@/components/AuthButton"
-import { handlePasskeyAuthenticate } from "@/app/_utils/webauthn"
-import { handleOIDCAuthenticate } from "@/app/_utils/oidc"
-import { handleWalletAuthenticate } from "@/app/_utils/wallet"
 import canonicalize from "canonicalize"
 import { Transaction } from "@/contracts/AbstractAccountContract/types/transaction"
 import { useAbstractAccountContract } from "@/contracts/AbstractAccountContract/useAbstractAccountContract"
 import { useEnv } from "@/hooks/useEnv"
 import { parseOIDCToken } from "@/lib/utils"
+import { AuthAdapter } from "@/app/_utils/AuthAdapter"
+import { NEAR_MAX_GAS } from "@/lib/constants"
 
 type AuthModalProps = {
     isOpen: boolean
@@ -32,6 +31,25 @@ export default function AuthModal({ isOpen, onClose, transaction, accountId }: A
         return <div>Loading...</div>
     }
 
+    const handleAuthenticate = async (config: Parameters<typeof AuthAdapter.sign>[1]) => {
+        const result = await AuthAdapter.sign(transaction, config)
+        await contract.auth({
+            args: {
+                user_op: {
+                    account_id: accountId,
+                    transaction: transaction,
+                    selected_auth_identity: undefined, // TODO: Should be customizable in the future
+                    auth: {
+                        authenticator: result.authIdentity,
+                        credentials: result.credentials,
+                    },
+                },
+            },
+            gas: NEAR_MAX_GAS,
+            amount: "10" // TODO: Should be calculated dynamic base don the contract fee
+        })
+    }
+
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-md">
@@ -47,11 +65,12 @@ export default function AuthModal({ isOpen, onClose, transaction, accountId }: A
                         <div className="flex space-x-4">
                             <Button
                                 onClick={() => {
-                                    handlePasskeyAuthenticate({
-                                        contract,
-                                        accountId,
-                                        transaction,
-                                    });
+                                    handleAuthenticate({
+                                        type: "webauthn",
+                                        config: {
+                                            username: accountId
+                                        }
+                                    })
                                 }}
                                 variant="secondary"
                             >
@@ -66,16 +85,16 @@ export default function AuthModal({ isOpen, onClose, transaction, accountId }: A
                                 nonce={transactionCanonicalized}
                                 onSuccess={(token) => {
                                     const { issuer, email } = parseOIDCToken(token)
-                                    handleOIDCAuthenticate({
-                                        contract,
-                                        accountId,
-                                        token,
-                                        clientId: googleClientId,
-                                        issuer,
-                                        email,
-                                        transaction,
-                                        sub: null,
-                                    });
+                                    handleAuthenticate({
+                                        type: "oidc",
+                                        config: {
+                                            clientId: googleClientId,
+                                            issuer,
+                                            email,
+                                            sub: null,
+                                            token
+                                        }
+                                    })
                                 }}
                                 onError={() => {
                                     console.error("Google authentication failed")
@@ -88,16 +107,16 @@ export default function AuthModal({ isOpen, onClose, transaction, accountId }: A
                                 text="Authenticate with Facebook"
                                 onSuccess={(token) => {
                                     const { issuer, email } = parseOIDCToken(token)
-                                    handleOIDCAuthenticate({
-                                        contract,
-                                        accountId,
-                                        token,
-                                        clientId: facebookAppId,
-                                        issuer,
-                                        email,
-                                        transaction,
-                                        sub: null,
-                                    });
+                                    handleAuthenticate({
+                                        type: "oidc",
+                                        config: {
+                                            clientId: facebookAppId,
+                                            issuer,
+                                            email,
+                                            sub: null,
+                                            token
+                                        }
+                                    })
                                 }}
                                 onError={() => {
                                     console.error("Facebook authentication failed")
@@ -107,15 +126,13 @@ export default function AuthModal({ isOpen, onClose, transaction, accountId }: A
                         <div className="flex gap-2">
                             <AuthButton
                                 onClick={() => {
-                                    handleWalletAuthenticate({
-                                        contract,
-                                        walletConfig: {
+                                    handleAuthenticate({
+                                        type: "wallet",
+                                        config: {
                                             type: "solana",
-                                            wallet: "phantom",
-                                        },
-                                        accountId,
-                                        transaction,
-                                    });
+                                            wallet: "phantom"
+                                        }
+                                    })
                                 }}
                                 imageSrc="/sol.svg"
                                 imageAlt="Phantom logo"
@@ -125,15 +142,13 @@ export default function AuthModal({ isOpen, onClose, transaction, accountId }: A
                         <div className="flex gap-2">
                             <AuthButton
                                 onClick={() => {
-                                    handleWalletAuthenticate({
-                                        contract,
-                                        walletConfig: {
+                                    handleAuthenticate({
+                                        type: "wallet",
+                                        config: {
                                             type: "ethereum",
-                                            wallet: "metamask",
-                                        },
-                                        accountId,
-                                        transaction,
-                                    });
+                                            wallet: "metamask"
+                                        }
+                                    })
                                 }}
                                 imageSrc="/metamask.svg"
                                 imageAlt="Metamask logo"
@@ -146,4 +161,3 @@ export default function AuthModal({ isOpen, onClose, transaction, accountId }: A
         </Dialog>
     )
 }
-

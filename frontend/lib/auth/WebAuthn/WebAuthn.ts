@@ -1,16 +1,18 @@
 import { AuthIdentity } from "../AuthIdentity";
-import { P256Credential } from "./types";
 import { parseSignature } from "./utils";
 import cbor from "cbor";
 import crypto from "crypto";
 import { toHex } from "viem";
 import { parseAuthenticatorData } from "@simplewebauthn/server/helpers";
-import { WebAuthnAuthIdentity } from "@/contracts/AbstractAccountContract/types/auth";
+import {
+  WebAuthnAuthIdentity,
+  WebAuthnCredentials,
+} from "@/contracts/AbstractAccountContract/types/auth";
 import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth";
 
 export class WebAuthn extends AuthIdentity<
   WebAuthnAuthIdentity,
-  P256Credential
+  WebAuthnCredentials
 > {
   private static _generateRandomBytes(): Buffer {
     return crypto.randomBytes(16);
@@ -23,11 +25,7 @@ export class WebAuthn extends AuthIdentity<
     );
   }
 
-  async getAuthIdentity({
-    id,
-  }: {
-    id: string;
-  }): Promise<WebAuthnAuthIdentity | null> {
+  async getAuthIdentity({ id }: { id: string }): Promise<WebAuthnAuthIdentity> {
     WebAuthn.isSupportedByBrowser();
 
     const options: PublicKeyCredentialCreationOptions = {
@@ -56,7 +54,7 @@ export class WebAuthn extends AuthIdentity<
     });
 
     if (!credential) {
-      return null;
+      throw new Error("Failed to create WebAuthn credential");
     }
 
     const cred = credential as unknown as {
@@ -87,7 +85,10 @@ export class WebAuthn extends AuthIdentity<
     });
   }
 
-  async sign(message: string): Promise<P256Credential | null> {
+  async sign(message: string): Promise<{
+    authIdentity: WebAuthnAuthIdentity;
+    credentials: WebAuthnCredentials;
+  }> {
     WebAuthn.isSupportedByBrowser();
 
     const challenge = new Uint8Array(
@@ -109,7 +110,7 @@ export class WebAuthn extends AuthIdentity<
     });
 
     if (!credential) {
-      return null;
+      throw new Error("Failed to sign with WebAuthn");
     }
 
     const cred = credential as unknown as {
@@ -132,16 +133,22 @@ export class WebAuthn extends AuthIdentity<
     );
     const signature = parseSignature(new Uint8Array(cred?.response?.signature));
 
+    const authIdentity = AbstractAccountContractBuilder.authIdentity.webauthn({
+      key_id: toHex(new Uint8Array(cred.rawId)),
+    });
+
     return {
-      rawId: toHex(new Uint8Array(cred.rawId)),
-      clientData: {
-        type: clientDataObj.type,
-        challenge: clientDataObj.challenge,
-        origin: clientDataObj.origin,
-        crossOrigin: clientDataObj.crossOrigin,
+      authIdentity,
+      credentials: {
+        client_data: JSON.stringify({
+          type: clientDataObj.type,
+          challenge: clientDataObj.challenge,
+          origin: clientDataObj.origin,
+          crossOrigin: clientDataObj.crossOrigin,
+        }),
+        authenticator_data: authenticatorData,
+        signature,
       },
-      authenticatorData,
-      signature,
     };
   }
 }
