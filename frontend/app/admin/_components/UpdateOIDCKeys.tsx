@@ -81,10 +81,8 @@ export default function UpdateOIDCKeys() {
   };
 
   const getKeys = async () => {
-    const googleKeys = await contract?.getKeys("https://accounts.google.com")
-    const facebookKeys = await contract?.getKeys("https://www.facebook.com")
-    const auth0Keys = await contract?.getKeys("https://dev-um3ne30lucm6ehqq.us.auth0.com")
-    console.log({ facebookKeys, googleKeys, auth0Keys })
+    const keys = await contract?.getKeys()
+    console.log({ keys })
   }
 
   return (

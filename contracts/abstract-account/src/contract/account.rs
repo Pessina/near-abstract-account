@@ -26,10 +26,12 @@ impl AbstractAccountContract {
 
     #[private]
     pub fn remove_auth_identity(&mut self, account_id: String, auth_identity: AuthIdentity) {
-        self.accounts
-            .get_mut(&account_id)
-            .unwrap()
-            .remove_auth_identity(auth_identity);
+        let account = self.accounts.get_mut(&account_id).unwrap();
+        account.remove_auth_identity(auth_identity);
+
+        if account.auth_identities.is_empty() {
+            self.accounts.remove(&account_id);
+        }
     }
 
     pub fn get_account_by_id(&self, account_id: String) -> Option<&Account> {

@@ -1,16 +1,4 @@
 import { Contract, Account as NearAccount } from "near-api-js";
-import { OIDCAuthIdentity } from "../types";
-import { OIDCCredentials } from "../AbstractAccountContract/AbstractAccountContract";
-
-type OIDCAuthContractType = Contract & {
-  new: () => Promise<void>;
-  validate_oidc_token: (args: {
-    oidc_data: OIDCCredentials;
-    oidc_auth_identity: OIDCAuthIdentity;
-  }) => Promise<boolean>;
-  update_keys: (args: { issuer: string; keys: PublicKey[] }) => Promise<void>;
-  get_keys: (args: { issuer: string }) => Promise<PublicKey[]>;
-};
 
 interface PublicKey {
   kid: string;
@@ -18,8 +6,13 @@ interface PublicKey {
   e: string;
   alg: string;
   kty: string;
-  use: string;
+  use_: string; // Matches Rust struct field name
 }
+
+type OIDCAuthContractType = Contract & {
+  update_keys: (args: { issuer: string; keys: PublicKey[] }) => Promise<void>;
+  get_keys: () => Promise<[string, PublicKey[]][]>; // Returns array of [issuer, keys] tuples
+};
 
 export class OIDCAuthContract {
   private contract: OIDCAuthContractType;
@@ -32,24 +25,10 @@ export class OIDCAuthContract {
     contractId: string;
   }) {
     this.contract = new Contract(account, contractId, {
-      viewMethods: ["validate_oidc_token", "get_keys"],
-      changeMethods: ["new", "update_keys"],
+      viewMethods: ["get_keys"],
+      changeMethods: ["update_keys"],
       useLocalViewExecution: false,
     }) as unknown as OIDCAuthContractType;
-  }
-
-  async new(): Promise<void> {
-    return await this.contract.new();
-  }
-
-  async validateOIDCToken(
-    oidcData: OIDCCredentials,
-    oidcAuthIdentity: OIDCAuthIdentity
-  ): Promise<boolean> {
-    return await this.contract.validate_oidc_token({
-      oidc_data: oidcData,
-      oidc_auth_identity: oidcAuthIdentity,
-    });
   }
 
   async updateKeys(issuer: string, keys: PublicKey[]): Promise<void> {
@@ -63,9 +42,7 @@ export class OIDCAuthContract {
     });
   }
 
-  async getKeys(issuer: string): Promise<PublicKey[]> {
-    return await this.contract.get_keys({
-      issuer,
-    });
+  async getKeys(): Promise<[string, PublicKey[]][]> {
+    return await this.contract.get_keys();
   }
 }

@@ -168,21 +168,6 @@ export default function AccountPage() {
                                             handleWalletRegister({
                                                 contract,
                                                 walletConfig: {
-                                                    type: "ethereum",
-                                                    wallet: "okx",
-                                                },
-                                                accountId: newAccountId,
-                                            });
-                                        }}
-                                        imageSrc="/okx.svg"
-                                        imageAlt="OKX logo"
-                                        buttonText="Register with OKX"
-                                    />
-                                    <AuthButton
-                                        onClick={() => {
-                                            handleWalletRegister({
-                                                contract,
-                                                walletConfig: {
                                                     type: "solana",
                                                     wallet: "phantom",
                                                 },

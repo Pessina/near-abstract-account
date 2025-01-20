@@ -4,7 +4,7 @@ use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     near,
     serde::{Deserialize, Serialize},
-    store::{IterableSet, LookupMap},
+    store::{IterableMap, IterableSet},
 };
 use rsa::{pkcs1v15::VerifyingKey, signature::Verifier, BigUint, RsaPublicKey};
 use schemars::JsonSchema;
@@ -38,13 +38,13 @@ pub struct PublicKey {
 
 #[near(contract_state)]
 pub struct OIDCAuthContract {
-    pub_keys: LookupMap<String, IterableSet<PublicKey>>,
+    pub_keys: IterableMap<String, IterableSet<PublicKey>>,
 }
 
 impl Default for OIDCAuthContract {
     fn default() -> Self {
         Self {
-            pub_keys: LookupMap::new(KEY_PREFIX),
+            pub_keys: IterableMap::new(KEY_PREFIX),
         }
     }
 }
@@ -164,13 +164,11 @@ impl OIDCAuthContract {
         self.pub_keys.insert(issuer, key_set);
     }
 
-    pub fn get_keys(&self, issuer: String) -> Vec<PublicKey> {
-        let keys = self.pub_keys.get(&issuer);
-
-        match keys {
-            Some(keys) => keys.iter().cloned().collect(),
-            None => vec![],
-        }
+    pub fn get_keys(&self) -> Vec<(String, Vec<PublicKey>)> {
+        self.pub_keys
+            .iter()
+            .map(|(issuer, keys)| (issuer.clone(), keys.iter().cloned().collect()))
+            .collect()
     }
 }
 
