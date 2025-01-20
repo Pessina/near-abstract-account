@@ -12,7 +12,7 @@ import { AuthIdentity } from "@/contracts/AbstractAccountContract/AbstractAccoun
 import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth"
 import { Transaction } from "@/contracts/AbstractAccountContract/types/transaction"
 import { WalletType as AuthIdentityWalletType } from "@/contracts/AbstractAccountContract/types/auth"
-import AuthModal from "@/components/AuthModal"
+import AuthModal from "@/app/transaction/_components/AuthModal"
 
 const buildAuthIdentity = (data: FormValues): AuthIdentity => {
     switch (data.authIdentityType) {
@@ -70,8 +70,8 @@ type FormValues = {
     clientId: string
     issuer: string
     email: string
-    keyId: string
     walletType: string
+    keyId: string
     publicKey: string
 }
 
@@ -81,25 +81,24 @@ type AuthProps = {
 }
 
 export default function TransactionForm() {
-    const [status, setStatus] = useState("")
-    const [isPending, setIsPending] = useState(false)
-    const { contract } = useAbstractAccountContract()
     const [authProps, setAuthProps] = useState<AuthProps | null>(null)
     const [authModalOpen, setAuthModalOpen] = useState(false)
 
-    const { register, watch, handleSubmit } = useForm<FormValues>({
+    const { contract } = useAbstractAccountContract()
+    const { register, watch, handleSubmit, setValue } = useForm<FormValues>({
         defaultValues: {
             accountId: "",
-            transactionType: "Sign",
+            transactionType: "",
+            contractId: "",
             to: "",
             value: "",
             authIdentityType: "",
             clientId: "",
             issuer: "",
             email: "",
-            keyId: "",
             walletType: "",
-            publicKey: ""
+            keyId: "",
+            publicKey: "",
         }
     })
 
@@ -109,21 +108,13 @@ export default function TransactionForm() {
         return <div>Loading...</div>
     }
 
-
     const onSubmit = async (data: FormValues) => {
-        setIsPending(true)
-        try {
-            const transaction = buildTransaction(data)
-            setAuthProps({ accountId: data.accountId, transaction })
-            setAuthModalOpen(true)
-            setStatus("Transaction successful!")
-        } catch (error) {
-            console.error(error)
-            setStatus(`Error: ${(error as Error).message}`)
-        } finally {
-            setIsPending(false)
-        }
+        const transaction = buildTransaction(data)
+        setAuthProps({ accountId: data.accountId, transaction })
+        setAuthModalOpen(true)
     }
+
+    console.log({ transactionType })
 
     return (
         <div className="flex justify-center items-center h-full">
@@ -139,10 +130,13 @@ export default function TransactionForm() {
                             <Label htmlFor="accountId">Account ID</Label>
                             <Input id="accountId" {...register("accountId")} />
                         </div>
-
                         <div>
                             <Label>Transaction Type</Label>
-                            <Select defaultValue="Sign" onValueChange={(value) => register("transactionType").onChange({ target: { value } })}>
+                            <Select defaultValue="Sign"
+                                onValueChange={(value) => {
+                                    console.log({ value })
+                                    setValue("transactionType", value)
+                                }}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select transaction type" />
                                 </SelectTrigger>
@@ -154,7 +148,6 @@ export default function TransactionForm() {
                                 </SelectContent>
                             </Select>
                         </div>
-
                         {transactionType === "Sign" && (
                             <>
                                 <div>
@@ -180,7 +173,7 @@ export default function TransactionForm() {
                             <>
                                 <div>
                                     <Label>Auth Type</Label>
-                                    <Select onValueChange={(value) => register("authIdentityType").onChange({ target: { value } })}>
+                                    <Select onValueChange={(value) => setValue("authIdentityType", value)}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select auth type" />
                                         </SelectTrigger>
@@ -208,7 +201,6 @@ export default function TransactionForm() {
                                         </div>
                                     </>
                                 )}
-
                                 {watch("authIdentityType") === "WebAuthn" && (
                                     <>
                                         <div>
@@ -217,12 +209,11 @@ export default function TransactionForm() {
                                         </div>
                                     </>
                                 )}
-
                                 {watch("authIdentityType") === "Wallet" && (
                                     <>
                                         <div>
                                             <Label>Wallet Type</Label>
-                                            <Select onValueChange={(value) => register("walletType").onChange({ target: { value } })}>
+                                            <Select onValueChange={(value) => setValue("walletType", value)}>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Select wallet type" />
                                                 </SelectTrigger>
@@ -244,7 +235,7 @@ export default function TransactionForm() {
                             <>
                                 <div>
                                     <Label>Auth Type</Label>
-                                    <Select onValueChange={(value) => register("authIdentityType").onChange({ target: { value } })}>
+                                    <Select onValueChange={(value) => setValue("authIdentityType", value)}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select auth type" />
                                         </SelectTrigger>
@@ -255,7 +246,6 @@ export default function TransactionForm() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-
                                 {watch("authIdentityType") === "OIDC" && (
                                     <>
                                         <div>
@@ -272,7 +262,6 @@ export default function TransactionForm() {
                                         </div>
                                     </>
                                 )}
-
                                 {watch("authIdentityType") === "WebAuthn" && (
                                     <>
                                         <div>
@@ -281,12 +270,11 @@ export default function TransactionForm() {
                                         </div>
                                     </>
                                 )}
-
                                 {watch("authIdentityType") === "Wallet" && (
                                     <>
                                         <div>
                                             <Label>Wallet Type</Label>
-                                            <Select onValueChange={(value) => register("walletType").onChange({ target: { value } })}>
+                                            <Select onValueChange={(value) => setValue("walletType", value)}>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Select wallet type" />
                                                 </SelectTrigger>
@@ -304,17 +292,9 @@ export default function TransactionForm() {
                                 )}
                             </>
                         )}
-
-
-                        <Button type="submit" disabled={isPending} className="w-full">
+                        <Button type="submit" className="w-full">
                             Submit Transaction
                         </Button>
-
-                        {status && (
-                            <div className="mt-6 p-4 bg-gray-100 rounded">
-                                <p>{status}</p>
-                            </div>
-                        )}
                     </form>
                 </CardContent>
             </Card>

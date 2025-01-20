@@ -44,9 +44,7 @@ export class AbstractAccountContractBuilder {
       RemoveAuthIdentity: args.authIdentity,
     }),
 
-    removeAccount: (): Transaction => ({
-      RemoveAccount: null,
-    }),
+    removeAccount: (): Transaction => "RemoveAccount",
 
     sign: (args: {
       contractId: string;

@@ -73,7 +73,10 @@ export const handleWalletAuthenticate = async ({
   }
 
   const credentials = await wallet.sign(canonical);
-  const authIdentity = await wallet.getAuthIdentity();
+  const authIdentity = await wallet.getAuthIdentity({
+    message: canonical,
+    signature: credentials?.signature ?? "",
+  });
 
   if (!authIdentity || !credentials) {
     throw new Error("Failed to get auth identity or wallet data");

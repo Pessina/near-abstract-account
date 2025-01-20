@@ -41,8 +41,8 @@ export const handlePasskeyAuthenticate = async ({
   transaction: Transaction;
 }) => {
   const account = await contract.getAccountById({ account_id: accountId });
-  if (!account || !contract) {
-    throw new Error("Failed to get account or initialize contract");
+  if (!account) {
+    throw new Error("Failed to get account");
   }
 
   const canonical = canonicalize(transaction);

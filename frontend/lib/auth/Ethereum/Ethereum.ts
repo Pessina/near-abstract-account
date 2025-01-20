@@ -62,8 +62,11 @@ export class Ethereum extends AuthIdentity<
     return this.walletClient;
   }
 
-  async getAuthIdentity(): Promise<WalletAuthIdentity> {
-    const compressedPublicKey = await Ethereum.getCompressedPublicKey();
+  async getAuthIdentity(args?: {
+    message?: string;
+    signature?: string;
+  }): Promise<WalletAuthIdentity> {
+    const compressedPublicKey = await Ethereum.getCompressedPublicKey(args);
 
     return AbstractAccountContractBuilder.authIdentity.wallet({
       wallet_type: AuthIdentityWalletType.Ethereum,
@@ -84,12 +87,12 @@ export class Ethereum extends AuthIdentity<
     };
   }
 
-  private static async getCompressedPublicKey(
-    message?: string,
-    signature?: string
-  ): Promise<string> {
-    let finalMessage = message;
-    let finalSignature = signature;
+  private static async getCompressedPublicKey(args?: {
+    message?: string;
+    signature?: string;
+  }): Promise<string> {
+    let finalMessage = args?.message;
+    let finalSignature = args?.signature;
 
     if (!finalMessage || !finalSignature) {
       const client = await this.getWalletClient();

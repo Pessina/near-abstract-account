@@ -24,9 +24,7 @@ export type Transaction =
   | {
       Sign: SignPayloadsRequest;
     }
-  | {
-      RemoveAccount: null;
-    }
+  | "RemoveAccount"
   | {
       AddAuthIdentity: AuthIdentity;
     }
