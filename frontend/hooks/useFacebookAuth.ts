@@ -29,23 +29,13 @@ interface FacebookAuthConfig {
 }
 
 /**
- * Cleans up URL search params and hash fragments after auth flow completes
- */
-function cleanupSearchParams() {
-  const url = new URL(window.location.href);
-  url.search = "";
-  url.hash = "";
-  window.history.replaceState({}, "", url.toString());
-}
-
-/**
  * Custom hook for handling Facebook OAuth authentication
  * Implements PKCE flow for enhanced security
  */
 export function useFacebookAuth(config: FacebookAuthConfig) {
   /**
    * Initiates the Facebook login process
-   * Sets up PKCE parameters and redirects to Facebook OAuth dialog
+   * Sets up PKCE parameters and opens Facebook OAuth dialog in new tab
    */
   const initiateLogin = useCallback(
     async (args?: { nonce?: string }) => {
@@ -56,6 +46,7 @@ export function useFacebookAuth(config: FacebookAuthConfig) {
         const state = generatePKCEVerifier();
         const nonce = args?.nonce || config?.nonce || generatePKCEVerifier();
 
+        // Store auth state in localStorage to persist across tabs
         localStorage.setItem(
           OAUTH_CONFIG.STORAGE_KEYS.CODE_VERIFIER,
           codeVerifier
@@ -84,7 +75,69 @@ export function useFacebookAuth(config: FacebookAuthConfig) {
         url.searchParams.append("code_challenge_method", "S256");
         url.searchParams.append("nonce", nonce);
 
-        window.location.href = url.toString();
+        // Open auth URL in new tab
+        const authWindow = window.open(url.toString(), "_blank");
+        if (!authWindow) {
+          throw new Error("Failed to open auth window");
+        }
+
+        // Listen for messages from auth window
+        window.addEventListener("message", async function authListener(event) {
+          // Verify origin
+          const redirectOrigin = new URL(redirectUri).origin;
+          if (event.origin !== redirectOrigin) return;
+
+          // Handle auth response
+          if (event.data.type === "FACEBOOK_AUTH_SUCCESS") {
+            const { code, state: returnedState } = event.data;
+
+            try {
+              // Validate state parameter to prevent CSRF attacks
+              if (returnedState !== state) {
+                throw new Error("Invalid state parameter");
+              }
+
+              const tokenUrl = new URL(
+                `https://graph.facebook.com/${OAUTH_CONFIG.FACEBOOK_API_VERSION}/oauth/access_token`
+              );
+
+              tokenUrl.searchParams.append("client_id", config.appId);
+              tokenUrl.searchParams.append("redirect_uri", redirectUri);
+              tokenUrl.searchParams.append("code_verifier", codeVerifier);
+              tokenUrl.searchParams.append("code", code);
+
+              const response = await fetch(tokenUrl.toString(), {
+                method: "GET",
+                headers: {
+                  Accept: "application/json",
+                },
+              });
+
+              if (!response.ok) {
+                throw new Error("Failed to fetch access token");
+              }
+
+              const data = (await response.json()) as FacebookTokenResponse;
+
+              if (data.access_token && config.onSuccess) {
+                config.onSuccess(data.id_token);
+              } else {
+                throw new Error("Access token not received");
+              }
+            } catch (error: unknown) {
+              if (error instanceof Error && config.onError) {
+                config.onError(error);
+              }
+              console.error(error);
+            } finally {
+              // Clean up
+              window.removeEventListener("message", authListener);
+              localStorage.removeItem(OAUTH_CONFIG.STORAGE_KEYS.CODE_VERIFIER);
+              localStorage.removeItem(OAUTH_CONFIG.STORAGE_KEYS.STATE);
+              authWindow.close();
+            }
+          }
+        });
       } catch (error: unknown) {
         if (error instanceof Error && config.onError) {
           config.onError(error);
@@ -107,70 +160,22 @@ export function useFacebookAuth(config: FacebookAuthConfig) {
         return;
       }
 
-      const storedState = localStorage.getItem(OAUTH_CONFIG.STORAGE_KEYS.STATE);
-      const codeVerifier = localStorage.getItem(
-        OAUTH_CONFIG.STORAGE_KEYS.CODE_VERIFIER
-      );
-
-      try {
-        // Validate state parameter to prevent CSRF attacks
-        if (stateParam !== storedState) {
-          throw new Error("Invalid state parameter");
-        }
-
-        if (!codeVerifier) {
-          throw new Error("Code verifier not found");
-        }
-
-        if (!config.appId) {
-          throw new Error("Facebook App ID is required");
-        }
-
-        const redirectUri = config.redirectUri || getCurrentCleanUrl();
-        const tokenUrl = new URL(
-          `https://graph.facebook.com/${OAUTH_CONFIG.FACEBOOK_API_VERSION}/oauth/access_token`
-        );
-
-        tokenUrl.searchParams.append("client_id", config.appId);
-        tokenUrl.searchParams.append("redirect_uri", redirectUri);
-        tokenUrl.searchParams.append("code_verifier", codeVerifier);
-        tokenUrl.searchParams.append("code", code);
-
-        const response = await fetch(tokenUrl.toString(), {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
+      // Post message to parent window and close
+      if (window.opener) {
+        window.opener.postMessage(
+          {
+            type: "FACEBOOK_AUTH_SUCCESS",
+            code,
+            state: stateParam,
           },
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch access token");
-        }
-
-        const data = (await response.json()) as FacebookTokenResponse;
-
-        if (data.access_token) {
-          if (config.onSuccess) {
-            config.onSuccess(data.id_token);
-          }
-        } else {
-          throw new Error("Access token not received");
-        }
-      } catch (error: unknown) {
-        if (error instanceof Error && config.onError) {
-          config.onError(error);
-        }
-        console.error(error);
-      } finally {
-        // Clean up sensitive data and URL params
-        localStorage.removeItem(OAUTH_CONFIG.STORAGE_KEYS.CODE_VERIFIER);
-        localStorage.removeItem(OAUTH_CONFIG.STORAGE_KEYS.STATE);
-        cleanupSearchParams();
+          window.location.origin
+        );
+        window.close();
       }
     };
 
     handleCallback();
-  }, [config]);
+  }, []);
 
   return {
     initiateLogin,
