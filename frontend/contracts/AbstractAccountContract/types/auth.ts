@@ -2,11 +2,13 @@ export interface OIDCCredentials {
   token: string;
 }
 
+// At least one of email or sub must be provided
 export interface OIDCAuthIdentity {
   OIDC: {
     client_id: string;
     issuer: string;
-    email: string;
+    email: string | null;
+    sub: string | null;
   };
 }
 

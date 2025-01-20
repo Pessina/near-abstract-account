@@ -12,7 +12,7 @@ const GoogleButton = ({ onSuccess, onError, nonce }: GoogleButtonProps) => {
   return (
     <div className="w-full">
       <GoogleLogin
-        onSuccess={(credential) => onSuccess(credential.clientId ?? '')}
+        onSuccess={(credential) => onSuccess(credential.credential ?? '')}
         onError={onError}
         nonce={nonce}
         locale='pt_BR'

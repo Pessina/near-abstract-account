@@ -93,7 +93,6 @@ export default function AccountPage() {
                                 value={newAccountId}
                                 onChange={(e) => setNewAccountId(e.target.value)}
                             />
-
                             <div className="space-y-4">
                                 <h3 className="text-lg font-semibold">Passkey Authentication</h3>
                                 <Button
@@ -119,7 +118,8 @@ export default function AccountPage() {
                                                 clientId: googleClientId,
                                                 issuer: issuer,
                                                 email: email,
-                                                accountId: newAccountId
+                                                accountId: newAccountId,
+                                                sub: null
                                             });
                                         }}
                                         onError={() => {
@@ -135,7 +135,8 @@ export default function AccountPage() {
                                                 clientId: facebookAppId,
                                                 issuer: issuer,
                                                 email: email,
-                                                accountId: newAccountId
+                                                accountId: newAccountId,
+                                                sub: null
                                             });
                                         }}
                                         onError={() => {
@@ -144,7 +145,6 @@ export default function AccountPage() {
                                     />
                                 </div>
                             </div>
-
                             <div className="space-y-4">
                                 <h3 className="text-lg font-semibold">Wallet Authentication</h3>
                                 <div className="flex flex-wrap gap-4">

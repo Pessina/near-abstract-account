@@ -74,6 +74,7 @@ export default function AuthModal({ isOpen, onClose, transaction, accountId }: A
                                         issuer,
                                         email,
                                         transaction,
+                                        sub: null,
                                     });
                                 }}
                                 onError={() => {
@@ -95,6 +96,7 @@ export default function AuthModal({ isOpen, onClose, transaction, accountId }: A
                                         issuer,
                                         email,
                                         transaction,
+                                        sub: null,
                                     });
                                 }}
                                 onError={() => {

@@ -29,6 +29,7 @@ export class AbstractAccountContractBuilder {
         client_id: args.client_id,
         issuer: args.issuer,
         email: args.email,
+        sub: args.sub,
       },
     }),
   };

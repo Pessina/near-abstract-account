@@ -5,16 +5,18 @@ import { NEAR_MAX_GAS } from "@/lib/constants";
 
 export const handleOIDCRegister = async ({
   contract,
+  accountId,
   clientId,
   issuer,
   email,
-  accountId,
+  sub,
 }: {
   contract: AbstractAccountContractClass;
+  accountId: string;
   clientId: string;
   issuer: string;
-  email: string;
-  accountId: string;
+  email: string | null;
+  sub: string | null;
 }) => {
   await contract.addAccount({
     args: {
@@ -23,6 +25,7 @@ export const handleOIDCRegister = async ({
         client_id: clientId,
         issuer,
         email,
+        sub,
       }),
     },
   });
@@ -34,6 +37,7 @@ export const handleOIDCAuthenticate = async ({
   clientId,
   issuer,
   email,
+  sub,
   accountId,
   transaction,
 }: {
@@ -41,7 +45,8 @@ export const handleOIDCAuthenticate = async ({
   token: string;
   clientId: string;
   issuer: string;
-  email: string;
+  email: string | null;
+  sub: string | null;
   accountId: string;
   transaction: Transaction;
 }) => {
@@ -60,6 +65,7 @@ export const handleOIDCAuthenticate = async ({
             client_id: clientId,
             issuer,
             email,
+            sub: sub,
           }),
           credentials: {
             token: token,
