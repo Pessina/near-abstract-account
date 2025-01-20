@@ -53,6 +53,17 @@ export default function AccountPage() {
         setAuthModalOpen(true)
     }
 
+    const handleAddAuthIdentity = async (accountId: string, authIdentity: AuthIdentity) => {
+        const transaction = AbstractAccountContractBuilder.transaction.addAuthIdentity({
+            authIdentity
+        })
+        setAuthProps({
+            accountId,
+            transaction
+        })
+        setAuthModalOpen(true)
+    }
+
     const loadAccounts = async () => {
         const accountList = await contract.listAccountIds()
         setAccounts(accountList)
@@ -93,6 +104,7 @@ export default function AccountPage() {
                                 value={newAccountId}
                                 onChange={(e) => setNewAccountId(e.target.value)}
                             />
+
                             <div className="space-y-4">
                                 <h3 className="text-lg font-semibold">Passkey Authentication</h3>
                                 <Button
@@ -119,7 +131,7 @@ export default function AccountPage() {
                                                 issuer: issuer,
                                                 email: email,
                                                 accountId: newAccountId,
-                                                sub: null
+                                                sub: null,
                                             });
                                         }}
                                         onError={() => {
@@ -127,7 +139,7 @@ export default function AccountPage() {
                                         }}
                                     />
                                     <FacebookButton
-                                        text="Register with Facebook"
+                                        text={`Register with Facebook`}
                                         onSuccess={(idToken) => {
                                             const { email, issuer } = parseOIDCToken(idToken)
                                             handleOIDCRegister({
@@ -136,7 +148,7 @@ export default function AccountPage() {
                                                 issuer: issuer,
                                                 email: email,
                                                 accountId: newAccountId,
-                                                sub: null
+                                                sub: null,
                                             });
                                         }}
                                         onError={() => {
@@ -153,30 +165,30 @@ export default function AccountPage() {
                                             handleWalletRegister({
                                                 contract,
                                                 walletConfig: {
-                                                    type: "ethereum",
                                                     wallet: "metamask",
+                                                    type: "ethereum",
                                                 },
                                                 accountId: newAccountId,
                                             });
                                         }}
                                         imageSrc="/metamask.svg"
                                         imageAlt="MetaMask logo"
-                                        buttonText="Register with MetaMask"
+                                        buttonText={`Register with MetaMask`}
                                     />
                                     <AuthButton
                                         onClick={() => {
                                             handleWalletRegister({
                                                 contract,
                                                 walletConfig: {
-                                                    type: "solana",
                                                     wallet: "phantom",
+                                                    type: "solana",
                                                 },
                                                 accountId: newAccountId,
                                             });
                                         }}
                                         imageSrc="/sol.svg"
                                         imageAlt="Phantom logo"
-                                        buttonText="Register with Phantom"
+                                        buttonText={`$Register with Phantom`}
                                     />
                                 </div>
                             </div>
@@ -192,6 +204,7 @@ export default function AccountPage() {
                                 <div key={accountId} className="flex justify-between items-center p-2 border rounded">
                                     <span>{accountId}</span>
                                     <div className="space-x-2">
+
                                         <Button
                                             onClick={() => loadAuthIdentities(accountId)}
                                             variant="secondary"
