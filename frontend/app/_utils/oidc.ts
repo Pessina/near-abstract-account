@@ -1,6 +1,7 @@
 import { AbstractAccountContractClass } from "@/contracts/AbstractAccountContract/AbstractAccountContract";
 import { Transaction } from "@/contracts/AbstractAccountContract/types/transaction";
 import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth";
+import { NEAR_MAX_GAS } from "@/lib/constants";
 
 export const handleOIDCRegister = async ({
   contract,
@@ -67,5 +68,7 @@ export const handleOIDCAuthenticate = async ({
         transaction,
       },
     },
+    gas: NEAR_MAX_GAS,
+    amount: "10", // Should be dynamic based on the current fee
   });
 };

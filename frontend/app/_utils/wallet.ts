@@ -72,10 +72,10 @@ export const handleWalletAuthenticate = async ({
     throw new Error("Failed to canonicalize transaction");
   }
 
-  const walletData = await wallet.sign(canonical);
+  const credentials = await wallet.sign(canonical);
   const authIdentity = await wallet.getAuthIdentity();
 
-  if (!authIdentity || !walletData) {
+  if (!authIdentity || !credentials) {
     throw new Error("Failed to get auth identity or wallet data");
   }
 
@@ -85,7 +85,7 @@ export const handleWalletAuthenticate = async ({
         account_id: accountId,
         auth: {
           authenticator: authIdentity,
-          credentials: walletData,
+          credentials,
         },
         transaction,
       },

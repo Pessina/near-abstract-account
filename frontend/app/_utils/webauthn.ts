@@ -3,6 +3,7 @@ import canonicalize from "canonicalize";
 import { AbstractAccountContractClass } from "@/contracts/AbstractAccountContract/AbstractAccountContract";
 import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth";
 import { Transaction } from "@/contracts/AbstractAccountContract/types/transaction";
+import { NEAR_MAX_GAS } from "@/lib/constants";
 
 export const handlePasskeyRegister = async ({
   username,
@@ -73,5 +74,7 @@ export const handlePasskeyAuthenticate = async ({
         transaction,
       },
     },
+    gas: NEAR_MAX_GAS,
+    amount: "10", // Should be dynamic based on the current fee
   });
 };
