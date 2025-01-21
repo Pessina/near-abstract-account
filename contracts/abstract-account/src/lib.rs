@@ -31,6 +31,16 @@ pub struct AuthContractConfig {
     pub contract_id: String,
 }
 
+impl Default for AbstractAccountContract {
+    fn default() -> Self {
+        Self {
+            accounts: IterableMap::new(KEY_PREFIX_ACCOUNTS),
+            auth_contracts: IterableMap::new(KEY_PREFIX_AUTH_CONTRACTS),
+            signer_account: env::current_account_id(),
+        }
+    }
+}
+
 /*
     TODO:
     - Add Storage Management NEP
@@ -42,11 +52,7 @@ impl AbstractAccountContract {
         auth_contracts: Option<Vec<AuthContractConfig>>,
         signer_account: Option<String>,
     ) -> Self {
-        let mut contract = Self {
-            accounts: IterableMap::new(KEY_PREFIX_ACCOUNTS),
-            auth_contracts: IterableMap::new(KEY_PREFIX_AUTH_CONTRACTS),
-            signer_account: env::current_account_id(),
-        };
+        let mut contract = Self::default();
 
         if let Some(contracts) = auth_contracts {
             for contract_config in contracts {
