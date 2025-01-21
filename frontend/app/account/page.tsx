@@ -1,20 +1,23 @@
 "use client"
 
 import React, { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { useAbstractAccountContract } from "@/contracts/AbstractAccountContract/useAbstractAccountContract"
+
+import { AuthAdapter, AuthConfig } from "../_utils/AuthAdapter"
+
+import AuthButton from "@/components/AuthButton"
 import AuthModal from "@/components/AuthModal"
+import FacebookButton from "@/components/FacebookButton"
+import GoogleButton from "@/components/GoogleButton"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AuthIdentity } from "@/contracts/AbstractAccountContract/AbstractAccountContract"
 import { Transaction } from "@/contracts/AbstractAccountContract/types/transaction"
-import { Input } from "@/components/ui/input"
-import AuthButton from "@/components/AuthButton"
-import GoogleButton from "@/components/GoogleButton"
-import FacebookButton from "@/components/FacebookButton"
+import { useAbstractAccountContract } from "@/contracts/AbstractAccountContract/useAbstractAccountContract"
 import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth"
-import { parseOIDCToken } from "@/lib/utils"
 import { useEnv } from "@/hooks/useEnv"
-import { AuthAdapter } from "../_utils/AuthAdapter"
+import { parseOIDCToken } from "@/lib/utils"
 
 export default function AccountPage() {
     const [accounts, setAccounts] = useState<string[]>([])
@@ -23,6 +26,7 @@ export default function AccountPage() {
     const [authModalOpen, setAuthModalOpen] = useState(false)
     const [authProps, setAuthProps] = useState<{ accountId: string, transaction: Transaction } | null>(null)
     const [newAccountId, setNewAccountId] = useState("")
+    const [authAction, setAuthAction] = useState<"register" | "add">("register")
 
     const { contract } = useAbstractAccountContract()
     const { googleClientId, facebookAppId } = useEnv()
@@ -51,19 +55,14 @@ export default function AccountPage() {
         setAuthModalOpen(true)
     }
 
-    const handlePasskeyRegister = async ({
-        username,
+    const handleRegister = async ({
+        config,
         accountId,
     }: {
-        username: string;
+        config: AuthConfig;
         accountId: string;
     }) => {
-        const authIdentity = await AuthAdapter.getAuthIdentity({
-            type: "webauthn",
-            config: { username }
-        });
-
-        if (!authIdentity) return;
+        const authIdentity = await AuthAdapter.getAuthIdentity(config);
 
         await contract.addAccount({
             args: {
@@ -75,63 +74,23 @@ export default function AccountPage() {
         await loadAccounts();
     }
 
-    const handleWalletRegister = async ({
-        walletConfig,
+    const handleAddAuthIdentity = async ({
+        config,
         accountId,
     }: {
-        walletConfig: { type: "ethereum"; wallet: "metamask" | "okx" } | { type: "solana"; wallet: "phantom" | "solflare" };
+        config: AuthConfig;
         accountId: string;
     }) => {
-        const authIdentity = await AuthAdapter.getAuthIdentity({
-            type: "wallet",
-            config: walletConfig
-        });
+        const authIdentity = await AuthAdapter.getAuthIdentity(config);
+        const transaction = AbstractAccountContractBuilder.transaction.addAuthIdentity({
+            authIdentity
+        })
 
-        if (!authIdentity) return;
-
-        await contract.addAccount({
-            args: {
-                account_id: accountId,
-                auth_identity: authIdentity
-            }
-        });
-
-        await loadAccounts();
-    }
-
-    const handleOIDCRegister = async ({
-        clientId,
-        issuer,
-        email,
-        accountId,
-        sub,
-    }: {
-        clientId: string;
-        issuer: string;
-        email: string | null;
-        accountId: string;
-        sub: string | null;
-    }) => {
-        const authIdentity = await AuthAdapter.getAuthIdentity({
-            type: "oidc",
-            config: {
-                clientId,
-                issuer,
-                email,
-                sub,
-            }
-        });
-
-        if (!authIdentity) return;
-
-        await contract.addAccount({
-            args: {
-                account_id: accountId,
-                auth_identity: authIdentity
-            }
-        });
-
-        await loadAccounts();
+        setAuthProps({
+            accountId,
+            transaction
+        })
+        setAuthModalOpen(true)
     }
 
     const loadAccounts = async () => {
@@ -174,18 +133,40 @@ export default function AccountPage() {
                                 value={newAccountId}
                                 onChange={(e) => setNewAccountId(e.target.value)}
                             />
+                            <Select onValueChange={(value) => setAuthAction(value as "register" | "add")}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select action" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="register">Register New Account</SelectItem>
+                                    <SelectItem value="add">Add Auth Method</SelectItem>
+                                </SelectContent>
+                            </Select>
 
                             <div className="space-y-4">
                                 <h3 className="text-lg font-semibold">Passkey Authentication</h3>
                                 <Button
                                     onClick={() => {
-                                        handlePasskeyRegister({
-                                            username: newAccountId,
-                                            accountId: newAccountId,
-                                        });
+                                        const config = {
+                                            type: "webauthn" as const,
+                                            config: {
+                                                username: newAccountId,
+                                            },
+                                        };
+                                        if (authAction === "register") {
+                                            handleRegister({
+                                                config,
+                                                accountId: newAccountId,
+                                            });
+                                        } else {
+                                            handleAddAuthIdentity({
+                                                config,
+                                                accountId: newAccountId,
+                                            });
+                                        }
                                     }}
                                 >
-                                    Register with Passkey
+                                    {authAction === "register" ? "Register" : "Add"} with Passkey
                                 </Button>
                             </div>
                             <div className="space-y-4">
@@ -194,32 +175,58 @@ export default function AccountPage() {
                                     <GoogleButton
                                         onSuccess={(idToken) => {
                                             const { email, issuer } = parseOIDCToken(idToken)
-                                            handleOIDCRegister({
-                                                clientId: googleClientId,
-                                                issuer: issuer,
-                                                email: email,
-                                                accountId: newAccountId,
-                                                sub: null,
-                                            });
+                                            const config = {
+                                                type: "oidc" as const,
+                                                config: {
+                                                    clientId: googleClientId,
+                                                    issuer: issuer,
+                                                    email: email,
+                                                    sub: null,
+                                                },
+                                            };
+                                            if (authAction === "register") {
+                                                handleRegister({
+                                                    config,
+                                                    accountId: newAccountId,
+                                                });
+                                            } else {
+                                                handleAddAuthIdentity({
+                                                    config,
+                                                    accountId: newAccountId,
+                                                });
+                                            }
                                         }}
                                         onError={() => {
-                                            console.error("Error registering with Google")
+                                            console.error("Error with Google authentication")
                                         }}
                                     />
                                     <FacebookButton
-                                        text={`Register with Facebook`}
+                                        text={`${authAction === "register" ? "Register" : "Add"} with Facebook`}
                                         onSuccess={(idToken) => {
                                             const { email, issuer } = parseOIDCToken(idToken)
-                                            handleOIDCRegister({
-                                                clientId: facebookAppId,
-                                                issuer: issuer,
-                                                email: email,
-                                                accountId: newAccountId,
-                                                sub: null,
-                                            });
+                                            const config = {
+                                                type: "oidc" as const,
+                                                config: {
+                                                    clientId: facebookAppId,
+                                                    issuer: issuer,
+                                                    email: email,
+                                                    sub: null,
+                                                },
+                                            };
+                                            if (authAction === "register") {
+                                                handleRegister({
+                                                    config,
+                                                    accountId: newAccountId,
+                                                });
+                                            } else {
+                                                handleAddAuthIdentity({
+                                                    config,
+                                                    accountId: newAccountId,
+                                                });
+                                            }
                                         }}
                                         onError={() => {
-                                            console.error("Error registering with Facebook")
+                                            console.error("Error with Facebook authentication")
                                         }}
                                     />
                                 </div>
@@ -229,31 +236,53 @@ export default function AccountPage() {
                                 <div className="flex flex-wrap gap-4">
                                     <AuthButton
                                         onClick={() => {
-                                            handleWalletRegister({
-                                                walletConfig: {
-                                                    wallet: "metamask",
-                                                    type: "ethereum",
+                                            const config = {
+                                                type: "wallet" as const,
+                                                config: {
+                                                    wallet: "metamask" as const,
+                                                    type: "ethereum" as const,
                                                 },
-                                                accountId: newAccountId,
-                                            });
+                                            };
+                                            if (authAction === "register") {
+                                                handleRegister({
+                                                    config,
+                                                    accountId: newAccountId,
+                                                });
+                                            } else {
+                                                handleAddAuthIdentity({
+                                                    config,
+                                                    accountId: newAccountId,
+                                                });
+                                            }
                                         }}
                                         imageSrc="/metamask.svg"
                                         imageAlt="MetaMask logo"
-                                        buttonText={`Register with MetaMask`}
+                                        buttonText={`${authAction === "register" ? "Register" : "Add"} with MetaMask`}
                                     />
                                     <AuthButton
                                         onClick={() => {
-                                            handleWalletRegister({
-                                                walletConfig: {
-                                                    wallet: "phantom",
-                                                    type: "solana",
+                                            const config = {
+                                                type: "wallet" as const,
+                                                config: {
+                                                    wallet: "phantom" as const,
+                                                    type: "solana" as const,
                                                 },
-                                                accountId: newAccountId,
-                                            });
+                                            };
+                                            if (authAction === "register") {
+                                                handleRegister({
+                                                    config,
+                                                    accountId: newAccountId,
+                                                });
+                                            } else {
+                                                handleAddAuthIdentity({
+                                                    config,
+                                                    accountId: newAccountId,
+                                                });
+                                            }
                                         }}
                                         imageSrc="/sol.svg"
                                         imageAlt="Phantom logo"
-                                        buttonText={`Register with Phantom`}
+                                        buttonText={`${authAction === "register" ? "Register" : "Add"} with Phantom`}
                                     />
                                 </div>
                             </div>

@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+
 import { OIDCAuthContract } from "./OIDCAuthContract";
-import { useInitNear } from "@/hooks/useInitNear";
+
 import { useEnv } from "@/hooks/useEnv";
+import { useInitNear } from "@/hooks/useInitNear";
 
 export const useOIDCAuthContract = () => {
   const [contract, setContract] = useState<OIDCAuthContract | null>(null);

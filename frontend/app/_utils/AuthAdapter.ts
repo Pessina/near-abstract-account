@@ -32,7 +32,7 @@ type WebAuthnConfig = {
   username: string;
 };
 
-type AuthConfig =
+export type AuthConfig =
   | { type: "wallet"; config: WalletConfig }
   | { type: "webauthn"; config: WebAuthnConfig }
   | { type: "oidc"; config: OIDCConfig };
