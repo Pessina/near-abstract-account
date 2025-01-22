@@ -76,6 +76,8 @@ impl AbstractAccountContract {
         operation: Transaction,
     ) {
         let storage_usage_start = env::storage_usage();
+        self.storage_balance_of(predecessor.clone())
+            .expect("Predecessor has not registered for storage");
 
         match operation {
             Transaction::RemoveAccount => self.delete_account(account_id),

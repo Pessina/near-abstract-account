@@ -10,7 +10,7 @@ use near_sdk::{
     store::IterableMap,
     AccountId, Promise,
 };
-use near_sdk_contract_tools::{nft::nep145::Nep145, Nep145};
+use near_sdk_contract_tools::Nep145;
 use schemars::JsonSchema;
 use types::{account::Account, auth_identity::AuthIdentity, transaction::UserOp};
 use types::{auth_identity::AuthIdentityNames, transaction::Transaction};
@@ -43,10 +43,6 @@ impl Default for AbstractAccountContract {
     }
 }
 
-/*
-    TODO:
-    - Add Storage Management NEP
-*/
 #[near]
 impl AbstractAccountContract {
     #[init]
@@ -75,9 +71,6 @@ impl AbstractAccountContract {
     #[payable]
     pub fn auth(&mut self, user_op: UserOp) -> Promise {
         let predecessor = env::predecessor_account_id();
-        self.storage_balance_of(predecessor.clone())
-            .expect("Predecessor has not registered for storage");
-
         let account = self.accounts.get_mut(&user_op.account_id).unwrap();
 
         require!(
