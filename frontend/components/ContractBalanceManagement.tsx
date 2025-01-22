@@ -1,6 +1,6 @@
 "use client"
 
-import { PlusIcon, MinusIcon, RefreshCwIcon, TrashIcon, AlertTriangleIcon } from "lucide-react"
+import { PlusIcon, MinusIcon, RefreshCwIcon } from "lucide-react"
 import React, { useCallback, useState } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -55,20 +55,6 @@ export default function ContractBalanceManagement() {
             setAmount("")
         } catch (error) {
             console.error("Error withdrawing:", error)
-        }
-    }
-
-    const handleUnregister = async (force: boolean = false) => {
-        if (!contract) return
-        try {
-            await contract.storageUnregister({
-                args: {
-                    force,
-                },
-            })
-            setBalance(null)
-        } catch (error) {
-            console.error("Error unregistering:", error)
         }
     }
 
@@ -137,24 +123,6 @@ export default function ContractBalanceManagement() {
                             <RefreshCwIcon className="w-4 h-4 mr-2" />
                             Refresh Balance
                         </Button>
-                        <div className="w-full sm:w-auto flex gap-2 flex-grow justify-end">
-                            <Button
-                                onClick={() => handleUnregister(false)}
-                                variant="destructive"
-                                className="flex-grow sm:flex-grow-0"
-                            >
-                                <TrashIcon className="w-4 h-4 mr-2" />
-                                Unregister
-                            </Button>
-                            <Button
-                                onClick={() => handleUnregister(true)}
-                                variant="destructive"
-                                className="flex-grow sm:flex-grow-0"
-                            >
-                                <AlertTriangleIcon className="w-4 h-4 mr-2" />
-                                Force Unregister
-                            </Button>
-                        </div>
                     </div>
                 </div>
             </CardContent>
