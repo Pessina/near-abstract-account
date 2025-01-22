@@ -1,3 +1,5 @@
+use near_sdk_contract_tools::ft::Nep145Controller;
+
 use crate::*;
 
 #[near]
@@ -7,8 +9,19 @@ impl AbstractAccountContract {
             env::panic_str("Account already exists");
         }
 
-        self.accounts
-            .insert(account_id, Account::new(vec![auth_identity]));
+        let storage_usage_start = env::storage_usage();
+        let predecessor = env::predecessor_account_id();
+
+        self.accounts.insert(
+            account_id,
+            Account::new(
+                env::predecessor_account_id().to_string(),
+                vec![auth_identity],
+            ),
+        );
+
+        self.storage_accounting(&predecessor, storage_usage_start)
+            .expect("Storage accounting failed");
     }
 
     #[private]
@@ -54,5 +67,29 @@ impl AbstractAccountContract {
             .filter(|(_, account)| account.has_auth_identity(&auth_identity))
             .map(|(key, _)| key.clone())
             .collect()
+    }
+
+    #[private]
+    pub fn handle_account_operation(
+        &mut self,
+        predecessor: AccountId,
+        account_id: String,
+        operation: Transaction,
+    ) {
+        let storage_usage_start = env::storage_usage();
+
+        match operation {
+            Transaction::RemoveAccount => self.delete_account(account_id),
+            Transaction::AddAuthIdentity(new_auth_identity) => {
+                self.add_auth_identity(account_id, new_auth_identity)
+            }
+            Transaction::RemoveAuthIdentity(remove_auth_identity) => {
+                self.remove_auth_identity(account_id, remove_auth_identity)
+            }
+            _ => env::panic_str("Invalid account operation"),
+        }
+
+        self.storage_accounting(&predecessor, storage_usage_start)
+            .expect("Storage accounting failed");
     }
 }

@@ -1,8 +1,5 @@
 use crate::*;
-use crate::{
-    types::{auth_identity::AuthIdentity, transaction::Transaction},
-    AbstractAccountContract,
-};
+use crate::{types::auth_identity::AuthIdentity, AbstractAccountContract};
 use interfaces::traits::path::Path;
 use mods::signer::{ext_signer, SignRequest, SIGN_GAS};
 use near_sdk::{env, near, Promise};
@@ -11,33 +8,6 @@ use utils::utils::build_account_path;
 
 #[near]
 impl AbstractAccountContract {
-    #[private]
-    pub fn execute_transaction(
-        &mut self,
-        account_id: String,
-        auth_identity: AuthIdentity,
-        transaction: Transaction,
-    ) -> Promise {
-        // TODO: The empty promise it's to fix the type issue in Rust, check how to fix it
-        match transaction {
-            Transaction::Sign(sign_payloads_request) => {
-                self.sign(auth_identity, sign_payloads_request)
-            }
-            Transaction::RemoveAccount => {
-                self.delete_account(account_id);
-                Promise::new(env::predecessor_account_id())
-            }
-            Transaction::AddAuthIdentity(new_auth_identity) => {
-                self.add_auth_identity(account_id, new_auth_identity);
-                Promise::new(env::predecessor_account_id())
-            }
-            Transaction::RemoveAuthIdentity(remove_auth_identity) => {
-                self.remove_auth_identity(account_id, remove_auth_identity);
-                Promise::new(env::predecessor_account_id())
-            }
-        }
-    }
-
     #[private]
     pub fn sign(
         &self,

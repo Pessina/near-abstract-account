@@ -8,12 +8,16 @@ use schemars::JsonSchema;
 #[derive(Debug, BorshDeserialize, BorshSerialize, Deserialize, Serialize, JsonSchema, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub struct Account {
+    pub creator_id: String,
     pub auth_identities: Vec<AuthIdentity>,
 }
 
 impl Account {
-    pub fn new(auth_identities: Vec<AuthIdentity>) -> Self {
-        Self { auth_identities }
+    pub fn new(creator_id: String, auth_identities: Vec<AuthIdentity>) -> Self {
+        Self {
+            creator_id,
+            auth_identities,
+        }
     }
 
     pub fn has_auth_identity(&self, auth_identity: &AuthIdentity) -> bool {

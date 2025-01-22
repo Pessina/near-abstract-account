@@ -10,6 +10,7 @@ use near_sdk::{
     store::IterableMap,
     AccountId, Promise,
 };
+use near_sdk_contract_tools::ft::Nep145;
 use schemars::JsonSchema;
 use types::{account::Account, auth_identity::AuthIdentity, transaction::UserOp};
 use types::{auth_identity::AuthIdentityNames, transaction::Transaction};
@@ -17,6 +18,7 @@ use types::{auth_identity::AuthIdentityNames, transaction::Transaction};
 const KEY_PREFIX_ACCOUNTS: &[u8] = b"q";
 const KEY_PREFIX_AUTH_CONTRACTS: &[u8] = b"a";
 
+#[derive(Nep145)]
 #[near(contract_state)]
 pub struct AbstractAccountContract {
     accounts: IterableMap<String, Account>,
@@ -47,7 +49,7 @@ impl Default for AbstractAccountContract {
 */
 #[near]
 impl AbstractAccountContract {
-    #[init(ignore_state)]
+    #[init]
     pub fn new(
         auth_contracts: Option<Vec<AuthContractConfig>>,
         signer_account: Option<String>,
@@ -72,6 +74,10 @@ impl AbstractAccountContract {
 
     #[payable]
     pub fn auth(&mut self, user_op: UserOp) -> Promise {
+        let predecessor = env::predecessor_account_id();
+        self.storage_balance_of(predecessor.clone())
+            .expect("Predecessor has not registered for storage");
+
         let account = self.accounts.get_mut(&user_op.account_id).unwrap();
 
         require!(
@@ -148,21 +154,34 @@ impl AbstractAccountContract {
         promise.then(
             Self::ext(env::current_account_id())
                 .with_attached_deposit(env::attached_deposit())
-                .auth_callback(account_id, selected_auth_identity, transaction),
+                .auth_callback(account_id, selected_auth_identity, transaction, predecessor),
         )
     }
 
     #[private]
-    #[payable]
     pub fn auth_callback(
         &mut self,
         account_id: String,
         auth_identity: AuthIdentity,
         transaction: Transaction,
+        predecessor: AccountId,
         #[callback_result] auth_result: Result<bool, near_sdk::PromiseError>,
-    ) -> Promise {
+    ) -> Option<Promise> {
         match auth_result {
-            Ok(true) => self.execute_transaction(account_id, auth_identity, transaction),
+            Ok(true) => {
+                match transaction {
+                    Transaction::Sign(sign_payloads_request) => {
+                        return Some(self.sign(auth_identity, sign_payloads_request));
+                    }
+                    operation @ (Transaction::RemoveAccount
+                    | Transaction::AddAuthIdentity(_)
+                    | Transaction::RemoveAuthIdentity(_)) => {
+                        self.handle_account_operation(predecessor, account_id, operation);
+                    }
+                };
+
+                None
+            }
             Ok(false) => env::panic_str("Authentication failed"),
             Err(_) => env::panic_str("Error validating authentication"),
         }
