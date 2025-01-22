@@ -25,6 +25,7 @@ pub enum Transaction {
 pub struct UserOp {
     pub account_id: String,
     pub auth: Auth,
+    // TODO: Security issue, a user can add a auth identity and user it without proving ownership
     pub selected_auth_identity: Option<AuthIdentity>,
     pub transaction: Transaction,
 }
