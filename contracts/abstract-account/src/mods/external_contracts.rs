@@ -1,8 +1,8 @@
-use interfaces::ethereum_auth::EthereumData;
-use interfaces::oidc_auth::OIDCAuthIdentity;
-use interfaces::oidc_auth::OIDCData;
-use interfaces::solana_auth::SolanaData;
-use interfaces::webauthn_auth::WebAuthnData;
+use interfaces::auth::{
+    oidc::{OIDCAuthIdentity, OIDCValidationData},
+    wallet::WalletValidationData,
+    webauthn::WebAuthnValidationData,
+};
 use near_sdk::ext_contract;
 use near_sdk::Gas;
 
@@ -11,24 +11,24 @@ pub const VALIDATE_ETH_SIGNATURE_GAS: Gas = Gas::from_tgas(12);
 
 #[ext_contract(webauthn_auth)]
 pub trait WebAuthnAuth {
-    fn validate_p256_signature(
+    fn verify_p256(
         &self,
-        webauthn_data: WebAuthnData,
+        webauthn_data: WebAuthnValidationData,
         compressed_public_key: String,
     ) -> bool;
 }
 
 #[ext_contract(ethereum_auth)]
 pub trait EthereumAuth {
-    fn validate_eth_signature(&self, eth_data: EthereumData, compressed_public_key: String) -> bool;
+    fn verify(&self, eth_data: WalletValidationData, compressed_public_key: String) -> bool;
 }
 
 #[ext_contract(solana_auth)]
 pub trait SolanaAuth {
-    fn validate_solana_signature(&self, solana_data: SolanaData, public_key: String) -> bool;
+    fn verify(&self, solana_data: WalletValidationData, public_key: String) -> bool;
 }
 
 #[ext_contract(oidc_auth)]
 pub trait OidcAuth {
-    fn validate_oidc_token(&self, oidc_data: OIDCData, oidc_auth_identity: OIDCAuthIdentity) -> bool;
+    fn verify(&self, oidc_data: OIDCValidationData, oidc_auth_identity: OIDCAuthIdentity) -> bool;
 }
