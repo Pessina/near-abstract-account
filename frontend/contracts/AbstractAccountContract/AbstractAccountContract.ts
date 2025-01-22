@@ -1,4 +1,7 @@
 import { Contract, Account as NearAccount } from "near-api-js";
+
+import { ContractChangeMethodArgs } from "../types";
+
 import {
   WebAuthnAuthIdentity,
   WalletAuthIdentity,
@@ -8,7 +11,11 @@ import {
   OIDCAuthIdentity,
 } from "./types/auth";
 import { Signature, Transaction } from "./types/transaction";
-import { ContractChangeMethodArgs } from "../types";
+
+export interface StorageBalance {
+  total: string;
+  available: string;
+}
 
 export type AuthIdentity =
   | WebAuthnAuthIdentity
@@ -68,6 +75,20 @@ export type AbstractAccountContract = Contract & {
       user_op: UserOperation;
     }>
   ) => Promise<Signature>;
+  storage_balance_of: (args: {
+    account_id: string;
+  }) => Promise<StorageBalance | null>;
+  storage_deposit: (
+    args: ContractChangeMethodArgs<{
+      account_id?: string;
+      registration_only?: boolean;
+    }>
+  ) => Promise<StorageBalance>;
+  storage_withdraw: (
+    args: ContractChangeMethodArgs<{
+      amount?: string;
+    }>
+  ) => Promise<StorageBalance>;
 };
 
 export class AbstractAccountContractClass {
@@ -88,8 +109,14 @@ export class AbstractAccountContractClass {
         "get_account_by_auth_identity",
         "get_all_contracts",
         "get_signer_account",
+        "storage_balance_of",
       ],
-      changeMethods: ["add_account", "auth"],
+      changeMethods: [
+        "add_account",
+        "auth",
+        "storage_deposit",
+        "storage_withdraw",
+      ],
       useLocalViewExecution: false,
     }) as unknown as AbstractAccountContract;
   }
@@ -130,5 +157,23 @@ export class AbstractAccountContractClass {
 
   async auth(obj: Parameters<AbstractAccountContract["auth"]>[0]) {
     return this.contract.auth(obj);
+  }
+
+  async storageBalanceOf(
+    obj: Parameters<AbstractAccountContract["storage_balance_of"]>[0]
+  ) {
+    return this.contract.storage_balance_of(obj);
+  }
+
+  async storageDeposit(
+    obj: Parameters<AbstractAccountContract["storage_deposit"]>[0]
+  ) {
+    return this.contract.storage_deposit(obj);
+  }
+
+  async storageWithdraw(
+    obj: Parameters<AbstractAccountContract["storage_withdraw"]>[0]
+  ) {
+    return this.contract.storage_withdraw(obj);
   }
 }

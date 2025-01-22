@@ -1,27 +1,26 @@
-use near_sdk_contract_tools::ft::Nep145Controller;
+use near_sdk::env;
+use near_sdk_contract_tools::nft::nep145::{Nep145, Nep145Controller};
 
 use crate::*;
 
 #[near]
 impl AbstractAccountContract {
     pub fn add_account(&mut self, account_id: String, auth_identity: AuthIdentity) {
+        let storage_usage_start = env::storage_usage();
+        let predecessor = env::predecessor_account_id();
+        self.storage_balance_of(predecessor.clone())
+            .unwrap_or_else(|| env::panic_str("Predecessor has not registered for storage"));
+
         if self.accounts.contains_key(&account_id) {
             env::panic_str("Account already exists");
         }
 
-        let storage_usage_start = env::storage_usage();
-        let predecessor = env::predecessor_account_id();
-
-        self.accounts.insert(
-            account_id,
-            Account::new(
-                env::predecessor_account_id().to_string(),
-                vec![auth_identity],
-            ),
-        );
+        self.accounts
+            .insert(account_id, Account::new(vec![auth_identity]));
+        self.accounts.flush();
 
         self.storage_accounting(&predecessor, storage_usage_start)
-            .expect("Storage accounting failed");
+            .unwrap_or_else(|e| env::panic_str(&e.to_string()));
     }
 
     #[private]
@@ -88,6 +87,8 @@ impl AbstractAccountContract {
             }
             _ => env::panic_str("Invalid account operation"),
         }
+
+        self.accounts.flush();
 
         self.storage_accounting(&predecessor, storage_usage_start)
             .expect("Storage accounting failed");

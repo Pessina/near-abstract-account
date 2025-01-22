@@ -10,7 +10,7 @@ use near_sdk::{
     store::IterableMap,
     AccountId, Promise,
 };
-use near_sdk_contract_tools::ft::Nep145;
+use near_sdk_contract_tools::{nft::nep145::Nep145, Nep145};
 use schemars::JsonSchema;
 use types::{account::Account, auth_identity::AuthIdentity, transaction::UserOp};
 use types::{auth_identity::AuthIdentityNames, transaction::Transaction};
@@ -158,6 +158,7 @@ impl AbstractAccountContract {
         )
     }
 
+    #[payable]
     #[private]
     pub fn auth_callback(
         &mut self,

@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+
 import { AbstractAccountContractClass } from "./AbstractAccountContract";
-import { useInitNear } from "@/hooks/useInitNear";
+
 import { useEnv } from "@/hooks/useEnv";
+import { useInitNear } from "@/hooks/useInitNear";
 
 export const useAbstractAccountContract = () => {
   const [contract, setContract] = useState<AbstractAccountContractClass | null>(
