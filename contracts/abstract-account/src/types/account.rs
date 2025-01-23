@@ -9,11 +9,15 @@ use schemars::JsonSchema;
 #[serde(crate = "near_sdk::serde")]
 pub struct Account {
     pub auth_identities: Vec<AuthIdentity>,
+    pub nonce: u128,
 }
 
 impl Account {
-    pub fn new(auth_identities: Vec<AuthIdentity>) -> Self {
-        Self { auth_identities }
+    pub fn new(auth_identities: Vec<AuthIdentity>, nonce: u128) -> Self {
+        Self {
+            auth_identities,
+            nonce,
+        }
     }
 
     pub fn has_auth_identity(&self, auth_identity: &AuthIdentity) -> bool {

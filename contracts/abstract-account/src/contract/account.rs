@@ -15,8 +15,10 @@ impl AbstractAccountContract {
             env::panic_str("Account already exists");
         }
 
-        self.accounts
-            .insert(account_id, Account::new(vec![auth_identity]));
+        self.accounts.insert(
+            account_id,
+            Account::new(vec![auth_identity], self.max_nonce),
+        );
         self.accounts.flush();
 
         self.storage_accounting(&predecessor, storage_usage_start)
@@ -25,6 +27,11 @@ impl AbstractAccountContract {
 
     #[private]
     pub fn delete_account(&mut self, account_id: String) {
+        let account_nonce = self.accounts.get(&account_id).unwrap().nonce;
+        if account_nonce > self.max_nonce {
+            self.max_nonce = account_nonce;
+        }
+
         self.accounts.remove(&account_id);
     }
 
@@ -73,18 +80,18 @@ impl AbstractAccountContract {
         &mut self,
         predecessor: AccountId,
         account_id: String,
-        operation: Transaction,
+        operation: Action,
     ) {
         let storage_usage_start = env::storage_usage();
         self.storage_balance_of(predecessor.clone())
             .expect("Predecessor has not registered for storage");
 
         match operation {
-            Transaction::RemoveAccount => self.delete_account(account_id),
-            Transaction::AddAuthIdentity(new_auth_identity) => {
-                self.add_auth_identity(account_id, new_auth_identity)
+            Action::RemoveAccount => self.delete_account(account_id),
+            Action::AddAuthIdentity(auth_identity_request) => {
+                self.add_auth_identity(account_id, auth_identity_request)
             }
-            Transaction::RemoveAuthIdentity(remove_auth_identity) => {
+            Action::RemoveAuthIdentity(remove_auth_identity) => {
                 self.remove_auth_identity(account_id, remove_auth_identity)
             }
             _ => env::panic_str("Invalid account operation"),

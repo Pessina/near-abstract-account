@@ -13,19 +13,38 @@ pub struct SignPayloadsRequest {
 
 #[derive(Deserialize, Serialize, JsonSchema, Clone)]
 #[serde(crate = "near_sdk::serde")]
-pub enum Transaction {
+pub struct AuthIdentityRequest {
+    /*
+    AuthIdentity signer must sign the account_id and nonce to:
+    1. Prove ownership of the AuthIdentity
+    2. Declare which account it intends to be added to
+    3. Prevent replay attacks
+    */
+    pub credentials: Value,
+    pub auth_identity: AuthIdentity,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema, Clone)]
+#[serde(crate = "near_sdk::serde")]
+pub enum Action {
     RemoveAccount,
-    AddAuthIdentity(AuthIdentity),
+    AddAuthIdentity(AuthIdentityRequest),
     RemoveAuthIdentity(AuthIdentity),
     Sign(SignPayloadsRequest),
 }
 
 #[derive(Deserialize, Serialize, JsonSchema, Clone)]
 #[serde(crate = "near_sdk::serde")]
-pub struct UserOp {
+pub struct Transaction {
     pub account_id: String,
+    pub nonce: u128,
+    pub action: Action,
+}
+
+#[derive(Deserialize, Serialize, JsonSchema, Clone)]
+#[serde(crate = "near_sdk::serde")]
+pub struct UserOp {
     pub auth: Auth,
-    // TODO: Security issue, a user can add a auth identity and user it without proving ownership
     pub selected_auth_identity: Option<AuthIdentity>,
     pub transaction: Transaction,
 }
