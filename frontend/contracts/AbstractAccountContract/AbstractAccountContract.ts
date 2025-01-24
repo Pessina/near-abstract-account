@@ -40,10 +40,7 @@ export type Action =
   | { AddAuthIdentity: Auth }
   | { RemoveAuthIdentity: AuthIdentity }
   | {
-      Sign: {
-        contract_id: string;
-        payloads: SignPayloadsRequest[];
-      };
+      Sign: SignPayloadsRequest;
     };
 
 export interface Transaction {

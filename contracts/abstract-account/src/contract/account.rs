@@ -1,4 +1,4 @@
-use near_sdk::{env, log};
+use near_sdk::env;
 use near_sdk_contract_tools::nft::nep145::{Nep145, Nep145Controller};
 
 use crate::*;

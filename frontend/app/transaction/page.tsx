@@ -2,14 +2,15 @@
 
 import React, { useState } from "react"
 import { useForm } from "react-hook-form"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+
+import AuthModal from "@/components/AuthModal"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Transaction } from "@/contracts/AbstractAccountContract/AbstractAccountContract"
 import { useAbstractAccountContract } from "@/contracts/AbstractAccountContract/useAbstractAccountContract"
 import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth"
-import { Transaction } from "@/contracts/AbstractAccountContract/types/transaction"
-import AuthModal from "@/components/AuthModal"
 
 type FormValues = {
     accountId: string
@@ -42,9 +43,22 @@ export default function TransactionForm() {
     }
 
     const onSubmit = async (data: FormValues) => {
+        const account = await contract.getAccountById({ account_id: data.accountId })
         const transaction = AbstractAccountContractBuilder.transaction.sign({
-            contractId: data.contractId,
-            payloads: []
+            accountId: data.accountId,
+            nonce: account?.nonce ?? "0",
+            payloads:
+            {
+                contract_id: data.contractId,
+                payloads: [
+                    {
+                        path: "",
+                        key_version: 0,
+                        payload: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1]
+
+                    }
+                ]
+            }
         })
         setAuthProps({ accountId: data.accountId, transaction })
         setAuthModalOpen(true)

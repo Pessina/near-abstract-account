@@ -89,16 +89,12 @@ export class AbstractAccountContractBuilder {
     sign: (args: {
       accountId: string;
       nonce: string;
-      contractId: string;
-      payloads: Array<SignPayloadsRequest>;
+      payloads: SignPayloadsRequest;
     }): Transaction => ({
       account_id: args.accountId,
       nonce: args.nonce,
       action: {
-        Sign: {
-          contract_id: args.contractId,
-          payloads: args.payloads,
-        },
+        Sign: args.payloads,
       },
     }),
   };
