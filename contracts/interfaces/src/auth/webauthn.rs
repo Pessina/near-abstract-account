@@ -8,13 +8,14 @@ use crate::traits::path::Path;
 
 #[derive(Debug, BorshDeserialize, BorshSerialize, Deserialize, Serialize, JsonSchema, Clone)]
 #[serde(crate = "near_sdk::serde")]
-pub struct WebAuthnAuthIdentity {
+pub struct WebAuthnAuthenticator {
     pub key_id: String,
-    // Optional because we are not able to get the key when signing with passkeys. So we need to store it on creation and retrieve on authentication
+    // The compressed public key is optional since it cannot be obtained during passkey signing.
+    // It must be stored during key creation and retrieved during authentication.
     pub compressed_public_key: Option<String>,
 }
 
-impl Path for WebAuthnAuthIdentity {
+impl Path for WebAuthnAuthenticator {
     fn path(&self) -> String {
         format!(
             "{}",
@@ -25,7 +26,7 @@ impl Path for WebAuthnAuthIdentity {
     }
 }
 
-impl PartialEq for WebAuthnAuthIdentity {
+impl PartialEq for WebAuthnAuthenticator {
     fn eq(&self, other: &Self) -> bool {
         self.key_id == other.key_id
             && match (&self.compressed_public_key, &other.compressed_public_key) {
@@ -35,7 +36,7 @@ impl PartialEq for WebAuthnAuthIdentity {
     }
 }
 
-impl Eq for WebAuthnAuthIdentity {}
+impl Eq for WebAuthnAuthenticator {}
 
 #[derive(Deserialize, Serialize, JsonSchema)]
 #[serde(crate = "near_sdk::serde")]

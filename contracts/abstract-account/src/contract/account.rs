@@ -1,4 +1,4 @@
-use near_sdk::env;
+use near_sdk::{env, log};
 use near_sdk_contract_tools::nft::nep145::{Nep145, Nep145Controller};
 
 use crate::*;
@@ -26,7 +26,7 @@ impl AbstractAccountContract {
     }
 
     #[private]
-    pub fn delete_account(&mut self, account_id: String) {
+    pub fn remove_account(&mut self, account_id: String) {
         let account_nonce = self.accounts.get(&account_id).unwrap().nonce;
         if account_nonce > self.max_nonce {
             self.max_nonce = account_nonce;
@@ -36,11 +36,23 @@ impl AbstractAccountContract {
     }
 
     #[private]
-    pub fn add_auth_identity(&mut self, account_id: String, auth_identity: AuthIdentity) {
-        self.accounts
-            .get_mut(&account_id)
-            .unwrap()
-            .add_auth_identity(auth_identity);
+    #[payable]
+    pub fn add_auth_identity(
+        &mut self,
+        account_id: String,
+        auth_identity: AuthIdentity,
+        #[callback_result] auth_result: Result<bool, near_sdk::PromiseError>,
+    ) {
+        match auth_result {
+            Ok(true) => {
+                self.accounts
+                    .get_mut(&account_id)
+                    .unwrap()
+                    .add_auth_identity(auth_identity);
+            }
+            Ok(false) => env::panic_str("Authentication failed"),
+            _ => env::panic_str("Failed to add auth identity"),
+        }
     }
 
     #[private]
@@ -61,7 +73,7 @@ impl AbstractAccountContract {
         self.accounts.iter().map(|(key, _)| key.clone()).collect()
     }
 
-    pub fn list_auth_identities(&self, account_id: String) -> Option<Vec<AuthIdentity>> {
+    pub fn list_identities(&self, account_id: String) -> Option<Vec<AuthIdentity>> {
         self.accounts
             .get(&account_id)
             .map(|account| account.auth_identities.clone())
@@ -86,16 +98,36 @@ impl AbstractAccountContract {
         self.storage_balance_of(predecessor.clone())
             .expect("Predecessor has not registered for storage");
 
+        let account = self.accounts.get(&account_id).unwrap();
+
         match operation {
-            Action::RemoveAccount => self.delete_account(account_id),
-            Action::AddAuthIdentity(auth_identity_request) => {
-                self.add_auth_identity(account_id, auth_identity_request)
+            Action::RemoveAccount => {
+                self.remove_account(account_id);
+            }
+            Action::AddAuthIdentity(auth) => {
+                let signed_message = get_signed_message(&json!({
+                    "account_id": account_id,
+                    "nonce": account.nonce - 1, // Decrement nonce since it was incremented on auth method
+                    "action": "add_auth_identity",
+                }));
+
+                self.validate_credentials(
+                    auth.auth_identity.authenticator.clone(),
+                    auth.credentials,
+                    signed_message,
+                    &account.clone(),
+                    Self::ext(env::current_account_id())
+                        .add_auth_identity(account_id, auth.auth_identity),
+                );
             }
             Action::RemoveAuthIdentity(remove_auth_identity) => {
-                self.remove_auth_identity(account_id, remove_auth_identity)
+                self.remove_auth_identity(account_id, remove_auth_identity);
             }
             _ => env::panic_str("Invalid account operation"),
         }
+
+        // TODO: Remove debug log
+        log!("Called the code in handle_account_operation after promise execution");
 
         self.accounts.flush();
 

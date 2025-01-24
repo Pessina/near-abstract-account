@@ -1,5 +1,5 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
-use interfaces::auth::oidc::{OIDCAuthIdentity, OIDCValidationData};
+use interfaces::auth::oidc::{OIDCAuthenticator, OIDCValidationData};
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     near,
@@ -63,7 +63,7 @@ impl OIDCAuthContract {
     pub fn verify(
         &self,
         oidc_data: OIDCValidationData,
-        oidc_auth_identity: OIDCAuthIdentity,
+        oidc_auth_identity: OIDCAuthenticator,
     ) -> bool {
         let parts: Vec<&str> = oidc_data.token.split('.').collect();
         if parts.len() != 3 {
@@ -232,7 +232,7 @@ mod tests {
             message: "test_123_felipe".to_string()
         };
 
-        let oidc_auth_identity = OIDCAuthIdentity {
+        let oidc_auth_identity = OIDCAuthenticator {
             client_id: "739911069797-idp062866964gbndo6693h32tga5cvl1.apps.googleusercontent.com"
                 .to_string(),
             issuer: "https://accounts.google.com".to_string(),
@@ -251,7 +251,7 @@ mod tests {
             message: "test_123_felipe".to_string()
         };
 
-        let oidc_auth_identity = OIDCAuthIdentity {
+        let oidc_auth_identity = OIDCAuthenticator {
             client_id: "2103496220045843".to_string(),
             issuer: "https://www.facebook.com".to_string(),
             email: Some("fs.pessina@gmail.com".to_string()),
@@ -269,7 +269,7 @@ mod tests {
             message: "".to_string()
         };
 
-        let oidc_auth_identity = OIDCAuthIdentity {
+        let oidc_auth_identity = OIDCAuthenticator {
             client_id: "739911069797-idp062866964gbndo6693h32tga5cvl1.apps.googleusercontent.com"
                 .to_string(),
             issuer: "https://accounts.google.com".to_string(),
@@ -288,7 +288,7 @@ mod tests {
             message: "".to_string()
         };
 
-        let oidc_auth_identity = OIDCAuthIdentity {
+        let oidc_auth_identity = OIDCAuthenticator {
             client_id: "2103496220045843".to_string(),
             issuer: "https://www.facebook.com".to_string(),
             email: Some("fs.pessina@gmail.com".to_string()),

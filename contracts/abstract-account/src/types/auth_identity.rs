@@ -1,5 +1,5 @@
 use interfaces::{
-    auth::{oidc::OIDCAuthIdentity, wallet::WalletAuthIdentity, webauthn::WebAuthnAuthIdentity},
+    auth::{oidc::OIDCAuthenticator, wallet::WalletAuthenticator, webauthn::WebAuthnAuthenticator},
     traits::path::Path,
 };
 use near_sdk::{
@@ -20,20 +20,51 @@ use schemars::JsonSchema;
     Clone,
 )]
 #[serde(crate = "near_sdk::serde")]
-pub enum AuthIdentity {
-    Wallet(WalletAuthIdentity),
-    WebAuthn(WebAuthnAuthIdentity),
-    OIDC(OIDCAuthIdentity),
+pub struct IdentityPermissions {}
+
+#[derive(
+    Debug,
+    BorshDeserialize,
+    BorshSerialize,
+    Deserialize,
+    Serialize,
+    JsonSchema,
+    PartialEq,
+    Eq,
+    Clone,
+)]
+#[serde(crate = "near_sdk::serde")]
+pub enum AuthTypes {
+    Wallet(WalletAuthenticator),
+    WebAuthn(WebAuthnAuthenticator),
+    OIDC(OIDCAuthenticator),
     Account(String),
 }
 
-impl Path for AuthIdentity {
+#[derive(
+    Debug,
+    BorshDeserialize,
+    BorshSerialize,
+    Deserialize,
+    Serialize,
+    JsonSchema,
+    PartialEq,
+    Eq,
+    Clone,
+)]
+#[serde(crate = "near_sdk::serde")]
+pub struct AuthIdentity {
+    pub authenticator: AuthTypes,
+    pub permissions: Option<IdentityPermissions>,
+}
+
+impl Path for AuthTypes {
     fn path(&self) -> String {
         match self {
-            AuthIdentity::Wallet(wallet) => wallet.path(),
-            AuthIdentity::WebAuthn(webauthn) => webauthn.path(),
-            AuthIdentity::OIDC(oidc) => oidc.path(),
-            AuthIdentity::Account(account) => format!("{}", account),
+            AuthTypes::Wallet(wallet) => wallet.path(),
+            AuthTypes::WebAuthn(webauthn) => webauthn.path(),
+            AuthTypes::OIDC(oidc) => oidc.path(),
+            AuthTypes::Account(account) => format!("{}", account),
         }
     }
 }

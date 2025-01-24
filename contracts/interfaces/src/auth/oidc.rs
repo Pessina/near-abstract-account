@@ -18,14 +18,14 @@ use crate::traits::path::Path;
     Clone,
 )]
 #[serde(crate = "near_sdk::serde")]
-pub struct OIDCAuthIdentity {
+pub struct OIDCAuthenticator {
     pub client_id: String,
     pub issuer: String,
     pub email: Option<String>,
     pub sub: Option<String>,
 }
 
-impl Path for OIDCAuthIdentity {
+impl Path for OIDCAuthenticator {
     fn path(&self) -> String {
         match (self.email.clone(), self.sub.clone()) {
             (Some(email), None) => format!("oidc/{}/{}/{}", self.issuer, self.client_id, email),

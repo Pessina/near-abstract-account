@@ -12,13 +12,14 @@ use near_sdk::{
 };
 use near_sdk_contract_tools::Nep145;
 use schemars::JsonSchema;
+use serde_json::json;
 use types::{
     account::Account,
     auth_identity::AuthIdentity,
     transaction::{Transaction, UserOp},
 };
 use types::{auth_identity::AuthIdentityNames, transaction::Action};
-use utils::utils::{extract_credentials, get_signed_message};
+use utils::utils::get_signed_message;
 
 const KEY_PREFIX_ACCOUNTS: &[u8] = b"q";
 const KEY_PREFIX_AUTH_CONTRACTS: &[u8] = b"a";
@@ -45,7 +46,7 @@ pub struct AbstractAccountContract {
 #[derive(Deserialize, Serialize, JsonSchema)]
 #[serde(crate = "near_sdk::serde")]
 pub struct AuthContractConfig {
-    pub auth_type: AuthIdentityNames,
+    pub authenticator: AuthIdentityNames,
     pub contract_id: String,
 }
 
@@ -63,24 +64,17 @@ impl Default for AbstractAccountContract {
 #[near]
 impl AbstractAccountContract {
     #[init]
-    pub fn new(
-        auth_contracts: Option<Vec<AuthContractConfig>>,
-        signer_account: Option<String>,
-    ) -> Self {
+    pub fn new(auth_contracts: Vec<AuthContractConfig>, signer_account: String) -> Self {
         let mut contract = Self::default();
 
-        if let Some(contracts) = auth_contracts {
-            for contract_config in contracts {
-                contract.auth_contracts.insert(
-                    contract_config.auth_type,
-                    contract_config.contract_id.parse().unwrap(),
-                );
-            }
+        for contract_config in auth_contracts {
+            contract.auth_contracts.insert(
+                contract_config.authenticator,
+                contract_config.contract_id.parse().unwrap(),
+            );
         }
 
-        if let Some(signer) = signer_account {
-            contract.signer_account = signer.parse().unwrap();
-        }
+        contract.signer_account = signer_account.parse().unwrap();
 
         contract
     }
@@ -89,85 +83,39 @@ impl AbstractAccountContract {
     pub fn auth(&mut self, user_op: UserOp) -> Promise {
         let predecessor = env::predecessor_account_id();
         let account_id = user_op.transaction.account_id.clone();
-        let account = self.accounts.get(&account_id).unwrap();
+        let account = self.accounts.get_mut(&account_id).unwrap();
 
         require!(
-            account.has_auth_identity(&user_op.auth.authenticator),
+            account.has_auth_identity(&user_op.auth.auth_identity),
             "Auth identity not found in account"
         );
 
-        let selected_auth_identity =
-            if let Some(selected_auth_identity) = user_op.selected_auth_identity.clone() {
-                require!(
-                    account.has_auth_identity(&selected_auth_identity),
-                    "Selected auth identity not found in account"
-                );
-                selected_auth_identity
-            } else {
-                user_op.auth.authenticator.clone()
-            };
+        require!(account.nonce == user_op.transaction.nonce, "Nonce mismatch");
 
-        let transaction = user_op.transaction;
-        let signed_message = get_signed_message(&transaction);
+        account.nonce += 1;
 
-        let promise = match user_op.auth.authenticator {
-            AuthIdentity::WebAuthn(ref webauthn) => {
-                let webauthn_identity = account.auth_identities.iter()
-                    .find(|identity| matches!(identity, AuthIdentity::WebAuthn(current_webauthn) if current_webauthn.key_id == webauthn.key_id))
-                    .and_then(|identity| {
-                        if let AuthIdentity::WebAuthn(webauthn) = identity {
-                            Some(webauthn)
-                        } else {
-                            None
-                        }
-                    })
-                    .expect("WebAuthn identity not found");
-
-                let compressed_public_key = webauthn_identity
-                    .compressed_public_key
-                    .as_ref()
-                    .expect("WebAuthn public key not found");
-
-                // TODO: Temporary disable using selected auth identity for passkeys
-                // if let AuthIdentity::WebAuthn(ref mut webauthn) = selected_auth_identity {
-                //     webauthn.compressed_public_key = Some(compressed_public_key.to_string());
-                // }
-
-                let credentials = extract_credentials(&user_op.auth.credentials);
-
-                self.handle_webauthn_auth(
-                    credentials,
-                    signed_message,
-                    compressed_public_key.to_string(),
-                )
-            }
-            AuthIdentity::Wallet(wallet) => {
-                let auth_identity_name = match wallet.wallet_type {
-                    WalletType::Ethereum => AuthIdentityNames::EthereumWallet,
-                    WalletType::Solana => AuthIdentityNames::SolanaWallet,
-                };
-
-                let credentials = extract_credentials(&user_op.auth.credentials);
-
-                self.handle_wallet_auth(
-                    credentials,
-                    signed_message,
-                    wallet.public_key.clone(),
-                    auth_identity_name,
-                )
-            }
-            AuthIdentity::OIDC(oidc) => {
-                let credentials = extract_credentials(&user_op.auth.credentials);
-
-                self.handle_oidc_auth(credentials, signed_message, oidc)
-            }
-            AuthIdentity::Account(_) => env::panic_str("Account auth type not yet supported"),
+        let act_as = if let Some(act_as) = user_op.act_as.clone() {
+            require!(
+                account.has_auth_identity(&act_as),
+                "Selected auth identity not found in account"
+            );
+            act_as
+        } else {
+            user_op.auth.auth_identity.clone()
         };
 
-        promise.then(
+        let transaction = user_op.transaction;
+        let signed_message = get_signed_message(&json!(transaction));
+        let account_clone = account.clone();
+
+        self.validate_credentials(
+            user_op.auth.auth_identity.authenticator,
+            user_op.auth.credentials,
+            signed_message,
+            &account_clone,
             Self::ext(env::current_account_id())
                 .with_attached_deposit(env::attached_deposit())
-                .auth_callback(account_id, selected_auth_identity, transaction, predecessor),
+                .auth_callback(account_id, act_as, transaction, predecessor),
         )
     }
 

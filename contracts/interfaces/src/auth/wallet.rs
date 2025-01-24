@@ -35,12 +35,12 @@ pub enum WalletType {
     Clone,
 )]
 #[serde(crate = "near_sdk::serde")]
-pub struct WalletAuthIdentity {
+pub struct WalletAuthenticator {
     pub wallet_type: WalletType,
     pub public_key: String, // TODO: Compressed public key if possible
 }
 
-impl Path for WalletAuthIdentity {
+impl Path for WalletAuthenticator {
     fn path(&self) -> String {
         match self.wallet_type {
             WalletType::Ethereum => {
