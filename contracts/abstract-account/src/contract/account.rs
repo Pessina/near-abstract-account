@@ -123,9 +123,6 @@ impl AbstractAccountContract {
             _ => env::panic_str("Invalid account action"),
         }
 
-        // TODO: Remove debug log
-        log!("Called the code in handle_account_action after promise execution");
-
         self.accounts.flush();
 
         self.storage_accounting(&predecessor, storage_usage_start)
