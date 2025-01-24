@@ -1,8 +1,12 @@
 use crate::mods::signer::SignRequest;
 use crate::types::auth_identity::AuthIdentity;
-use near_sdk::serde::{Deserialize, Serialize};
+use interfaces::traits::message::Message;
+use near_sdk::{
+    env,
+    serde::{Deserialize, Serialize},
+};
 use schemars::JsonSchema;
-use serde_json::Value;
+use serde_json::{json, Value};
 
 #[derive(Deserialize, Serialize, JsonSchema, Clone)]
 #[serde(crate = "near_sdk::serde")]
@@ -29,6 +33,15 @@ pub struct Transaction {
     pub action: Action,
 }
 
+impl Message for Transaction {
+    type Context<'a> = ();
+
+    fn to_signed_message(&self, _: ()) -> String {
+        serde_json_canonicalizer::to_string(&json!(self))
+            .expect("Failed to canonicalize transaction")
+    }
+}
+
 #[derive(Deserialize, Serialize, JsonSchema, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub enum Action {
@@ -43,6 +56,24 @@ pub enum Action {
     AddAuthIdentity(Auth),
     RemoveAuthIdentity(AuthIdentity),
     Sign(SignPayloadsRequest),
+}
+
+impl Message for Action {
+    type Context<'a> = (&'a str, u128);
+
+    fn to_signed_message(&self, (account_id, nonce): Self::Context<'_>) -> String {
+        let action = match self {
+            Action::AddAuthIdentity(_) => "AddAuthIdentity",
+            _ => env::panic_str("to_signed_message not supported"),
+        };
+
+        serde_json_canonicalizer::to_string(&json!({
+            "account_id": account_id,
+            "nonce": nonce,
+            "action": action,
+        }))
+        .expect("Failed to canonicalize transaction")
+    }
 }
 
 #[derive(Deserialize, Serialize, JsonSchema, Clone)]

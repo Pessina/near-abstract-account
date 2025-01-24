@@ -88,11 +88,11 @@ impl AbstractAccountContract {
     }
 
     #[private]
-    pub fn handle_account_operation(
+    pub fn handle_account_action(
         &mut self,
         predecessor: AccountId,
         account_id: String,
-        operation: Action,
+        action: Action,
     ) {
         let storage_usage_start = env::storage_usage();
         self.storage_balance_of(predecessor.clone())
@@ -100,16 +100,13 @@ impl AbstractAccountContract {
 
         let account = self.accounts.get(&account_id).unwrap();
 
-        match operation {
+        match action.clone() {
             Action::RemoveAccount => {
                 self.remove_account(account_id);
             }
             Action::AddAuthIdentity(auth) => {
-                let signed_message = get_signed_message(&json!({
-                    "account_id": account_id,
-                    "nonce": account.nonce - 1, // Decrement nonce since it was incremented on auth method
-                    "action": "add_auth_identity",
-                }));
+                // Decrement nonce since it was incremented on auth method
+                let signed_message = action.to_signed_message((&account_id, account.nonce - 1));
 
                 self.validate_credentials(
                     auth.auth_identity.authenticator.clone(),
@@ -123,11 +120,11 @@ impl AbstractAccountContract {
             Action::RemoveAuthIdentity(remove_auth_identity) => {
                 self.remove_auth_identity(account_id, remove_auth_identity);
             }
-            _ => env::panic_str("Invalid account operation"),
+            _ => env::panic_str("Invalid account action"),
         }
 
         // TODO: Remove debug log
-        log!("Called the code in handle_account_operation after promise execution");
+        log!("Called the code in handle_account_action after promise execution");
 
         self.accounts.flush();
 

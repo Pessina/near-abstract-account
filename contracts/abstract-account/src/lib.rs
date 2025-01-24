@@ -3,7 +3,7 @@ mod mods;
 mod types;
 mod utils;
 
-use interfaces::auth::wallet::WalletType;
+use interfaces::{auth::wallet::WalletType, traits::message::Message};
 use near_sdk::{
     env, near, require,
     serde::{Deserialize, Serialize},
@@ -12,14 +12,12 @@ use near_sdk::{
 };
 use near_sdk_contract_tools::Nep145;
 use schemars::JsonSchema;
-use serde_json::json;
 use types::{
     account::Account,
     auth_identity::AuthIdentity,
     transaction::{Transaction, UserOp},
 };
 use types::{auth_identity::AuthIdentityNames, transaction::Action};
-use utils::utils::get_signed_message;
 
 const KEY_PREFIX_ACCOUNTS: &[u8] = b"q";
 const KEY_PREFIX_AUTH_CONTRACTS: &[u8] = b"a";
@@ -105,7 +103,7 @@ impl AbstractAccountContract {
         };
 
         let transaction = user_op.transaction;
-        let signed_message = get_signed_message(&json!(transaction));
+        let signed_message = transaction.to_signed_message(());
         let account_clone = account.clone();
 
         self.validate_credentials(
@@ -135,10 +133,10 @@ impl AbstractAccountContract {
                     Action::Sign(sign_payloads_request) => {
                         return Some(self.sign(auth_identity, sign_payloads_request));
                     }
-                    operation @ (Action::RemoveAccount
+                    action @ (Action::RemoveAccount
                     | Action::AddAuthIdentity(_)
                     | Action::RemoveAuthIdentity(_)) => {
-                        self.handle_account_operation(predecessor, account_id, operation);
+                        self.handle_account_action(predecessor, account_id, action);
                     }
                 };
 
