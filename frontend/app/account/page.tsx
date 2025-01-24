@@ -106,6 +106,7 @@ export default function AccountPage() {
     }) => {
         const authIdentity = await AuthAdapter.getAuthIdentity(config);
         const account = await contract.getAccountById({ account_id: accountId })
+
         const transaction = AbstractAccountContractBuilder.transaction.addAuthIdentity({
             accountId,
             nonce: account?.nonce ?? "0",
@@ -113,7 +114,7 @@ export default function AccountPage() {
                 auth_identity: authIdentity,
                 credentials: (await AuthAdapter.sign({
                     account_id: accountId,
-                    nonce: account?.nonce ?? "0",
+                    nonce: account?.nonce.toString() ?? "0",
                     action: "AddAuthIdentity"
                 }, config)).credentials
             }
