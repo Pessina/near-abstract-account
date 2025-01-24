@@ -17,7 +17,7 @@ use types::{
     auth_identity::AuthIdentity,
     transaction::{Transaction, UserOp},
 };
-use types::{auth_identity::AuthIdentityNames, transaction::Action};
+use types::{auth_identity::AuthTypeNames, transaction::Action};
 
 const KEY_PREFIX_ACCOUNTS: &[u8] = b"q";
 const KEY_PREFIX_AUTH_CONTRACTS: &[u8] = b"a";
@@ -26,7 +26,7 @@ const KEY_PREFIX_AUTH_CONTRACTS: &[u8] = b"a";
 #[near(contract_state)]
 pub struct AbstractAccountContract {
     accounts: IterableMap<String, Account>,
-    auth_contracts: IterableMap<AuthIdentityNames, AccountId>,
+    auth_contracts: IterableMap<AuthTypeNames, AccountId>,
     signer_account: AccountId,
     /*
     Tracks the maximum nonce of the accounts deleted.
@@ -44,7 +44,7 @@ pub struct AbstractAccountContract {
 #[derive(Deserialize, Serialize, JsonSchema)]
 #[serde(crate = "near_sdk::serde")]
 pub struct AuthContractConfig {
-    pub authenticator: AuthIdentityNames,
+    pub auth_type: AuthTypeNames,
     pub contract_id: String,
 }
 
@@ -67,7 +67,7 @@ impl AbstractAccountContract {
 
         for contract_config in auth_contracts {
             contract.auth_contracts.insert(
-                contract_config.authenticator,
+                contract_config.auth_type,
                 contract_config.contract_id.parse().unwrap(),
             );
         }

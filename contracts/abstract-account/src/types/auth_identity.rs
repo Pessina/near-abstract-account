@@ -55,6 +55,7 @@ pub enum AuthTypes {
 #[serde(crate = "near_sdk::serde")]
 pub struct AuthIdentity {
     pub authenticator: AuthTypes,
+    /// None means the identity has full access permissions
     pub permissions: Option<IdentityPermissions>,
 }
 
@@ -85,7 +86,7 @@ impl Path for AuthTypes {
     Hash,
 )]
 #[serde(crate = "near_sdk::serde")]
-pub enum AuthIdentityNames {
+pub enum AuthTypeNames {
     EthereumWallet,
     SolanaWallet,
     WebAuthn,

@@ -56,7 +56,7 @@ impl AbstractAccountContract {
     }
 
     #[private]
-    pub fn remove_auth_identity(&mut self, account_id: String, auth_identity: AuthIdentity) {
+    pub fn remove_auth_identity(&mut self, account_id: String, auth_identity: &AuthIdentity) {
         let account = self.accounts.get_mut(&account_id).unwrap();
         account.remove_auth_identity(auth_identity);
 
@@ -112,13 +112,13 @@ impl AbstractAccountContract {
                     auth.auth_identity.authenticator.clone(),
                     auth.credentials,
                     signed_message,
-                    &account.clone(),
+                    &account,
                     Self::ext(env::current_account_id())
                         .add_auth_identity(account_id, auth.auth_identity),
                 );
             }
             Action::RemoveAuthIdentity(remove_auth_identity) => {
-                self.remove_auth_identity(account_id, remove_auth_identity);
+                self.remove_auth_identity(account_id, &remove_auth_identity);
             }
             _ => env::panic_str("Invalid account action"),
         }

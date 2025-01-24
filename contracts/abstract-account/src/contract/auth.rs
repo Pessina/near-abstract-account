@@ -2,7 +2,7 @@ use crate::mods::external_contracts::{
     ethereum_auth, oidc_auth, solana_auth, webauthn_auth, VALIDATE_ETH_SIGNATURE_GAS,
     VALIDATE_P256_SIGNATURE_GAS,
 };
-use crate::types::auth_identity::{AuthIdentityNames, AuthTypes};
+use crate::types::auth_identity::{AuthTypeNames, AuthTypes};
 use crate::*;
 use interfaces::auth::{
     oidc::{OIDCAuthenticator, OIDCCredentials, OIDCValidationData},
@@ -13,7 +13,7 @@ use near_sdk::{env, require, Promise};
 use serde_json::Value;
 use utils::utils::parse_credentials;
 impl AbstractAccountContract {
-    fn get_auth_contract(&self, authenticator: &AuthIdentityNames) -> AccountId {
+    fn get_auth_contract(&self, authenticator: &AuthTypeNames) -> AccountId {
         self.auth_contracts
             .get(authenticator)
             .expect(&format!("{:?} contract not configured", authenticator))
@@ -31,7 +31,7 @@ impl AbstractAccountContract {
             token: credentials.token,
         };
 
-        let oidc_contract = self.get_auth_contract(&AuthIdentityNames::OIDC);
+        let oidc_contract = self.get_auth_contract(&AuthTypeNames::OIDC);
 
         oidc_auth::ext(oidc_contract)
             .with_static_gas(VALIDATE_ETH_SIGNATURE_GAS)
@@ -44,7 +44,7 @@ impl AbstractAccountContract {
         credentials: WalletCredentials,
         signed_message: String,
         compressed_public_key: String,
-        wallet_type: AuthIdentityNames,
+        wallet_type: AuthTypeNames,
     ) -> Promise {
         let wallet_data = WalletValidationData {
             message: signed_message,
@@ -54,11 +54,11 @@ impl AbstractAccountContract {
         let contract = self.get_auth_contract(&wallet_type);
 
         match wallet_type {
-            AuthIdentityNames::EthereumWallet => ethereum_auth::ext(contract)
+            AuthTypeNames::EthereumWallet => ethereum_auth::ext(contract)
                 .with_static_gas(VALIDATE_ETH_SIGNATURE_GAS)
                 .with_attached_deposit(env::attached_deposit())
                 .verify(wallet_data, compressed_public_key),
-            AuthIdentityNames::SolanaWallet => solana_auth::ext(contract)
+            AuthTypeNames::SolanaWallet => solana_auth::ext(contract)
                 .with_static_gas(VALIDATE_ETH_SIGNATURE_GAS)
                 .with_attached_deposit(env::attached_deposit())
                 .verify(wallet_data, compressed_public_key),
@@ -93,7 +93,7 @@ impl AbstractAccountContract {
             client_data: credentials.client_data,
         };
 
-        let webauthn_contract = self.get_auth_contract(&AuthIdentityNames::WebAuthn);
+        let webauthn_contract = self.get_auth_contract(&AuthTypeNames::WebAuthn);
 
         webauthn_auth::ext(webauthn_contract)
             .with_static_gas(VALIDATE_P256_SIGNATURE_GAS)
@@ -144,8 +144,8 @@ impl AbstractAccountContract {
             }
             AuthTypes::Wallet(wallet) => {
                 let wallet_type = match wallet.wallet_type {
-                    WalletType::Ethereum => AuthIdentityNames::EthereumWallet,
-                    WalletType::Solana => AuthIdentityNames::SolanaWallet,
+                    WalletType::Ethereum => AuthTypeNames::EthereumWallet,
+                    WalletType::Solana => AuthTypeNames::SolanaWallet,
                 };
 
                 let credentials = parse_credentials(&credentials);
