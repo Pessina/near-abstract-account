@@ -81,7 +81,7 @@ export class Ethereum extends AuthIdentityClass<
         wallet_type: AuthIdentityWalletType.Ethereum,
         public_key: compressedKey,
       },
-      undefined
+      null
     );
   }
 

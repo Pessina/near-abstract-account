@@ -17,7 +17,7 @@ export interface StorageBalance {
   available: string;
 }
 
-export type IdentityPermissions = object | undefined;
+export type IdentityPermissions = object | null;
 
 export type AuthTypes =
   | WalletAuthenticator

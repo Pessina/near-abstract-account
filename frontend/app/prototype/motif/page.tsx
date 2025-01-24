@@ -1,11 +1,12 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import auth0 from "auth0-js";
 import canonicalize from "canonicalize";
 import { useCallback, useEffect, useMemo } from "react";
 import { toBytes } from "viem";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 export default function MotifPage() {
   const auth0Instance = useMemo(

@@ -1,15 +1,16 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import auth0 from "auth0-js";
+import canonicalize from "canonicalize";
+import { AlertCircle } from 'lucide-react';
 import { useCallback, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { EVM, RSVSignature, utils } from "signet.js";
-import canonicalize from "canonicalize";
+
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useAbstractAccountContract } from "@/contracts/AbstractAccountContract/useAbstractAccountContract";
 
 interface TransactionForm {

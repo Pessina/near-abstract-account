@@ -81,7 +81,7 @@ export class AuthAdapter {
             email: config.config.email,
             sub: config.config.sub,
           },
-          undefined
+          null
         );
       }
     }
@@ -129,7 +129,7 @@ export class AuthAdapter {
               email: config.config.email,
               sub: config.config.sub,
             },
-            undefined
+            null
           ),
           credentials: {
             token: config.config.token,

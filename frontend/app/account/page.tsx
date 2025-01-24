@@ -1,7 +1,7 @@
 "use client"
 
 import canonicalize from "canonicalize"
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 
 import { AuthAdapter, AuthConfig } from "../_utils/AuthAdapter"
 
@@ -27,11 +27,20 @@ export default function AccountPage() {
     const [authProps, setAuthProps] = useState<{ accountId: string, transaction: Transaction } | null>(null)
     const [newAccountId, setNewAccountId] = useState("")
     const [nonce, setNonce] = useState("")
+    const [nonceCanonicalized, setNonceCanonicalized] = useState("")
     const [authAction, setAuthAction] = useState<"register" | "add">("register")
     const [accountDetails, setAccountDetails] = useState<Account | null>(null)
 
     const { contract } = useAbstractAccountContract()
     const { googleClientId, facebookAppId } = useEnv()
+
+    useEffect(() => {
+        setNonceCanonicalized(canonicalize({
+            account_id: newAccountId,
+            nonce: nonce,
+            action: "AddAuthIdentity"
+        }) ?? "")
+    }, [newAccountId, nonce])
 
     if (!contract) {
         return <div>Loading...</div>
@@ -134,8 +143,6 @@ export default function AccountPage() {
         setSelectedAccount(accountId)
     }
 
-    console.log(authAction)
-
     return (
         <div className="flex justify-center items-center h-full">
             {authProps && (
@@ -185,7 +192,6 @@ export default function AccountPage() {
                                     <SelectItem value="add">Add Auth Method</SelectItem>
                                 </SelectContent>
                             </Select>
-
                             <div className="space-y-4">
                                 <h3 className="text-lg font-semibold">Passkey Authentication</h3>
                                 <Button
@@ -214,17 +220,12 @@ export default function AccountPage() {
                             </div>
                             <div className="space-y-4">
                                 <h3 className="text-lg font-semibold">Social Login</h3>
-                                <div className="flex gap-2">
+                                <div key={nonceCanonicalized} className="flex gap-2">
                                     <GoogleButton
-                                        nonce={
-                                            authAction == "add" ? canonicalize({
-                                                account_id: newAccountId,
-                                                nonce: nonce,
-                                                action: "AddAuthIdentity"
-                                            }) : undefined
-                                        }
+                                        nonce={nonceCanonicalized}
                                         onSuccess={(idToken) => {
                                             const { email, issuer } = parseOIDCToken(idToken)
+                                            console.log(idToken)
                                             const config = {
                                                 type: "oidc" as const,
                                                 config: {
@@ -253,13 +254,7 @@ export default function AccountPage() {
                                     />
                                     <FacebookButton
                                         text={`${authAction === "register" ? "Register" : "Add"} with Facebook`}
-                                        nonce={
-                                            authAction == "add" ? canonicalize({
-                                                account_id: newAccountId,
-                                                nonce: nonce,
-                                                action: "AddAuthIdentity"
-                                            }) : undefined
-                                        }
+                                        nonce={nonceCanonicalized}
                                         onSuccess={(idToken) => {
                                             const { email, issuer } = parseOIDCToken(idToken)
                                             const config = {

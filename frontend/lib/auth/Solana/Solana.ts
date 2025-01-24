@@ -61,7 +61,7 @@ export class Solana extends AuthIdentityClass<AuthIdentity, WalletCredentials> {
         wallet_type: AuthIdentityWalletType.Solana,
         public_key: wallet.publicKey?.toBase58() ?? "",
       },
-      undefined
+      null
     );
   }
 
@@ -81,7 +81,7 @@ export class Solana extends AuthIdentityClass<AuthIdentity, WalletCredentials> {
         wallet_type: AuthIdentityWalletType.Solana,
         public_key: wallet.publicKey?.toBase58() ?? "",
       },
-      undefined
+      null
     );
 
     return {

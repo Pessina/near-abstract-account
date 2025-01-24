@@ -3,7 +3,7 @@ mod mods;
 mod types;
 mod utils;
 
-use interfaces::{auth::wallet::WalletType, traits::message::Message};
+use interfaces::{auth::wallet::WalletType, traits::signable_message::SignableMessage};
 use near_sdk::{
     env, near, require,
     serde::{Deserialize, Serialize},

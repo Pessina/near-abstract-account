@@ -86,7 +86,7 @@ export class WebAuthn extends AuthIdentityClass<
         key_id: toHex(new Uint8Array(cred.rawId)),
         compressed_public_key: compressedPublicKey,
       },
-      undefined
+      null
     );
   }
 
@@ -142,7 +142,7 @@ export class WebAuthn extends AuthIdentityClass<
       {
         key_id: toHex(new Uint8Array(cred.rawId)),
       },
-      undefined
+      null
     );
 
     return {
