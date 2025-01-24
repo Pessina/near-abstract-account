@@ -8,16 +8,18 @@ import {
   keccak256,
   toBytes,
 } from "viem";
-import { AuthIdentity } from "../AuthIdentity";
+
+import { AuthIdentityClass } from "../AuthIdentity";
+
+import { AuthIdentity } from "@/contracts/AbstractAccountContract/AbstractAccountContract";
 import {
-  WalletAuthIdentity,
   WalletCredentials,
   WalletType as AuthIdentityWalletType,
 } from "@/contracts/AbstractAccountContract/types/auth";
 import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth";
 
-export class Ethereum extends AuthIdentity<
-  WalletAuthIdentity,
+export class Ethereum extends AuthIdentityClass<
+  AuthIdentity,
   WalletCredentials
 > {
   private walletClient: WalletClient | null = null;
@@ -45,7 +47,7 @@ export class Ethereum extends AuthIdentity<
   async getAuthIdentity(args?: {
     signature?: string;
     message?: string;
-  }): Promise<WalletAuthIdentity> {
+  }): Promise<AuthIdentity> {
     let recoveredSignature: string;
     let signedMessage: string;
 
@@ -74,14 +76,17 @@ export class Ethereum extends AuthIdentity<
     const prefix = yLastByte % 2 === 0 ? "02" : "03";
     const compressedKey = "0x" + prefix + uncompressedKey.slice(4, 68);
 
-    return AbstractAccountContractBuilder.authIdentity.wallet({
-      wallet_type: AuthIdentityWalletType.Ethereum,
-      public_key: compressedKey,
-    });
+    return AbstractAccountContractBuilder.authIdentity.wallet(
+      {
+        wallet_type: AuthIdentityWalletType.Ethereum,
+        public_key: compressedKey,
+      },
+      undefined
+    );
   }
 
   async sign(message: string): Promise<{
-    authIdentity: WalletAuthIdentity;
+    authIdentity: AuthIdentity;
     credentials: WalletCredentials;
   }> {
     const client = await this.getWalletClient();

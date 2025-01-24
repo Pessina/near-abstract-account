@@ -3,7 +3,7 @@ export interface OIDCCredentials {
 }
 
 // At least one of email or sub must be provided
-export interface OIDCAuthIdentity {
+export interface OIDCAuthenticator {
   OIDC: {
     client_id: string;
     issuer: string;
@@ -18,7 +18,7 @@ export interface WebAuthnCredentials {
   client_data: string;
 }
 
-export interface WebAuthnAuthIdentity {
+export interface WebAuthnAuthenticator {
   WebAuthn: {
     key_id: string;
     compressed_public_key?: string;
@@ -30,7 +30,7 @@ export enum WalletType {
   Solana = "Solana",
 }
 
-export interface WalletAuthIdentity {
+export interface WalletAuthenticator {
   Wallet: {
     wallet_type: WalletType;
     public_key: string;

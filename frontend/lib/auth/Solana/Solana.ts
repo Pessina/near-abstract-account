@@ -3,9 +3,11 @@ import {
   PhantomWalletAdapter,
   SolflareWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
-import { AuthIdentity } from "../AuthIdentity";
+
+import { AuthIdentityClass } from "../AuthIdentity";
+
+import { AuthIdentity } from "@/contracts/AbstractAccountContract/AbstractAccountContract";
 import {
-  WalletAuthIdentity,
   WalletCredentials,
   WalletType as AuthIdentityWalletType,
 } from "@/contracts/AbstractAccountContract/types/auth";
@@ -13,10 +15,7 @@ import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContr
 
 export type SolanaWalletType = "phantom" | "solflare";
 
-export class Solana extends AuthIdentity<
-  WalletAuthIdentity,
-  WalletCredentials
-> {
+export class Solana extends AuthIdentityClass<AuthIdentity, WalletCredentials> {
   private wallet: BaseMessageSignerWalletAdapter | null = null;
 
   constructor(private walletType: SolanaWalletType) {
@@ -53,18 +52,21 @@ export class Solana extends AuthIdentity<
       : window?.solflare?.isSolflare ?? false;
   }
 
-  public async getAuthIdentity(): Promise<WalletAuthIdentity> {
+  public async getAuthIdentity(): Promise<AuthIdentity> {
     if (!this.isAvailable()) throw new Error("Solana wallet not available");
 
     const wallet = await this.connectWallet();
-    return AbstractAccountContractBuilder.authIdentity.wallet({
-      wallet_type: AuthIdentityWalletType.Solana,
-      public_key: wallet.publicKey?.toBase58() ?? "",
-    });
+    return AbstractAccountContractBuilder.authIdentity.wallet(
+      {
+        wallet_type: AuthIdentityWalletType.Solana,
+        public_key: wallet.publicKey?.toBase58() ?? "",
+      },
+      undefined
+    );
   }
 
   public async sign(message: string): Promise<{
-    authIdentity: WalletAuthIdentity;
+    authIdentity: AuthIdentity;
     credentials: WalletCredentials;
   }> {
     if (!this.isAvailable()) throw new Error("Solana wallet not available");
@@ -74,10 +76,13 @@ export class Solana extends AuthIdentity<
 
     const encodedMessage = new TextEncoder().encode(message);
     const signature = await wallet.signMessage(encodedMessage);
-    const authIdentity = AbstractAccountContractBuilder.authIdentity.wallet({
-      wallet_type: AuthIdentityWalletType.Solana,
-      public_key: wallet.publicKey?.toBase58() ?? "",
-    });
+    const authIdentity = AbstractAccountContractBuilder.authIdentity.wallet(
+      {
+        wallet_type: AuthIdentityWalletType.Solana,
+        public_key: wallet.publicKey?.toBase58() ?? "",
+      },
+      undefined
+    );
 
     return {
       authIdentity,

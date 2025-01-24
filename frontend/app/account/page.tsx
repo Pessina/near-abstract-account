@@ -1,5 +1,6 @@
 "use client"
 
+import canonicalize from "canonicalize"
 import React, { useState } from "react"
 
 import { AuthAdapter, AuthConfig } from "../_utils/AuthAdapter"
@@ -12,8 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { AuthIdentity } from "@/contracts/AbstractAccountContract/AbstractAccountContract"
-import { Transaction } from "@/contracts/AbstractAccountContract/types/transaction"
+import { Account, AuthIdentity, Transaction } from "@/contracts/AbstractAccountContract/AbstractAccountContract"
 import { useAbstractAccountContract } from "@/contracts/AbstractAccountContract/useAbstractAccountContract"
 import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth"
 import { useEnv } from "@/hooks/useEnv"
@@ -26,7 +26,9 @@ export default function AccountPage() {
     const [authModalOpen, setAuthModalOpen] = useState(false)
     const [authProps, setAuthProps] = useState<{ accountId: string, transaction: Transaction } | null>(null)
     const [newAccountId, setNewAccountId] = useState("")
+    const [nonce, setNonce] = useState("")
     const [authAction, setAuthAction] = useState<"register" | "add">("register")
+    const [accountDetails, setAccountDetails] = useState<Account | null>(null)
 
     const { contract } = useAbstractAccountContract()
     const { googleClientId, facebookAppId } = useEnv()
@@ -35,8 +37,17 @@ export default function AccountPage() {
         return <div>Loading...</div>
     }
 
+    const handleGetAccountById = async (accountId: string) => {
+        const account = await contract.getAccountById({ account_id: accountId })
+        setAccountDetails(account)
+    }
+
     const handleDeleteAccount = async (accountId: string) => {
-        const transaction = AbstractAccountContractBuilder.transaction.removeAccount()
+        const account = await contract.getAccountById({ account_id: accountId })
+        const transaction = AbstractAccountContractBuilder.transaction.removeAccount({
+            accountId,
+            nonce: account?.nonce ?? "0",
+        })
         setAuthProps({
             accountId,
             transaction
@@ -45,7 +56,10 @@ export default function AccountPage() {
     }
 
     const handleRemoveAuthIdentity = async (accountId: string, authIdentity: AuthIdentity) => {
+        const account = await contract.getAccountById({ account_id: accountId })
         const transaction = AbstractAccountContractBuilder.transaction.removeAuthIdentity({
+            accountId,
+            nonce: account?.nonce ?? "0",
             authIdentity
         })
         setAuthProps({
@@ -82,8 +96,18 @@ export default function AccountPage() {
         accountId: string;
     }) => {
         const authIdentity = await AuthAdapter.getAuthIdentity(config);
+        const account = await contract.getAccountById({ account_id: accountId })
         const transaction = AbstractAccountContractBuilder.transaction.addAuthIdentity({
-            authIdentity
+            accountId,
+            nonce: account?.nonce ?? "0",
+            auth: {
+                auth_identity: authIdentity,
+                credentials: (await AuthAdapter.sign({
+                    account_id: accountId,
+                    nonce: account?.nonce ?? "0",
+                    action: "AddAuthIdentity"
+                }, config)).credentials
+            }
         })
 
         setAuthProps({
@@ -110,6 +134,8 @@ export default function AccountPage() {
         setSelectedAccount(accountId)
     }
 
+    console.log(authAction)
+
     return (
         <div className="flex justify-center items-center h-full">
             {authProps && (
@@ -133,6 +159,23 @@ export default function AccountPage() {
                                 value={newAccountId}
                                 onChange={(e) => setNewAccountId(e.target.value)}
                             />
+                            <Input
+                                placeholder="Nonce"
+                                value={nonce}
+                                onChange={(e) => setNonce(e.target.value)}
+                            />
+                            <Button
+                                onClick={() => handleGetAccountById(newAccountId)}
+                                variant="secondary"
+                                className="w-full"
+                            >
+                                Get Account Details
+                            </Button>
+                            {accountDetails && (
+                                <div className="p-4 bg-gray-100 rounded">
+                                    <pre>{JSON.stringify(accountDetails, null, 2)}</pre>
+                                </div>
+                            )}
                             <Select onValueChange={(value) => setAuthAction(value as "register" | "add")}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select action" />
@@ -173,6 +216,13 @@ export default function AccountPage() {
                                 <h3 className="text-lg font-semibold">Social Login</h3>
                                 <div className="flex gap-2">
                                     <GoogleButton
+                                        nonce={
+                                            authAction == "add" ? canonicalize({
+                                                account_id: newAccountId,
+                                                nonce: nonce,
+                                                action: "AddAuthIdentity"
+                                            }) : undefined
+                                        }
                                         onSuccess={(idToken) => {
                                             const { email, issuer } = parseOIDCToken(idToken)
                                             const config = {
@@ -182,6 +232,7 @@ export default function AccountPage() {
                                                     issuer: issuer,
                                                     email: email,
                                                     sub: null,
+                                                    token: idToken
                                                 },
                                             };
                                             if (authAction === "register") {
@@ -202,6 +253,13 @@ export default function AccountPage() {
                                     />
                                     <FacebookButton
                                         text={`${authAction === "register" ? "Register" : "Add"} with Facebook`}
+                                        nonce={
+                                            authAction == "add" ? canonicalize({
+                                                account_id: newAccountId,
+                                                nonce: nonce,
+                                                action: "AddAuthIdentity"
+                                            }) : undefined
+                                        }
                                         onSuccess={(idToken) => {
                                             const { email, issuer } = parseOIDCToken(idToken)
                                             const config = {
@@ -211,6 +269,7 @@ export default function AccountPage() {
                                                     issuer: issuer,
                                                     email: email,
                                                     sub: null,
+                                                    token: idToken
                                                 },
                                             };
                                             if (authAction === "register") {

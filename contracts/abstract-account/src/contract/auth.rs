@@ -4,6 +4,7 @@ use crate::mods::external_contracts::{
 };
 use crate::types::auth_identity::{AuthTypeNames, AuthTypes};
 use crate::*;
+use base64::engine::{general_purpose::URL_SAFE_NO_PAD, Engine};
 use interfaces::auth::{
     oidc::{OIDCAuthenticator, OIDCCredentials, OIDCValidationData},
     wallet::{WalletCredentials, WalletValidationData},
@@ -78,6 +79,8 @@ impl AbstractAccountContract {
         let client_challenge = client_data["challenge"]
             .as_str()
             .expect("Missing challenge in client data");
+        // TODO: Remove hashing later
+        let signed_message = URL_SAFE_NO_PAD.encode(env::sha256(signed_message.as_bytes()));
 
         require!(
             client_challenge == signed_message,

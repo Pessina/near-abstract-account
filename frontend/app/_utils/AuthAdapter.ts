@@ -1,17 +1,18 @@
-import { Transaction } from "@/contracts/AbstractAccountContract/types/transaction";
-import { WebAuthn } from "@/lib/auth/WebAuthn/WebAuthn";
-import { Ethereum } from "@/lib/auth/Ethereum/Ethereum";
-import { Solana } from "@/lib/auth/Solana/Solana";
-import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth";
+import canonicalize from "canonicalize";
+
 import {
-  WalletAuthIdentity,
+  AuthIdentity,
+  Transaction,
+} from "@/contracts/AbstractAccountContract/AbstractAccountContract";
+import {
   WalletCredentials,
-  WebAuthnAuthIdentity,
   WebAuthnCredentials,
-  OIDCAuthIdentity,
   OIDCCredentials,
 } from "@/contracts/AbstractAccountContract/types/auth";
-import canonicalize from "canonicalize";
+import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth";
+import { Ethereum } from "@/lib/auth/Ethereum/Ethereum";
+import { Solana } from "@/lib/auth/Solana/Solana";
+import { WebAuthn } from "@/lib/auth/WebAuthn/WebAuthn";
 
 type EthereumWalletType = "metamask" | "okx";
 type SolanaWalletType = "phantom" | "solflare";
@@ -37,6 +38,12 @@ export type AuthConfig =
   | { type: "webauthn"; config: WebAuthnConfig }
   | { type: "oidc"; config: OIDCConfig };
 
+type ActionMessage = {
+  account_id: string;
+  nonce: string;
+  action: string;
+};
+
 export class AuthAdapter {
   private static getWalletInstance(config: WalletConfig) {
     if (config.type === "ethereum") {
@@ -48,9 +55,7 @@ export class AuthAdapter {
     }
   }
 
-  static async getAuthIdentity(
-    config: AuthConfig
-  ): Promise<WalletAuthIdentity | WebAuthnAuthIdentity | OIDCAuthIdentity> {
+  static async getAuthIdentity(config: AuthConfig): Promise<AuthIdentity> {
     switch (config.type) {
       case "wallet": {
         const wallet = this.getWalletInstance(config.config);
@@ -69,31 +74,34 @@ export class AuthAdapter {
         return authIdentity;
       }
       case "oidc": {
-        return AbstractAccountContractBuilder.authIdentity.oidc({
-          client_id: config.config.clientId,
-          issuer: config.config.issuer,
-          email: config.config.email,
-          sub: config.config.sub,
-        });
+        return AbstractAccountContractBuilder.authIdentity.oidc(
+          {
+            client_id: config.config.clientId,
+            issuer: config.config.issuer,
+            email: config.config.email,
+            sub: config.config.sub,
+          },
+          undefined
+        );
       }
     }
   }
 
   static async sign(
-    message: Transaction,
+    message: Transaction | ActionMessage,
     config: AuthConfig
   ): Promise<
     | {
         credentials: WalletCredentials;
-        authIdentity: WalletAuthIdentity;
+        authIdentity: AuthIdentity;
       }
     | {
         credentials: WebAuthnCredentials;
-        authIdentity: WebAuthnAuthIdentity;
+        authIdentity: AuthIdentity;
       }
     | {
         credentials: OIDCCredentials;
-        authIdentity: OIDCAuthIdentity;
+        authIdentity: AuthIdentity;
       }
   > {
     const canonical = canonicalize(message);
@@ -114,12 +122,15 @@ export class AuthAdapter {
         if (!config.config.token) throw new Error("Token is required");
 
         return {
-          authIdentity: AbstractAccountContractBuilder.authIdentity.oidc({
-            client_id: config.config.clientId,
-            issuer: config.config.issuer,
-            email: config.config.email,
-            sub: config.config.sub,
-          }),
+          authIdentity: AbstractAccountContractBuilder.authIdentity.oidc(
+            {
+              client_id: config.config.clientId,
+              issuer: config.config.issuer,
+              email: config.config.email,
+              sub: config.config.sub,
+            },
+            undefined
+          ),
           credentials: {
             token: config.config.token,
           },

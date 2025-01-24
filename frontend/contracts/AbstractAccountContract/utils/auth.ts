@@ -1,63 +1,104 @@
-import { AuthIdentity } from "../AbstractAccountContract";
 import {
-  OIDCAuthIdentity,
-  WalletAuthIdentity,
-  WebAuthnAuthIdentity,
+  AuthIdentity,
+  IdentityPermissions,
+  Transaction,
+} from "../AbstractAccountContract";
+import {
+  OIDCAuthenticator,
+  WalletAuthenticator,
+  WebAuthnAuthenticator,
 } from "../types/auth";
-import { Transaction } from "../types/transaction";
+import { Credentials, SignPayloadsRequest } from "../types/transaction";
 
 export class AbstractAccountContractBuilder {
   static authIdentity = {
     webauthn: (
-      args: WebAuthnAuthIdentity["WebAuthn"]
-    ): WebAuthnAuthIdentity => ({
-      WebAuthn: {
-        key_id: args.key_id,
-        compressed_public_key: args.compressed_public_key,
+      args: WebAuthnAuthenticator["WebAuthn"],
+      permissions: IdentityPermissions
+    ): AuthIdentity => ({
+      authenticator: {
+        WebAuthn: args,
       },
+      permissions,
     }),
 
-    wallet: (args: WalletAuthIdentity["Wallet"]): WalletAuthIdentity => ({
-      Wallet: {
-        wallet_type: args.wallet_type,
-        public_key: args.public_key,
+    wallet: (
+      args: WalletAuthenticator["Wallet"],
+      permissions: IdentityPermissions
+    ): AuthIdentity => ({
+      authenticator: {
+        Wallet: args,
       },
+      permissions,
     }),
 
-    oidc: (args: OIDCAuthIdentity["OIDC"]): OIDCAuthIdentity => ({
-      OIDC: {
-        client_id: args.client_id,
-        issuer: args.issuer,
-        email: args.email,
-        sub: args.sub,
+    oidc: (
+      args: OIDCAuthenticator["OIDC"],
+      permissions: IdentityPermissions
+    ): AuthIdentity => ({
+      authenticator: {
+        OIDC: args,
       },
+      permissions,
+    }),
+
+    account: (
+      accountId: string,
+      permissions: IdentityPermissions
+    ): AuthIdentity => ({
+      authenticator: {
+        Account: accountId,
+      },
+      permissions,
     }),
   };
-
   static transaction = {
-    addAuthIdentity: (args: { authIdentity: AuthIdentity }): Transaction => ({
-      AddAuthIdentity: args.authIdentity,
+    addAuthIdentity: (args: {
+      accountId: string;
+      nonce: string;
+      auth: { auth_identity: AuthIdentity; credentials: Credentials };
+    }): Transaction => ({
+      account_id: args.accountId,
+      nonce: args.nonce,
+      action: {
+        AddAuthIdentity: args.auth,
+      },
     }),
 
     removeAuthIdentity: (args: {
+      accountId: string;
+      nonce: string;
       authIdentity: AuthIdentity;
     }): Transaction => ({
-      RemoveAuthIdentity: args.authIdentity,
+      account_id: args.accountId,
+      nonce: args.nonce,
+      action: {
+        RemoveAuthIdentity: args.authIdentity,
+      },
     }),
 
-    removeAccount: (): Transaction => "RemoveAccount",
+    removeAccount: (args: {
+      accountId: string;
+      nonce: string;
+    }): Transaction => ({
+      account_id: args.accountId,
+      nonce: args.nonce,
+      action: "RemoveAccount",
+    }),
 
     sign: (args: {
+      accountId: string;
+      nonce: string;
       contractId: string;
-      payloads: Array<{
-        payload: number[];
-        path: string;
-        key_version: number;
-      }>;
+      payloads: Array<SignPayloadsRequest>;
     }): Transaction => ({
-      Sign: {
-        contract_id: args.contractId,
-        payloads: args.payloads,
+      account_id: args.accountId,
+      nonce: args.nonce,
+      action: {
+        Sign: {
+          contract_id: args.contractId,
+          payloads: args.payloads,
+        },
       },
     }),
   };

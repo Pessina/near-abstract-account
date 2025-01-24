@@ -3,53 +3,76 @@ import { Contract, Account as NearAccount } from "near-api-js";
 import { ContractChangeMethodArgs } from "../types";
 
 import {
-  WebAuthnAuthIdentity,
-  WalletAuthIdentity,
+  WebAuthnAuthenticator,
+  WalletAuthenticator,
   WebAuthnCredentials,
   WalletCredentials,
   OIDCCredentials,
-  OIDCAuthIdentity,
+  OIDCAuthenticator,
 } from "./types/auth";
-import { Signature, Transaction } from "./types/transaction";
+import { SignPayloadsRequest } from "./types/transaction";
 
 export interface StorageBalance {
   total: string;
   available: string;
 }
 
-export type AuthIdentity =
-  | WebAuthnAuthIdentity
-  | WalletAuthIdentity
-  | OIDCAuthIdentity
-  | {
-      Account: string;
-    };
+export type IdentityPermissions = object | undefined;
+
+export type AuthTypes =
+  | WalletAuthenticator
+  | WebAuthnAuthenticator
+  | OIDCAuthenticator
+  | { Account: string };
+
+export interface AuthIdentity {
+  authenticator: AuthTypes;
+  permissions?: IdentityPermissions;
+}
 
 export interface Auth {
-  authenticator: AuthIdentity;
+  auth_identity: AuthIdentity;
   credentials: WebAuthnCredentials | WalletCredentials | OIDCCredentials;
 }
 
-export interface UserOperation {
+export type Action =
+  | "RemoveAccount"
+  | { AddAuthIdentity: Auth }
+  | { RemoveAuthIdentity: AuthIdentity }
+  | {
+      Sign: {
+        contract_id: string;
+        payloads: SignPayloadsRequest[];
+      };
+    };
+
+export interface Transaction {
   account_id: string;
+  nonce: string;
+  action: Action;
+}
+
+export interface UserOperation {
   auth: Auth;
-  selected_auth_identity?: AuthIdentity;
+  act_as?: AuthIdentity;
   transaction: Transaction;
 }
 
 export interface Account {
   auth_identities: AuthIdentity[];
+  nonce: string;
 }
 
-export enum AuthIdentityNames {
-  WebAuthn = "WebAuthn",
+export enum AuthTypeNames {
   EthereumWallet = "EthereumWallet",
   SolanaWallet = "SolanaWallet",
+  WebAuthn = "WebAuthn",
   OIDC = "OIDC",
+  Account = "Account",
 }
 
 export interface AuthContractConfig {
-  auth_type: AuthIdentityNames;
+  auth_type: AuthTypeNames;
   contract_id: string;
 }
 
@@ -70,11 +93,11 @@ export type AbstractAccountContract = Contract & {
   }) => Promise<string[]>;
   get_all_contracts: () => Promise<string[]>;
   get_signer_account: () => Promise<string>;
-  auth: (
+  auth: <T>(
     args: ContractChangeMethodArgs<{
       user_op: UserOperation;
     }>
-  ) => Promise<Signature>;
+  ) => Promise<T>;
   storage_balance_of: (args: {
     account_id: string;
   }) => Promise<StorageBalance | null>;

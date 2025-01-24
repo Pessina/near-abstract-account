@@ -1,18 +1,19 @@
 "use client"
 
-import React from "react"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import GoogleButton from "@/components/GoogleButton"
-import FacebookButton from "@/components/FacebookButton"
-import AuthButton from "@/components/AuthButton"
 import canonicalize from "canonicalize"
-import { Transaction } from "@/contracts/AbstractAccountContract/types/transaction"
+import React from "react"
+
+import { AuthAdapter } from "@/app/_utils/AuthAdapter"
+import AuthButton from "@/components/AuthButton"
+import FacebookButton from "@/components/FacebookButton"
+import GoogleButton from "@/components/GoogleButton"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Transaction } from "@/contracts/AbstractAccountContract/AbstractAccountContract"
 import { useAbstractAccountContract } from "@/contracts/AbstractAccountContract/useAbstractAccountContract"
 import { useEnv } from "@/hooks/useEnv"
-import { parseOIDCToken } from "@/lib/utils"
-import { AuthAdapter } from "@/app/_utils/AuthAdapter"
 import { NEAR_MAX_GAS } from "@/lib/constants"
+import { parseOIDCToken } from "@/lib/utils"
 
 type AuthModalProps = {
     isOpen: boolean
@@ -36,11 +37,10 @@ export default function AuthModal({ isOpen, onClose, transaction, accountId }: A
         await contract.auth({
             args: {
                 user_op: {
-                    account_id: accountId,
                     transaction: transaction,
-                    selected_auth_identity: undefined, // TODO: Should be customizable in the future
+                    act_as: undefined, // TODO: Should be customizable in the future
                     auth: {
-                        authenticator: result.authIdentity,
+                        auth_identity: result.authIdentity,
                         credentials: result.credentials,
                     },
                 },

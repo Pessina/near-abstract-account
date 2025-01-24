@@ -1,4 +1,4 @@
-export abstract class AuthIdentity<AuthIdentityType, AuthData> {
+export abstract class AuthIdentityClass<AuthIdentityType, AuthData> {
   /**
    * Get the identity information needed for registration
    * Returns format should match the contract's expected format

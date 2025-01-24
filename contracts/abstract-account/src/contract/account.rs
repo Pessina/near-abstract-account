@@ -73,7 +73,7 @@ impl AbstractAccountContract {
         self.accounts.iter().map(|(key, _)| key.clone()).collect()
     }
 
-    pub fn list_identities(&self, account_id: String) -> Option<Vec<AuthIdentity>> {
+    pub fn list_auth_identities(&self, account_id: String) -> Option<Vec<AuthIdentity>> {
         self.accounts
             .get(&account_id)
             .map(|account| account.auth_identities.clone())
