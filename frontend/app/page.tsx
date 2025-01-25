@@ -1,3 +1,10 @@
+import { a } from 'near-aa.js'
+
 export default function Home() {
-    return <div>Hello World</div>;
+    a()
+    a()
+    a()
+    a()
+    return <div>Hello World</div>
 }
+
