@@ -1,7 +1,7 @@
 import canonicalize from "canonicalize";
 
 import {
-  AuthIdentity,
+  IdentityWithPermissions,
   Transaction,
 } from "@/contracts/AbstractAccountContract/AbstractAccountContract";
 import {
@@ -55,22 +55,24 @@ export class AuthAdapter {
     }
   }
 
-  static async getAuthIdentity(config: AuthConfig): Promise<AuthIdentity> {
+  static async getIdentityWithPermissions(
+    config: AuthConfig
+  ): Promise<IdentityWithPermissions> {
     switch (config.type) {
       case "wallet": {
         const wallet = this.getWalletInstance(config.config);
-        const authIdentity = await wallet.getAuthIdentity();
+        const authIdentity = await wallet.getIdentityWithPermissions();
         if (!authIdentity)
-          throw new Error("Failed to get wallet auth identity");
+          throw new Error("Failed to get wallet auth AddIdentity");
         return authIdentity;
       }
       case "webauthn": {
         const webAuthn = new WebAuthn();
-        const authIdentity = await webAuthn.getAuthIdentity({
+        const authIdentity = await webAuthn.getIdentityWithPermissions({
           id: config.config.username,
         });
         if (!authIdentity)
-          throw new Error("Failed to get WebAuthn auth identity");
+          throw new Error("Failed to get WebAuthn auth AddIdentity");
         return authIdentity;
       }
       case "oidc": {
@@ -93,15 +95,15 @@ export class AuthAdapter {
   ): Promise<
     | {
         credentials: WalletCredentials;
-        authIdentity: AuthIdentity;
+        authIdentity: IdentityWithPermissions;
       }
     | {
         credentials: WebAuthnCredentials;
-        authIdentity: AuthIdentity;
+        authIdentity: IdentityWithPermissions;
       }
     | {
         credentials: OIDCCredentials;
-        authIdentity: AuthIdentity;
+        authIdentity: IdentityWithPermissions;
       }
   > {
     const canonical = canonicalize(message);

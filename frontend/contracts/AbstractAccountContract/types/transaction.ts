@@ -1,30 +1,60 @@
-import { AuthIdentity } from "../AbstractAccountContract";
-
 import {
   WebAuthnCredentials,
   WalletCredentials,
   OIDCCredentials,
+  OIDCAuthenticator,
+  WalletAuthenticator,
+  WebAuthnAuthenticator,
 } from "./auth";
 
-export interface Signature {
-  big_r: {
-    affine_point: string;
-  };
-  s: {
-    scalar: string;
-  };
-  recovery_id: number;
+export interface UserOperation {
+  auth: Auth;
+  act_as?: Identity;
+  transaction: Transaction;
+}
+
+export interface Transaction {
+  account_id: string;
+  nonce: string; // u128 maps to string in JS
+  action: Action;
+}
+
+export type Action =
+  | "RemoveAccount"
+  | { AddIdentityWithAuth: AddIdentityWithAuth }
+  | { AddIdentity: IdentityWithPermissions }
+  | { RemoveIdentity: Identity }
+  | { Sign: SignPayloadsRequest };
+
+export interface AddIdentityWithAuth {
+  identity_with_permissions: IdentityWithPermissions;
+  credentials: Credentials;
+}
+
+export interface IdentityWithPermissions {
+  identity: Identity;
+  permissions: IdentityPermissions;
+}
+
+export type IdentityPermissions = {
+  enable_act_as: boolean;
+} | null;
+
+export type Identity =
+  | WalletAuthenticator
+  | WebAuthnAuthenticator
+  | OIDCAuthenticator
+  | { Account: string };
+
+export interface Auth {
+  identity: Identity;
+  credentials: Credentials;
 }
 
 export type Credentials =
   | WebAuthnCredentials
   | WalletCredentials
   | OIDCCredentials;
-
-export interface Auth {
-  auth_identity: AuthIdentity;
-  credentials: Credentials;
-}
 
 export interface SignRequest {
   payload: number[];
@@ -37,20 +67,19 @@ export interface SignPayloadsRequest {
   payloads: SignRequest[];
 }
 
-export interface TransactionData {
+export interface ActionSignableMessage {
   account_id: string;
-  nonce: string; // u128 maps to string in JS
-  action: Action;
+  nonce: string;
+  action: string;
+  permissions?: IdentityPermissions;
 }
 
-export type Action =
-  | { RemoveAccount: null }
-  | { AddAuthIdentity: Auth }
-  | { RemoveAuthIdentity: AuthIdentity }
-  | { Sign: SignPayloadsRequest };
-
-export interface UserOp {
-  auth: Auth;
-  act_as?: AuthIdentity; // Optional field
-  transaction: TransactionData;
+export interface Signature {
+  big_r: {
+    affine_point: string;
+  };
+  s: {
+    scalar: string;
+  };
+  recovery_id: number;
 }

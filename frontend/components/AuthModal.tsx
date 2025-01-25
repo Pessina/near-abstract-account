@@ -9,7 +9,7 @@ import FacebookButton from "@/components/FacebookButton"
 import GoogleButton from "@/components/GoogleButton"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Transaction } from "@/contracts/AbstractAccountContract/AbstractAccountContract"
+import { Transaction } from "@/contracts/AbstractAccountContract/types/transaction"
 import { useAbstractAccountContract } from "@/contracts/AbstractAccountContract/useAbstractAccountContract"
 import { useEnv } from "@/hooks/useEnv"
 import { NEAR_MAX_GAS } from "@/lib/constants"
@@ -40,7 +40,7 @@ export default function AuthModal({ isOpen, onClose, transaction, accountId }: A
                     transaction: transaction,
                     act_as: undefined, // TODO: Should be customizable in the future
                     auth: {
-                        auth_identity: result.authIdentity,
+                        identity: result.authIdentity,
                         credentials: result.credentials,
                     },
                 },

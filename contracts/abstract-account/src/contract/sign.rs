@@ -1,5 +1,5 @@
 use crate::*;
-use crate::{types::auth_identity::AuthIdentity, AbstractAccountContract};
+use crate::{types::auth_identity::Identity, AbstractAccountContract};
 use interfaces::traits::path::Path;
 use mods::signer::{ext_signer, SignRequest, SIGN_GAS};
 use near_sdk::{env, near, Promise};
@@ -9,11 +9,7 @@ use utils::utils::build_account_path;
 #[near]
 impl AbstractAccountContract {
     #[private]
-    pub fn sign(
-        &self,
-        auth_identity: AuthIdentity,
-        sign_payloads_request: SignPayloadsRequest,
-    ) -> Promise {
+    pub fn sign(&self, identity: Identity, sign_payloads_request: SignPayloadsRequest) -> Promise {
         let mut promise = Promise::new(
             sign_payloads_request
                 .contract_id
@@ -24,7 +20,7 @@ impl AbstractAccountContract {
             env::attached_deposit().saturating_div(sign_payloads_request.payloads.len() as u128);
 
         for payload in sign_payloads_request.payloads {
-            let path = build_account_path(auth_identity.authenticator.path(), payload.path);
+            let path = build_account_path(identity.path(), payload.path);
 
             let sign_request = SignRequest::new(payload.payload, path, payload.key_version);
 

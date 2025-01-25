@@ -41,7 +41,7 @@ pub struct IdentityPermissions {
     Clone,
 )]
 #[serde(crate = "near_sdk::serde")]
-pub enum AuthTypes {
+pub enum Identity {
     Wallet(WalletAuthenticator),
     WebAuthn(WebAuthnAuthenticator),
     OIDC(OIDCAuthenticator),
@@ -60,24 +60,24 @@ pub enum AuthTypes {
     Clone,
 )]
 #[serde(crate = "near_sdk::serde")]
-pub struct AuthIdentity {
-    pub authenticator: AuthTypes,
+pub struct IdentityWithPermissions {
+    pub identity: Identity,
     /// None means the identity has full access permissions
     pub permissions: Option<IdentityPermissions>,
 }
 
-impl Path for AuthTypes {
+impl Path for Identity {
     fn path(&self) -> String {
         match self {
-            AuthTypes::Wallet(wallet) => wallet.path(),
-            AuthTypes::WebAuthn(webauthn) => webauthn.path(),
-            AuthTypes::OIDC(oidc) => oidc.path(),
-            AuthTypes::Account(account) => format!("{}", account),
+            Identity::Wallet(wallet) => wallet.path(),
+            Identity::WebAuthn(webauthn) => webauthn.path(),
+            Identity::OIDC(oidc) => oidc.path(),
+            Identity::Account(account) => format!("{}", account),
         }
     }
 }
 
-// TODO: This should be implemented on a better way, probably on impl AuthIdentity
+// TODO: This should be implemented on a better way, probably on impl IdentityWithPermissions
 #[derive(
     Debug,
     BorshDeserialize,

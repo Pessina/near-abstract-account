@@ -2,7 +2,7 @@ use crate::mods::external_contracts::{
     ethereum_auth, oidc_auth, solana_auth, webauthn_auth, VALIDATE_ETH_SIGNATURE_GAS,
     VALIDATE_P256_SIGNATURE_GAS,
 };
-use crate::types::auth_identity::{AuthTypeNames, AuthTypes};
+use crate::types::auth_identity::{AuthTypeNames, Identity};
 use crate::*;
 use base64::engine::{general_purpose::URL_SAFE_NO_PAD, Engine};
 use interfaces::auth::{
@@ -14,10 +14,10 @@ use near_sdk::{env, require, Promise};
 use serde_json::Value;
 use utils::utils::parse_credentials;
 impl AbstractAccountContract {
-    fn get_auth_contract(&self, authenticator: &AuthTypeNames) -> AccountId {
+    fn get_auth_contract(&self, name: &AuthTypeNames) -> AccountId {
         self.auth_contracts
-            .get(authenticator)
-            .expect(&format!("{:?} contract not configured", authenticator))
+            .get(name)
+            .expect(&format!("{:?} contract not configured", name))
             .clone()
     }
 
@@ -104,10 +104,10 @@ impl AbstractAccountContract {
             .verify_p256(webauthn_data, compressed_public_key)
     }
 
-    /// Handles credentials validation against the provided AuthIdentity and signed message authorizing executions
+    /// Handles credentials validation against the provided Identity and signed message authorizing executions
     ///
     /// # Arguments
-    /// * `authenticator` - The authentication method being used
+    /// * `identity` - The authentication method being used
     /// * `credentials` - The credentials provided for authentication
     /// * `signed_message` - The message that was signed authorizing the execution
     /// * `account` - The account being authenticated against
@@ -117,19 +117,21 @@ impl AbstractAccountContract {
     /// A Promise that resolves to a boolean indicating whether the authentication was successful
     pub fn validate_credentials(
         &self,
-        authenticator: AuthTypes,
+        identity: Identity,
         credentials: Value,
         signed_message: String,
         account: &Account,
         authenticate_callback: Promise,
     ) -> Promise {
-        let promise = match authenticator {
-            AuthTypes::WebAuthn(ref webauthn) => {
+        let promise = match identity {
+            Identity::WebAuthn(ref webauthn) => {
                 let webauthn_authenticator = account
-                    .auth_identities
+                    .identities
                     .iter()
-                    .find_map(|identity| {
-                        if let AuthTypes::WebAuthn(ref current_webauthn) = identity.authenticator {
+                    .find_map(|identity_with_permissions| {
+                        if let Identity::WebAuthn(ref current_webauthn) =
+                            identity_with_permissions.identity
+                        {
                             if current_webauthn.key_id == webauthn.key_id {
                                 return Some(current_webauthn);
                             }
@@ -144,7 +146,7 @@ impl AbstractAccountContract {
                     .expect("WebAuthn public key not found");
 
                 // TODO: Temporary disable using selected auth identity for passkeys
-                // if let AuthTypes::WebAuthn(ref mut webauthn) = selected_authenticator {
+                // if let Identity::WebAuthn(ref mut webauthn) = selected_identity {
                 //     webauthn.compressed_public_key = Some(compressed_public_key.to_string());
                 // }
 
@@ -156,7 +158,7 @@ impl AbstractAccountContract {
                     compressed_public_key.to_string(),
                 )
             }
-            AuthTypes::Wallet(wallet) => {
+            Identity::Wallet(wallet) => {
                 let wallet_type = match wallet.wallet_type {
                     WalletType::Ethereum => AuthTypeNames::EthereumWallet,
                     WalletType::Solana => AuthTypeNames::SolanaWallet,
@@ -171,12 +173,12 @@ impl AbstractAccountContract {
                     wallet_type,
                 )
             }
-            AuthTypes::OIDC(oidc) => {
+            Identity::OIDC(oidc) => {
                 let credentials = parse_credentials(&credentials);
 
                 self.handle_oidc_auth(credentials, signed_message, oidc)
             }
-            AuthTypes::Account(_) => env::panic_str("Account auth type not yet supported"),
+            Identity::Account(_) => env::panic_str("Account auth type not yet supported"),
         };
 
         promise.then(authenticate_callback)
@@ -195,7 +197,7 @@ impl AbstractAccountContract {
         let account = self.accounts.get(&user_op.transaction.account_id).unwrap();
 
         require!(
-            account.has_auth_identity(&user_op.auth.auth_identity),
+            account.get_identity(&user_op.auth.identity).is_some(),
             "Auth identity not found in account"
         );
 
@@ -203,8 +205,8 @@ impl AbstractAccountContract {
 
         if let Some(ref act_as) = user_op.act_as {
             let auth_identity = account
-                .get_auth_identity(act_as)
-                .expect("Auth identity not found");
+                .get_identity(act_as)
+                .expect("act_as Identity not found on account");
 
             if let Some(ref permissions) = auth_identity.permissions {
                 if !permissions.enable_act_as {

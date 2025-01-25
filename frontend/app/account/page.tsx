@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Account, AuthIdentity, Transaction } from "@/contracts/AbstractAccountContract/AbstractAccountContract"
+import { Account } from "@/contracts/AbstractAccountContract/AbstractAccountContract"
+import { IdentityWithPermissions, Transaction } from "@/contracts/AbstractAccountContract/types/transaction"
 import { useAbstractAccountContract } from "@/contracts/AbstractAccountContract/useAbstractAccountContract"
 import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth"
 import { useEnv } from "@/hooks/useEnv"
@@ -22,7 +23,7 @@ import { parseOIDCToken } from "@/lib/utils"
 export default function AccountPage() {
     const [accounts, setAccounts] = useState<string[]>([])
     const [selectedAccount, setSelectedAccount] = useState("")
-    const [authIdentities, setAuthIdentities] = useState<AuthIdentity[]>([])
+    const [authIdentities, setAuthIdentities] = useState<IdentityWithPermissions[]>([])
     const [authModalOpen, setAuthModalOpen] = useState(false)
     const [authProps, setAuthProps] = useState<{ accountId: string, transaction: Transaction } | null>(null)
     const [newAccountId, setNewAccountId] = useState("")
@@ -38,7 +39,7 @@ export default function AccountPage() {
         setNonceCanonicalized(canonicalize({
             account_id: newAccountId,
             nonce: nonce,
-            action: "AddAuthIdentity"
+            action: "AddIdentity"
         }) ?? "")
     }, [newAccountId, nonce])
 
@@ -64,9 +65,9 @@ export default function AccountPage() {
         setAuthModalOpen(true)
     }
 
-    const handleRemoveAuthIdentity = async (accountId: string, authIdentity: AuthIdentity) => {
+    const handleRemoveIdentityWithPermissions = async (accountId: string, authIdentity: IdentityWithPermissions) => {
         const account = await contract.getAccountById({ account_id: accountId })
-        const transaction = AbstractAccountContractBuilder.transaction.removeAuthIdentity({
+        const transaction = AbstractAccountContractBuilder.transaction.removeIdentityWithPermissions({
             accountId,
             nonce: account?.nonce ?? "0",
             authIdentity
@@ -85,37 +86,37 @@ export default function AccountPage() {
         config: AuthConfig;
         accountId: string;
     }) => {
-        const authIdentity = await AuthAdapter.getAuthIdentity(config);
+        const authIdentity = await AuthAdapter.getIdentityWithPermissions(config);
 
         await contract.addAccount({
             args: {
                 account_id: accountId,
-                auth_identity: authIdentity
+                auth_AddIdentity: authIdentity
             }
         });
 
         await loadAccounts();
     }
 
-    const handleAddAuthIdentity = async ({
+    const handleAddIdentity = async ({
         config,
         accountId,
     }: {
         config: AuthConfig;
         accountId: string;
     }) => {
-        const authIdentity = await AuthAdapter.getAuthIdentity(config);
+        const authIdentity = await AuthAdapter.getIdentityWithPermissions(config);
         const account = await contract.getAccountById({ account_id: accountId })
 
-        const transaction = AbstractAccountContractBuilder.transaction.addAuthIdentity({
+        const transaction = AbstractAccountContractBuilder.transaction.addIdentityWithPermissions({
             accountId,
             nonce: account?.nonce ?? "0",
             auth: {
-                auth_identity: authIdentity,
+                identity: authIdentity,
                 credentials: (await AuthAdapter.sign({
                     account_id: accountId,
                     nonce: account?.nonce.toString() ?? "0",
-                    action: "AddAuthIdentity"
+                    action: "AddIdentity"
                 }, config)).credentials
             }
         })
@@ -209,7 +210,7 @@ export default function AccountPage() {
                                                 accountId: newAccountId,
                                             });
                                         } else {
-                                            handleAddAuthIdentity({
+                                            handleAddIdentity({
                                                 config,
                                                 accountId: newAccountId,
                                             });
@@ -243,7 +244,7 @@ export default function AccountPage() {
                                                     accountId: newAccountId,
                                                 });
                                             } else {
-                                                handleAddAuthIdentity({
+                                                handleAddIdentity({
                                                     config,
                                                     accountId: newAccountId,
                                                 });
@@ -274,7 +275,7 @@ export default function AccountPage() {
                                                     accountId: newAccountId,
                                                 });
                                             } else {
-                                                handleAddAuthIdentity({
+                                                handleAddIdentity({
                                                     config,
                                                     accountId: newAccountId,
                                                 });
@@ -304,7 +305,7 @@ export default function AccountPage() {
                                                     accountId: newAccountId,
                                                 });
                                             } else {
-                                                handleAddAuthIdentity({
+                                                handleAddIdentity({
                                                     config,
                                                     accountId: newAccountId,
                                                 });
@@ -329,7 +330,7 @@ export default function AccountPage() {
                                                     accountId: newAccountId,
                                                 });
                                             } else {
-                                                handleAddAuthIdentity({
+                                                handleAddIdentity({
                                                     config,
                                                     accountId: newAccountId,
                                                 });
@@ -374,11 +375,11 @@ export default function AccountPage() {
                         <div>
                             <h3 className="text-lg font-semibold mb-4">Auth Identities for {selectedAccount}</h3>
                             <div className="space-y-2">
-                                {authIdentities.map((identity, index) => (
+                                {authIdentities.map((AddIdentity, index) => (
                                     <div key={index} className="flex justify-between items-center p-2 border rounded">
-                                        <span>{JSON.stringify(identity)}</span>
+                                        <span>{JSON.stringify(AddIdentity)}</span>
                                         <Button
-                                            onClick={() => handleRemoveAuthIdentity(selectedAccount, identity)}
+                                            onClick={() => handleRemoveIdentityWithPermissions(selectedAccount, AddIdentity)}
                                             variant="destructive"
                                         >
                                             Remove

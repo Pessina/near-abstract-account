@@ -9,19 +9,16 @@ import {
   toBytes,
 } from "viem";
 
-import { AuthIdentityClass } from "../AuthIdentity";
+import { IdentityClass } from "../Identity";
 
-import { AuthIdentity } from "@/contracts/AbstractAccountContract/AbstractAccountContract";
 import {
   WalletCredentials,
-  WalletType as AuthIdentityWalletType,
+  WalletType,
 } from "@/contracts/AbstractAccountContract/types/auth";
+import { Identity } from "@/contracts/AbstractAccountContract/types/transaction";
 import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth";
 
-export class Ethereum extends AuthIdentityClass<
-  AuthIdentity,
-  WalletCredentials
-> {
+export class Ethereum extends IdentityClass<Identity, WalletCredentials> {
   private walletClient: WalletClient | null = null;
 
   private getProvider(): EIP1193Provider {
@@ -44,10 +41,10 @@ export class Ethereum extends AuthIdentityClass<
     return this.walletClient;
   }
 
-  async getAuthIdentity(args?: {
+  async getIdentity(args?: {
     signature?: string;
     message?: string;
-  }): Promise<AuthIdentity> {
+  }): Promise<Identity> {
     let recoveredSignature: string;
     let signedMessage: string;
 
@@ -76,17 +73,14 @@ export class Ethereum extends AuthIdentityClass<
     const prefix = yLastByte % 2 === 0 ? "02" : "03";
     const compressedKey = "0x" + prefix + uncompressedKey.slice(4, 68);
 
-    return AbstractAccountContractBuilder.authIdentity.wallet(
-      {
-        wallet_type: AuthIdentityWalletType.Ethereum,
-        public_key: compressedKey,
-      },
-      null
-    );
+    return AbstractAccountContractBuilder.authIdentity.wallet({
+      wallet_type: WalletType.Ethereum,
+      public_key: compressedKey,
+    });
   }
 
   async sign(message: string): Promise<{
-    authIdentity: AuthIdentity;
+    authIdentity: Identity;
     credentials: WalletCredentials;
   }> {
     const client = await this.getWalletClient();
@@ -96,7 +90,7 @@ export class Ethereum extends AuthIdentityClass<
       message,
     });
 
-    const authIdentity = await this.getAuthIdentity({
+    const authIdentity = await this.getIdentity({
       signature,
       message,
     });

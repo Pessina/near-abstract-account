@@ -69,9 +69,9 @@ const Auth0 = () => {
     try {
       const signature = await contract?.auth({
         account_id: AA_ACCOUNT_ID,
-        selected_auth_identity: undefined,
+        selected_auth_AddIdentity: undefined,
         auth: {
-          authenticator: AUTH_IDENTITY,
+          AddIdentity: AUTH_IDENTITY,
           credentials: {
             token: idToken,
           },

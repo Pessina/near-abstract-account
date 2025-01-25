@@ -2,61 +2,15 @@ import { Contract, Account as NearAccount } from "near-api-js";
 
 import { ContractChangeMethodArgs } from "../types";
 
-import {
-  WebAuthnAuthenticator,
-  WalletAuthenticator,
-  WebAuthnCredentials,
-  WalletCredentials,
-  OIDCCredentials,
-  OIDCAuthenticator,
-} from "./types/auth";
-import { SignPayloadsRequest } from "./types/transaction";
+import { IdentityWithPermissions, UserOperation } from "./types/transaction";
 
 export interface StorageBalance {
   total: string;
   available: string;
 }
 
-export type IdentityPermissions = object | null;
-
-export type AuthTypes =
-  | WalletAuthenticator
-  | WebAuthnAuthenticator
-  | OIDCAuthenticator
-  | { Account: string };
-
-export interface AuthIdentity {
-  authenticator: AuthTypes;
-  permissions?: IdentityPermissions;
-}
-
-export interface Auth {
-  auth_identity: AuthIdentity;
-  credentials: WebAuthnCredentials | WalletCredentials | OIDCCredentials;
-}
-
-export type Action =
-  | "RemoveAccount"
-  | { AddAuthIdentity: Auth }
-  | { RemoveAuthIdentity: AuthIdentity }
-  | {
-      Sign: SignPayloadsRequest;
-    };
-
-export interface Transaction {
-  account_id: string;
-  nonce: string;
-  action: Action;
-}
-
-export interface UserOperation {
-  auth: Auth;
-  act_as?: AuthIdentity;
-  transaction: Transaction;
-}
-
 export interface Account {
-  auth_identities: AuthIdentity[];
+  identities: IdentityWithPermissions[];
   nonce: string;
 }
 
@@ -77,16 +31,16 @@ export type AbstractAccountContract = Contract & {
   add_account: (
     args: ContractChangeMethodArgs<{
       account_id: string;
-      auth_identity: AuthIdentity;
+      auth_AddIdentity: IdentityWithPermissions;
     }>
   ) => Promise<void>;
   get_account_by_id: (args: { account_id: string }) => Promise<Account | null>;
   list_account_ids: () => Promise<string[]>;
-  list_auth_identities: (args: {
+  list_identities: (args: {
     account_id: string;
-  }) => Promise<AuthIdentity[] | null>;
-  get_account_by_auth_identity: (args: {
-    auth_identity: AuthIdentity;
+  }) => Promise<IdentityWithPermissions[] | null>;
+  get_account_by_identity: (args: {
+    identity: IdentityWithPermissions;
   }) => Promise<string[]>;
   get_all_contracts: () => Promise<string[]>;
   get_signer_account: () => Promise<string>;
@@ -125,8 +79,8 @@ export class AbstractAccountContractClass {
       viewMethods: [
         "get_account_by_id",
         "list_account_ids",
-        "list_auth_identities",
-        "get_account_by_auth_identity",
+        "list_identities",
+        "get_account_by_identity",
         "get_all_contracts",
         "get_signer_account",
         "storage_balance_of",
@@ -156,15 +110,15 @@ export class AbstractAccountContractClass {
   }
 
   async listAuthIdentities(
-    obj: Parameters<AbstractAccountContract["list_auth_identities"]>[0]
+    obj: Parameters<AbstractAccountContract["list_identities"]>[0]
   ) {
-    return this.contract.list_auth_identities(obj);
+    return this.contract.list_identities(obj);
   }
 
-  async getAccountByAuthIdentity(
-    obj: Parameters<AbstractAccountContract["get_account_by_auth_identity"]>[0]
+  async getAccountByIdentityWithPermissions(
+    obj: Parameters<AbstractAccountContract["get_account_by_identity"]>[0]
   ) {
-    return this.contract.get_account_by_auth_identity(obj);
+    return this.contract.get_account_by_identity(obj);
   }
 
   async getAllContracts() {

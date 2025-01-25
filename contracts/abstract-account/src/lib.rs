@@ -14,7 +14,7 @@ use near_sdk_contract_tools::Nep145;
 use schemars::JsonSchema;
 use types::{
     account::Account,
-    auth_identity::AuthIdentity,
+    auth_identity::{Identity, IdentityWithPermissions},
     transaction::{Transaction, UserOp},
 };
 use types::{auth_identity::AuthTypeNames, transaction::Action};
@@ -89,7 +89,7 @@ impl AbstractAccountContract {
         let act_as = if let Some(act_as) = user_op.act_as {
             act_as
         } else {
-            user_op.auth.auth_identity.clone()
+            user_op.auth.identity.clone()
         };
 
         let transaction = user_op.transaction;
@@ -97,7 +97,7 @@ impl AbstractAccountContract {
         let account_clone = account.clone();
 
         self.validate_credentials(
-            user_op.auth.auth_identity.authenticator,
+            user_op.auth.identity,
             user_op.auth.credentials,
             signed_message,
             &account_clone,
@@ -112,7 +112,7 @@ impl AbstractAccountContract {
     pub fn auth_callback(
         &mut self,
         account_id: String,
-        auth_identity: AuthIdentity,
+        identity: Identity,
         transaction: Transaction,
         predecessor: AccountId,
         #[callback_result] auth_result: Result<bool, near_sdk::PromiseError>,
@@ -121,12 +121,12 @@ impl AbstractAccountContract {
             Ok(true) => {
                 match transaction.action {
                     Action::Sign(sign_payloads_request) => {
-                        return Some(self.sign(auth_identity, sign_payloads_request));
+                        return Some(self.sign(identity, sign_payloads_request));
                     }
                     action @ (Action::RemoveAccount
-                    | Action::AddAuthIdentity(_)
-                    | Action::AddAuthIdentityWithAuth(_)
-                    | Action::RemoveAuthIdentity(_)) => {
+                    | Action::AddIdentity(_)
+                    | Action::AddIdentityWithAuth(_)
+                    | Action::RemoveIdentity(_)) => {
                         self.handle_account_action(predecessor, account_id, action);
                     }
                 };

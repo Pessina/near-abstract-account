@@ -1,79 +1,62 @@
 import {
-  AuthIdentity,
-  IdentityPermissions,
-  Transaction,
-} from "../AbstractAccountContract";
-import {
   OIDCAuthenticator,
   WalletAuthenticator,
   WebAuthnAuthenticator,
 } from "../types/auth";
-import { Credentials, SignPayloadsRequest } from "../types/transaction";
+import {
+  IdentityWithPermissions,
+  Credentials,
+  Identity,
+  SignPayloadsRequest,
+  Transaction,
+} from "../types/transaction";
 
 export class AbstractAccountContractBuilder {
   static authIdentity = {
-    webauthn: (
-      args: WebAuthnAuthenticator["WebAuthn"],
-      permissions: IdentityPermissions
-    ): AuthIdentity => ({
-      authenticator: {
-        WebAuthn: args,
-      },
-      permissions,
+    webauthn: (args: WebAuthnAuthenticator["WebAuthn"]): Identity => ({
+      WebAuthn: args,
     }),
 
-    wallet: (
-      args: WalletAuthenticator["Wallet"],
-      permissions: IdentityPermissions
-    ): AuthIdentity => ({
-      authenticator: {
-        Wallet: args,
-      },
-      permissions,
+    wallet: (args: WalletAuthenticator["Wallet"]): Identity => ({
+      Wallet: args,
     }),
 
-    oidc: (
-      args: OIDCAuthenticator["OIDC"],
-      permissions: IdentityPermissions
-    ): AuthIdentity => ({
-      authenticator: {
-        OIDC: args,
-      },
-      permissions,
+    oidc: (args: OIDCAuthenticator["OIDC"]): Identity => ({
+      OIDC: args,
     }),
 
-    account: (
-      accountId: string,
-      permissions: IdentityPermissions
-    ): AuthIdentity => ({
-      authenticator: {
-        Account: accountId,
-      },
-      permissions,
+    account: (accountId: string): Identity => ({
+      Account: accountId,
     }),
   };
   static transaction = {
-    addAuthIdentity: (args: {
+    addIdentityWithPermissions: (args: {
       accountId: string;
       nonce: string;
-      auth: { auth_identity: AuthIdentity; credentials: Credentials };
+      auth: {
+        identity: IdentityWithPermissions;
+        credentials: Credentials;
+      };
     }): Transaction => ({
       account_id: args.accountId,
       nonce: args.nonce,
       action: {
-        AddAuthIdentity: args.auth,
+        AddIdentityWithAuth: {
+          identity_with_permissions: args.auth.identity,
+          credentials: args.auth.credentials,
+        },
       },
     }),
 
-    removeAuthIdentity: (args: {
+    removeIdentityWithPermissions: (args: {
       accountId: string;
       nonce: string;
-      authIdentity: AuthIdentity;
+      authIdentity: IdentityWithPermissions;
     }): Transaction => ({
       account_id: args.accountId,
       nonce: args.nonce,
       action: {
-        RemoveAuthIdentity: args.authIdentity,
+        RemoveIdentity: args.authIdentity.identity,
       },
     }),
 
