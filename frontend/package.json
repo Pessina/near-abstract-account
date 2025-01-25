@@ -42,8 +42,7 @@
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
     "viem": "^2.21.38",
-    "zod": "^3.23.8",
-    "near-aa.js": "../sdk/dist"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/auth0-js": "^9.21.6",

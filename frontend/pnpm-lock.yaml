@@ -71,9 +71,6 @@ importers:
       lucide-react:
         specifier: ^0.454.0
         version: 0.454.0(react@19.0.0-rc-02c0e824-20241028)
-      near-aa.js:
-        specifier: ../sdk/dist
-        version: link:../sdk/dist
       near-api-js:
         specifier: ^3.0.4
         version: 3.0.4
