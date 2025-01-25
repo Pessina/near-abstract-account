@@ -15,7 +15,7 @@ export interface UserOperation {
 
 export interface Transaction {
   account_id: string;
-  nonce: string; // u128 maps to string in JS
+  nonce: number;
   action: Action;
 }
 

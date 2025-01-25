@@ -15,6 +15,8 @@ impl AbstractAccountContract {
             env::panic_str("Account already exists");
         }
 
+        // No permission check needed - if account creator doesn't own the identity,
+        // subsequent method calls will fail automatically
         self.accounts.insert(
             account_id.to_string(),
             Account::new(vec![identity], self.max_nonce),
@@ -129,7 +131,7 @@ impl AbstractAccountContract {
                         env::panic_str("When enable_act_as permission is set, the identity must authorize being added through AddIdentityWithAuth");
                     }
                 } else {
-                    env::panic_str("Action not allowed");
+                    env::panic_str("Add FullAccess key requires calling AddIdentityWithAuth");
                 }
             }
             Action::RemoveIdentity(identity) => {

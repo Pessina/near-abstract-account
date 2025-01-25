@@ -46,7 +46,7 @@ export default function TransactionForm() {
         const account = await contract.getAccountById({ account_id: data.accountId })
         const transaction = AbstractAccountContractBuilder.transaction.sign({
             accountId: data.accountId,
-            nonce: account?.nonce ?? "0",
+            nonce: account?.nonce ?? 0,
             payloads:
             {
                 contract_id: data.contractId,

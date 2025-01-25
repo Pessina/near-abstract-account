@@ -56,7 +56,7 @@ export default function AccountPage() {
         const account = await contract.getAccountById({ account_id: accountId })
         const transaction = AbstractAccountContractBuilder.transaction.removeAccount({
             accountId,
-            nonce: account?.nonce ?? "0",
+            nonce: account?.nonce ?? 0,
         })
         setAuthProps({
             accountId,
@@ -69,7 +69,7 @@ export default function AccountPage() {
         const account = await contract.getAccountById({ account_id: accountId })
         const transaction = AbstractAccountContractBuilder.transaction.removeIdentity({
             accountId,
-            nonce: account?.nonce ?? "0",
+            nonce: account?.nonce ?? 0,
             authIdentity
         })
         setAuthProps({
@@ -113,7 +113,7 @@ export default function AccountPage() {
 
         const transaction = AbstractAccountContractBuilder.transaction.addIdentity({
             accountId,
-            nonce: account?.nonce ?? "0",
+            nonce: account?.nonce ?? 0,
             identity: authIdentity,
         })
 

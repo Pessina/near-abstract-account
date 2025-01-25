@@ -4,7 +4,6 @@ use interfaces::{
 };
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
-    log,
     serde::{Deserialize, Serialize},
 };
 use schemars::JsonSchema;
@@ -70,16 +69,16 @@ impl Identity {
                         }
                         None
                     })
-                    .expect("WebAuthn identity not found");
+                    .expect("WebAuthn Key ID not found on Account");
 
                 let compressed_public_key = webauthn_authenticator
                     .compressed_public_key
                     .as_ref()
-                    .expect("WebAuthn public key not found");
+                    .expect("WebAuthnAuthenticator does not have a compressed public key");
 
                 webauthn.compressed_public_key = Some(compressed_public_key.to_string());
             }
-            _ => log!("Identity is not WebAuthn, skipping"),
+            _ => {}
         }
     }
 }

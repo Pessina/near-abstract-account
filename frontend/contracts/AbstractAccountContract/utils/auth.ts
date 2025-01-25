@@ -35,7 +35,7 @@ export class AbstractAccountContractBuilder {
      */
     addIdentity: (args: {
       accountId: string;
-      nonce: string;
+      nonce: number;
       identity: Identity;
     }): Transaction => ({
       account_id: args.accountId,
@@ -52,7 +52,7 @@ export class AbstractAccountContractBuilder {
 
     addIdentityWithAuth: (args: {
       accountId: string;
-      nonce: string;
+      nonce: number;
       auth: {
         identity_with_permissions: IdentityWithPermissions;
         credentials: Credentials;
@@ -70,7 +70,7 @@ export class AbstractAccountContractBuilder {
 
     removeIdentity: (args: {
       accountId: string;
-      nonce: string;
+      nonce: number;
       authIdentity: IdentityWithPermissions;
     }): Transaction => ({
       account_id: args.accountId,
@@ -82,7 +82,7 @@ export class AbstractAccountContractBuilder {
 
     removeAccount: (args: {
       accountId: string;
-      nonce: string;
+      nonce: number;
     }): Transaction => ({
       account_id: args.accountId,
       nonce: args.nonce,
@@ -91,7 +91,7 @@ export class AbstractAccountContractBuilder {
 
     sign: (args: {
       accountId: string;
-      nonce: string;
+      nonce: number;
       payloads: SignPayloadsRequest;
     }): Transaction => ({
       account_id: args.accountId,

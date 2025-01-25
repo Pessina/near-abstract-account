@@ -11,7 +11,7 @@ export interface StorageBalance {
 
 export interface Account {
   identities: IdentityWithPermissions[];
-  nonce: string;
+  nonce: number; // u128 on RS, check support on TS later
 }
 
 export enum AuthTypeNames {

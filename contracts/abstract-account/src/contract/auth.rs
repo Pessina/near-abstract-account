@@ -173,7 +173,10 @@ impl AbstractAccountContract {
     /// * If the nonce doesn't match the account nonce
     /// * If acting as another identity without proper permissions
     pub fn validate_permission_and_account(&self, user_op: &UserOp) {
-        let account = self.accounts.get(&user_op.transaction.account_id).unwrap();
+        let account = self
+            .accounts
+            .get(&user_op.transaction.account_id)
+            .expect("Account not found");
 
         require!(
             account.get_identity(&user_op.auth.identity).is_some(),
