@@ -1,14 +1,14 @@
 import canonicalize from "canonicalize";
 
 import {
-  IdentityWithPermissions,
-  Transaction,
-} from "@/contracts/AbstractAccountContract/AbstractAccountContract";
-import {
   WalletCredentials,
   WebAuthnCredentials,
   OIDCCredentials,
 } from "@/contracts/AbstractAccountContract/types/auth";
+import {
+  Identity,
+  Transaction,
+} from "@/contracts/AbstractAccountContract/types/transaction";
 import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth";
 import { Ethereum } from "@/lib/auth/Ethereum/Ethereum";
 import { Solana } from "@/lib/auth/Solana/Solana";
@@ -57,18 +57,18 @@ export class AuthAdapter {
 
   static async getIdentityWithPermissions(
     config: AuthConfig
-  ): Promise<IdentityWithPermissions> {
+  ): Promise<Identity> {
     switch (config.type) {
       case "wallet": {
         const wallet = this.getWalletInstance(config.config);
-        const authIdentity = await wallet.getIdentityWithPermissions();
+        const authIdentity = await wallet.getIdentity();
         if (!authIdentity)
           throw new Error("Failed to get wallet auth AddIdentity");
         return authIdentity;
       }
       case "webauthn": {
         const webAuthn = new WebAuthn();
-        const authIdentity = await webAuthn.getIdentityWithPermissions({
+        const authIdentity = await webAuthn.getIdentity({
           id: config.config.username,
         });
         if (!authIdentity)
@@ -76,15 +76,12 @@ export class AuthAdapter {
         return authIdentity;
       }
       case "oidc": {
-        return AbstractAccountContractBuilder.authIdentity.oidc(
-          {
-            client_id: config.config.clientId,
-            issuer: config.config.issuer,
-            email: config.config.email,
-            sub: config.config.sub,
-          },
-          null
-        );
+        return AbstractAccountContractBuilder.authIdentity.oidc({
+          client_id: config.config.clientId,
+          issuer: config.config.issuer,
+          email: config.config.email,
+          sub: config.config.sub,
+        });
       }
     }
   }
@@ -95,15 +92,15 @@ export class AuthAdapter {
   ): Promise<
     | {
         credentials: WalletCredentials;
-        authIdentity: IdentityWithPermissions;
+        authIdentity: Identity;
       }
     | {
         credentials: WebAuthnCredentials;
-        authIdentity: IdentityWithPermissions;
+        authIdentity: Identity;
       }
     | {
         credentials: OIDCCredentials;
-        authIdentity: IdentityWithPermissions;
+        authIdentity: Identity;
       }
   > {
     const canonical = canonicalize(message);
@@ -124,15 +121,12 @@ export class AuthAdapter {
         if (!config.config.token) throw new Error("Token is required");
 
         return {
-          authIdentity: AbstractAccountContractBuilder.authIdentity.oidc(
-            {
-              client_id: config.config.clientId,
-              issuer: config.config.issuer,
-              email: config.config.email,
-              sub: config.config.sub,
-            },
-            null
-          ),
+          authIdentity: AbstractAccountContractBuilder.authIdentity.oidc({
+            client_id: config.config.clientId,
+            issuer: config.config.issuer,
+            email: config.config.email,
+            sub: config.config.sub,
+          }),
           credentials: {
             token: config.config.token,
           },

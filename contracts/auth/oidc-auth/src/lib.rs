@@ -149,8 +149,8 @@ impl OIDCAuthContract {
        - This should be updated on a secure way: decentralized oracles, zk, zk tls, dao...
     */
     pub fn update_keys(&mut self, issuer: String, keys: Vec<PublicKey>) {
-        if keys.len() != 2 {
-            panic!("Invalid number of keys");
+        if keys.is_empty() {
+            panic!("Must provide at least one key");
         }
 
         let mut key_set = self
@@ -158,8 +158,10 @@ impl OIDCAuthContract {
             .remove(&issuer)
             .unwrap_or_else(|| IterableSet::new(issuer.clone().into_bytes()));
         key_set.clear();
-        key_set.insert(keys[0].clone());
-        key_set.insert(keys[1].clone());
+
+        for key in keys {
+            key_set.insert(key);
+        }
 
         self.pub_keys.insert(issuer, key_set);
     }

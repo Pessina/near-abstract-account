@@ -67,7 +67,7 @@ export default function AccountPage() {
 
     const handleRemoveIdentityWithPermissions = async (accountId: string, authIdentity: IdentityWithPermissions) => {
         const account = await contract.getAccountById({ account_id: accountId })
-        const transaction = AbstractAccountContractBuilder.transaction.removeIdentityWithPermissions({
+        const transaction = AbstractAccountContractBuilder.transaction.removeIdentity({
             accountId,
             nonce: account?.nonce ?? "0",
             authIdentity
@@ -91,7 +91,10 @@ export default function AccountPage() {
         await contract.addAccount({
             args: {
                 account_id: accountId,
-                auth_AddIdentity: authIdentity
+                identity: {
+                    identity: authIdentity,
+                    permissions: null
+                }
             }
         });
 
@@ -108,17 +111,10 @@ export default function AccountPage() {
         const authIdentity = await AuthAdapter.getIdentityWithPermissions(config);
         const account = await contract.getAccountById({ account_id: accountId })
 
-        const transaction = AbstractAccountContractBuilder.transaction.addIdentityWithPermissions({
+        const transaction = AbstractAccountContractBuilder.transaction.addIdentity({
             accountId,
             nonce: account?.nonce ?? "0",
-            auth: {
-                identity: authIdentity,
-                credentials: (await AuthAdapter.sign({
-                    account_id: accountId,
-                    nonce: account?.nonce.toString() ?? "0",
-                    action: "AddIdentity"
-                }, config)).credentials
-            }
+            identity: authIdentity,
         })
 
         setAuthProps({

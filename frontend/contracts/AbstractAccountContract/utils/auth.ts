@@ -30,11 +30,31 @@ export class AbstractAccountContractBuilder {
     }),
   };
   static transaction = {
-    addIdentityWithPermissions: (args: {
+    /**
+     * Add identity and default to enable_act_as false
+     */
+    addIdentity: (args: {
+      accountId: string;
+      nonce: string;
+      identity: Identity;
+    }): Transaction => ({
+      account_id: args.accountId,
+      nonce: args.nonce,
+      action: {
+        AddIdentity: {
+          identity: args.identity,
+          permissions: {
+            enable_act_as: false,
+          },
+        },
+      },
+    }),
+
+    addIdentityWithAuth: (args: {
       accountId: string;
       nonce: string;
       auth: {
-        identity: IdentityWithPermissions;
+        identity_with_permissions: IdentityWithPermissions;
         credentials: Credentials;
       };
     }): Transaction => ({
@@ -42,13 +62,13 @@ export class AbstractAccountContractBuilder {
       nonce: args.nonce,
       action: {
         AddIdentityWithAuth: {
-          identity_with_permissions: args.auth.identity,
+          identity_with_permissions: args.auth.identity_with_permissions,
           credentials: args.auth.credentials,
         },
       },
     }),
 
-    removeIdentityWithPermissions: (args: {
+    removeIdentity: (args: {
       accountId: string;
       nonce: string;
       authIdentity: IdentityWithPermissions;

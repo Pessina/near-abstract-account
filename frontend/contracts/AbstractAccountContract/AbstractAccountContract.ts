@@ -31,7 +31,7 @@ export type AbstractAccountContract = Contract & {
   add_account: (
     args: ContractChangeMethodArgs<{
       account_id: string;
-      auth_AddIdentity: IdentityWithPermissions;
+      identity: IdentityWithPermissions;
     }>
   ) => Promise<void>;
   get_account_by_id: (args: { account_id: string }) => Promise<Account | null>;

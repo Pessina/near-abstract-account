@@ -32,10 +32,6 @@ export class OIDCAuthContract {
   }
 
   async updateKeys(issuer: string, keys: PublicKey[]): Promise<void> {
-    if (keys.length !== 2) {
-      throw new Error("Invalid number of keys");
-    }
-
     return await this.contract.update_keys({
       issuer,
       keys,
