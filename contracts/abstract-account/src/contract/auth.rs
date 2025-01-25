@@ -120,43 +120,22 @@ impl AbstractAccountContract {
         identity: Identity,
         credentials: Value,
         signed_message: String,
-        account: &Account,
         authenticate_callback: Promise,
     ) -> Promise {
         let promise = match identity {
-            Identity::WebAuthn(ref webauthn) => {
-                let webauthn_authenticator = account
-                    .identities
-                    .iter()
-                    .find_map(|identity_with_permissions| {
-                        if let Identity::WebAuthn(ref current_webauthn) =
-                            identity_with_permissions.identity
-                        {
-                            if current_webauthn.key_id == webauthn.key_id {
-                                return Some(current_webauthn);
-                            }
-                        }
-                        None
-                    })
-                    .expect("WebAuthn identity not found");
-
-                let compressed_public_key = webauthn_authenticator
-                    .compressed_public_key
-                    .as_ref()
-                    .expect("WebAuthn public key not found");
-
-                // TODO: Temporary disable using selected auth identity for passkeys
-                // if let Identity::WebAuthn(ref mut webauthn) = selected_identity {
-                //     webauthn.compressed_public_key = Some(compressed_public_key.to_string());
-                // }
-
+            Identity::WebAuthn(webauthn) => {
                 let credentials = parse_credentials(&credentials);
-
-                self.handle_webauthn_auth(
-                    credentials,
-                    signed_message,
-                    compressed_public_key.to_string(),
-                )
+                if let Some(compressed_public_key) = webauthn.compressed_public_key {
+                    self.handle_webauthn_auth(
+                        credentials,
+                        signed_message,
+                        compressed_public_key.to_string(),
+                    )
+                } else {
+                    env::panic_str(
+                        "WebAuthn compressed public key not found, please call inject_webauthn_compressed_public_key first",
+                    );
+                }
             }
             Identity::Wallet(wallet) => {
                 let wallet_type = match wallet.wallet_type {

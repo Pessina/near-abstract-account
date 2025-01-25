@@ -108,11 +108,13 @@ impl AbstractAccountContract {
                 // Decrement nonce since it was incremented on auth method
                 let signed_message = action.to_signed_message((&account_id, account.nonce - 1));
 
+                let mut identity = auth.identity_with_permissions.identity.clone();
+                identity.inject_webauthn_compressed_public_key(&account);
+
                 self.validate_credentials(
-                    auth.identity_with_permissions.identity.clone(),
+                    identity,
                     auth.credentials,
                     signed_message,
-                    &account,
                     Self::ext(env::current_account_id())
                         .add_identity(account_id, auth.identity_with_permissions),
                 );

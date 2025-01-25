@@ -4,9 +4,12 @@ use interfaces::{
 };
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
+    log,
     serde::{Deserialize, Serialize},
 };
 use schemars::JsonSchema;
+
+use super::account::Account;
 
 #[derive(
     Debug,
@@ -46,6 +49,39 @@ pub enum Identity {
     WebAuthn(WebAuthnAuthenticator),
     OIDC(OIDCAuthenticator),
     Account(String),
+}
+
+impl Identity {
+    /// Injects the compressed public key into a WebAuthn identity from an account's stored identity
+    /// If the identity is not WebAuthn, logs a message and does nothing
+    pub fn inject_webauthn_compressed_public_key(&mut self, account: &Account) {
+        match self {
+            Identity::WebAuthn(webauthn) => {
+                let webauthn_authenticator = account
+                    .identities
+                    .iter()
+                    .find_map(|identity_with_permissions| {
+                        if let Identity::WebAuthn(ref current_webauthn) =
+                            identity_with_permissions.identity
+                        {
+                            if current_webauthn.key_id == webauthn.key_id {
+                                return Some(current_webauthn);
+                            }
+                        }
+                        None
+                    })
+                    .expect("WebAuthn identity not found");
+
+                let compressed_public_key = webauthn_authenticator
+                    .compressed_public_key
+                    .as_ref()
+                    .expect("WebAuthn public key not found");
+
+                webauthn.compressed_public_key = Some(compressed_public_key.to_string());
+            }
+            _ => log!("Identity is not WebAuthn, skipping"),
+        }
+    }
 }
 
 #[derive(

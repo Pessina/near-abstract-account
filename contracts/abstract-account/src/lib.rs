@@ -84,23 +84,25 @@ impl AbstractAccountContract {
 
         let account_id = user_op.transaction.account_id.clone();
         let account = self.accounts.get_mut(&account_id).unwrap();
+
         account.nonce += 1;
+
+        let mut identity = user_op.auth.identity.clone();
+        identity.inject_webauthn_compressed_public_key(account);
 
         let act_as = if let Some(act_as) = user_op.act_as {
             act_as
         } else {
-            user_op.auth.identity.clone()
+            identity.clone()
         };
 
         let transaction = user_op.transaction;
         let signed_message = transaction.to_signed_message(());
-        let account_clone = account.clone();
 
         self.validate_credentials(
-            user_op.auth.identity,
+            identity,
             user_op.auth.credentials,
             signed_message,
-            &account_clone,
             Self::ext(env::current_account_id())
                 .with_attached_deposit(env::attached_deposit())
                 .auth_callback(account_id, act_as, transaction, predecessor),
