@@ -20,7 +20,14 @@ use schemars::JsonSchema;
     Clone,
 )]
 #[serde(crate = "near_sdk::serde")]
-pub struct IdentityPermissions {}
+pub struct IdentityPermissions {
+    pub enable_act_as: bool,
+    /*
+    TODO: Add other permissions here
+    - whitelisted actions/methods/contracts/accounts/tokens
+    - spent allowance on gas/transfer per day and absolute limit
+    */
+}
 
 #[derive(
     Debug,

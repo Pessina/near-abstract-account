@@ -24,6 +24,12 @@ impl Account {
         self.auth_identities.contains(auth_identity)
     }
 
+    pub fn get_auth_identity(&self, auth_identity: &AuthIdentity) -> Option<&AuthIdentity> {
+        self.auth_identities
+            .iter()
+            .find(|curr| curr == &auth_identity)
+    }
+
     pub fn add_auth_identity(&mut self, auth_identity: AuthIdentity) {
         self.auth_identities.push(auth_identity);
     }

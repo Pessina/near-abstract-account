@@ -104,6 +104,17 @@ impl AbstractAccountContract {
             .verify_p256(webauthn_data, compressed_public_key)
     }
 
+    /// Handles credentials validation against the provided AuthIdentity and signed message authorizing executions
+    ///
+    /// # Arguments
+    /// * `authenticator` - The authentication method being used
+    /// * `credentials` - The credentials provided for authentication
+    /// * `signed_message` - The message that was signed authorizing the execution
+    /// * `account` - The account being authenticated against
+    /// * `authenticate_callback` - Promise to execute if authentication succeeds
+    ///
+    /// # Returns
+    /// A Promise that resolves to a boolean indicating whether the authentication was successful
     pub fn validate_credentials(
         &self,
         authenticator: AuthTypes,
@@ -169,5 +180,37 @@ impl AbstractAccountContract {
         };
 
         promise.then(authenticate_callback)
+    }
+
+    /// Validates that the user operation has valid permissions and account details
+    ///
+    /// # Arguments
+    /// * `user_op` - The user operation to validate
+    ///
+    /// # Panics
+    /// * If the auth identity is not found in the account
+    /// * If the nonce doesn't match the account nonce
+    /// * If acting as another identity without proper permissions
+    pub fn validate_permission_and_account(&self, user_op: &UserOp) {
+        let account = self.accounts.get(&user_op.transaction.account_id).unwrap();
+
+        require!(
+            account.has_auth_identity(&user_op.auth.auth_identity),
+            "Auth identity not found in account"
+        );
+
+        require!(account.nonce == user_op.transaction.nonce, "Nonce mismatch");
+
+        if let Some(ref act_as) = user_op.act_as {
+            let auth_identity = account
+                .get_auth_identity(act_as)
+                .expect("Auth identity not found");
+
+            if let Some(ref permissions) = auth_identity.permissions {
+                if !permissions.enable_act_as {
+                    env::panic_str("Auth identity does not have enable_act_as permission");
+                }
+            }
+        }
     }
 }

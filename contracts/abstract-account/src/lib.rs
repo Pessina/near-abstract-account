@@ -5,7 +5,7 @@ mod utils;
 
 use interfaces::{auth::wallet::WalletType, traits::signable_message::SignableMessage};
 use near_sdk::{
-    env, near, require,
+    env, near,
     serde::{Deserialize, Serialize},
     store::IterableMap,
     AccountId, Promise,
@@ -80,23 +80,13 @@ impl AbstractAccountContract {
     #[payable]
     pub fn auth(&mut self, user_op: UserOp) -> Promise {
         let predecessor = env::predecessor_account_id();
+        self.validate_permission_and_account(&user_op);
+
         let account_id = user_op.transaction.account_id.clone();
         let account = self.accounts.get_mut(&account_id).unwrap();
-
-        require!(
-            account.has_auth_identity(&user_op.auth.auth_identity),
-            "Auth identity not found in account"
-        );
-
-        require!(account.nonce == user_op.transaction.nonce, "Nonce mismatch");
-
         account.nonce += 1;
 
-        let act_as = if let Some(act_as) = user_op.act_as.clone() {
-            require!(
-                account.has_auth_identity(&act_as),
-                "Selected auth identity not found in account"
-            );
+        let act_as = if let Some(act_as) = user_op.act_as {
             act_as
         } else {
             user_op.auth.auth_identity.clone()
@@ -135,6 +125,7 @@ impl AbstractAccountContract {
                     }
                     action @ (Action::RemoveAccount
                     | Action::AddAuthIdentity(_)
+                    | Action::AddAuthIdentityWithAuth(_)
                     | Action::RemoveAuthIdentity(_)) => {
                         self.handle_account_action(predecessor, account_id, action);
                     }

@@ -18,7 +18,7 @@ pub struct WebAuthnAuthenticator {
 impl Path for WebAuthnAuthenticator {
     fn path(&self) -> String {
         format!(
-            "{}",
+            "webauthn/{}",
             self.compressed_public_key
                 .as_ref()
                 .expect("Compressed public key not set for WebAuthn")

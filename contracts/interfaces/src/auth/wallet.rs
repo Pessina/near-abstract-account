@@ -39,27 +39,27 @@ pub struct WalletAuthenticator {
     pub wallet_type: WalletType,
     pub public_key: String, // TODO: Compressed public key if possible
 }
-
 impl Path for WalletAuthenticator {
     fn path(&self) -> String {
-        match self.wallet_type {
+        let path = match self.wallet_type {
             WalletType::Ethereum => {
                 let key = self
                     .public_key
                     .strip_prefix("0x")
                     .unwrap_or(&self.public_key);
+
                 if let Ok(public_key) = hex::decode(key) {
                     let hash = near_sdk::env::keccak256(&public_key[1..]);
                     let address = &hash[12..];
                     format!("0x{}", hex::encode(address))
                 } else {
-                    format!("{}", self.public_key)
+                    self.public_key.clone()
                 }
             }
-            WalletType::Solana => {
-                format!("{}", self.public_key)
-            }
-        }
+            WalletType::Solana => self.public_key.clone(),
+        };
+
+        format!("wallet/{}", path)
     }
 }
 

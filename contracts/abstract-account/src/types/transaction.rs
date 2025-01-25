@@ -8,6 +8,8 @@ use near_sdk::{
 use schemars::JsonSchema;
 use serde_json::Value;
 
+use super::auth_identity::IdentityPermissions;
+
 #[derive(Deserialize, Serialize, JsonSchema, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub struct UserOp {
@@ -46,13 +48,14 @@ impl SignableMessage for Transaction {
 pub enum Action {
     RemoveAccount,
     /*
-    On AddAuthIdentity, AuthIdentity signer must sign the account_id, nonce and action to:
+    Credentials must contain the signature of account_id, nonce, action, permissions to:
     1. Prove ownership of the AuthIdentity
     2. Declare which account it intends to be added to
     3. Prevent replay attacks
-    4. Declare intention to add the AuthIdentity to the account
+    4. Declare intention to add the AuthIdentity to the account with the given permissions
     */
-    AddAuthIdentity(Auth),
+    AddAuthIdentityWithAuth(Auth),
+    AddAuthIdentity(AuthIdentity),
     RemoveAuthIdentity(AuthIdentity),
     Sign(SignPayloadsRequest),
 }
@@ -63,23 +66,25 @@ pub struct ActionSignableMessage {
     pub account_id: String,
     pub nonce: String,
     pub action: String,
+    pub permissions: Option<IdentityPermissions>,
 }
 
 impl SignableMessage for Action {
     type Context<'a> = (&'a str, u128);
 
     fn to_signed_message(&self, (account_id, nonce): Self::Context<'_>) -> String {
-        let action = match self {
-            Action::AddAuthIdentity(_) => "AddAuthIdentity",
+        match self {
+            Action::AddAuthIdentityWithAuth(auth) => {
+                serde_json_canonicalizer::to_string(&ActionSignableMessage {
+                    account_id: account_id.to_string(),
+                    nonce: nonce.to_string(),
+                    action: "AddAuthIdentityWithAuth".to_string(),
+                    permissions: auth.auth_identity.permissions.clone(),
+                })
+                .expect("Failed to canonicalize action")
+            }
             _ => env::panic_str("to_signed_message not supported"),
-        };
-
-        serde_json_canonicalizer::to_string(&ActionSignableMessage {
-            account_id: account_id.to_string(),
-            nonce: nonce.to_string(),
-            action: action.to_string(),
-        })
-        .expect("Failed to canonicalize transaction")
+        }
     }
 }
 
