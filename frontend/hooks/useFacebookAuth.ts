@@ -64,7 +64,7 @@ export function useFacebookAuth(config: FacebookAuthConfig) {
         }
 
         // Always use our callback URL
-        const redirectUri = `${window.location.origin}/auth/facebook/callback`;
+        const redirectUri = `${window.location.origin}/facebook/callback`;
         const url = new URL(
           `https://www.facebook.com/${OAUTH_CONFIG.FACEBOOK_API_VERSION}/dialog/oauth`
         );

@@ -131,8 +131,8 @@ export default function RegisterPage() {
                         <FacebookButton
                             text="Register with Facebook"
                             nonce=""
-                            onSuccess={(idToken) => {
-                                const { issuer, email } = parseOIDCToken(idToken)
+                            onSuccess={(token) => {
+                                const { issuer, email } = parseOIDCToken(token)
                                 handleRegister({
                                     type: "oidc",
                                     config: {
@@ -140,11 +140,14 @@ export default function RegisterPage() {
                                         issuer,
                                         email,
                                         sub: null,
-                                        token: idToken
+                                        token
                                     }
                                 })
                             }}
-                            onError={() => setError("Facebook authentication failed")}
+                            onError={(error) => {
+                                const message = error.message || "Facebook authentication failed"
+                                setError(message)
+                            }}
                         />
                     </div>
 
