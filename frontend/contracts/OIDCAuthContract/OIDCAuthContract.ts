@@ -1,12 +1,12 @@
 import { Contract, Account as NearAccount } from "near-api-js";
 
-interface PublicKey {
+export interface PublicKey {
   kid: string;
   n: string;
   e: string;
   alg: string;
   kty: string;
-  use_: string; // Matches Rust struct field name
+  use: string; // Matches Rust struct field name
 }
 
 type OIDCAuthContractType = Contract & {
