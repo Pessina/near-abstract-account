@@ -1,39 +1,23 @@
 "use client";
 
+import React from "react";
+
 import { Button } from "@/components/ui/button";
-import Image from "next/image";
 
 interface AuthButtonProps {
     onClick: () => void;
-    imageSrc: string;
-    imageAlt: string;
     buttonText: string;
-    disabled?: boolean;
+    className?: string;
 }
 
-const AuthButton = ({
-    onClick,
-    imageSrc,
-    imageAlt,
-    buttonText,
-    disabled = false
-}: AuthButtonProps) => {
+export default function AuthButton({ onClick, buttonText, className }: AuthButtonProps) {
     return (
         <Button
             onClick={onClick}
-            className="flex items-center justify-center gap-2"
             variant="outline"
-            disabled={disabled}
+            className={`flex-1 flex items-center justify-center gap-2 ${className || ""}`}
         >
-            <Image
-                src={imageSrc}
-                alt={imageAlt}
-                width={24}
-                height={24}
-            />
-            <span>{buttonText}</span>
+            {buttonText}
         </Button>
     );
-};
-
-export default AuthButton;
+}

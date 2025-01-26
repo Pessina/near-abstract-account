@@ -1,102 +1,145 @@
 "use client";
 
+import { ChevronRight, Copy, RefreshCw } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useOIDCAuthContract } from "@/contracts/OIDCAuthContract/useOIDCAuthContract";
+import { useToast } from "@/hooks/use-toast";
 
-interface PublicKey {
-  kid: string;
-  n: string;
-  e: string;
-  alg: string;
-  kty: string;
-  use: string;
-}
+type OIDCKeys = {
+  google?: {
+    client_id: string;
+    client_secret: string;
+  };
+  facebook?: {
+    client_id: string;
+    client_secret: string;
+  };
+  auth0?: {
+    client_id: string;
+    client_secret: string;
+  };
+};
 
 export default function UpdateOIDCKeys() {
-  const { contract } = useOIDCAuthContract();
-  const [status, setStatus] = useState<string>("");
+  const [keys, setKeys] = useState<OIDCKeys | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { contract } = useOIDCAuthContract();
+  const { toast } = useToast();
 
-  const fetchAndUpdateKeys = async () => {
+  const handleGetKeys = async () => {
+    if (!contract) return;
     try {
       setIsLoading(true);
-      setStatus("Fetching keys...");
-
-      const providers = [
-        {
-          name: "Google",
-          url: "/admin/api/oidc/google/keys",
-          issuer: "https://accounts.google.com"
-        },
-        {
-          name: "Facebook",
-          url: "/admin/api/oidc/facebook/keys",
-          issuer: "https://www.facebook.com"
-        },
-        {
-          name: "Auth0",
-          url: "/admin/api/oidc/auth0/keys",
-          issuer: "https://dev-um3ne30lucm6ehqq.us.auth0.com/"
-        }
-      ];
-
-      const responses = await Promise.all(
-        providers.map(provider => fetch(provider.url))
-      );
-
-      const data = await Promise.all(
-        responses.map(response => response.json())
-      );
-
-      responses.forEach((response, i) => {
-        if (!response.ok) {
-          throw new Error(data[i].error || `Failed to fetch ${providers[i].name} keys`);
-        }
+      const fetchedKeys = await contract.getKeys();
+      setKeys(fetchedKeys as OIDCKeys);
+      toast({
+        title: "Success",
+        description: "Keys fetched successfully",
       });
-
-      const formattedKeys = data.map(providerData =>
-        providerData.keys.map((key: PublicKey) => ({
-          kid: key.kid,
-          n: key.n,
-          e: key.e,
-          alg: key.alg,
-          kty: key.kty,
-          use: key.use || "",
-        }))
-      );
-
-      await Promise.all(
-        providers.map((provider, i) =>
-          contract?.updateKeys(provider.issuer, formattedKeys[i])
-        )
-      );
-
-      setStatus("Successfully updated keys");
-    } catch (error) {
-      setStatus(`Error updating keys: ${error}`);
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to fetch keys",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const getKeys = async () => {
-    const keys = await contract?.getKeys()
-    console.log({ keys })
-  }
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Copied",
+        description: "Value copied to clipboard",
+      });
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to copy to clipboard",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
-    <div className="space-y-4">
-      <div className="flex space-x-4">
-        <Button onClick={fetchAndUpdateKeys} disabled={isLoading}>
-          Update Keys
-        </Button>
-        <Button onClick={getKeys}>
-          Get keys
-        </Button>
-      </div>
-      {status && <p className="text-sm text-gray-500">{status}</p>}
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>OIDC Keys Management</CardTitle>
+        <CardDescription>View and update OIDC provider keys</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex justify-between items-center">
+          <Button
+            onClick={handleGetKeys}
+            disabled={isLoading}
+            variant="outline"
+          >
+            {isLoading ? (
+              <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Fetch Keys
+          </Button>
+        </div>
+
+        {keys && (
+          <div className="space-y-4">
+            {Object.entries(keys).map(([provider, providerKeys]) => (
+              providerKeys && (
+                <Collapsible key={provider}>
+                  <div className="flex items-center space-x-4 py-2">
+                    <CollapsibleTrigger className="flex items-center hover:text-primary transition-colors">
+                      <ChevronRight className="h-4 w-4" />
+                      <span className="ml-2 capitalize font-medium">{provider}</span>
+                    </CollapsibleTrigger>
+                  </div>
+                  <CollapsibleContent>
+                    <div className="pl-6 space-y-2">
+                      <div className="flex justify-between items-center py-1">
+                        <span className="text-sm font-medium">Client ID:</span>
+                        <div className="flex items-center space-x-2">
+                          <code className="bg-muted px-2 py-1 rounded text-sm">
+                            {providerKeys.client_id}
+                          </code>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => copyToClipboard(providerKeys.client_id)}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center py-1">
+                        <span className="text-sm font-medium">Client Secret:</span>
+                        <div className="flex items-center space-x-2">
+                          <code className="bg-muted px-2 py-1 rounded text-sm">
+                            {providerKeys.client_secret}
+                          </code>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => copyToClipboard(providerKeys.client_secret)}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              )
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

@@ -1,6 +1,6 @@
+import { useCallback } from "react";
+
 import { generatePKCEVerifier, generatePKCEChallenge } from "@/lib/pkce";
-import { useEffect, useCallback } from "react";
-import { getCurrentCleanUrl } from "@/lib/url";
 
 // Constants for OAuth configuration
 const OAUTH_CONFIG = {
@@ -33,20 +33,26 @@ interface FacebookAuthConfig {
  * Implements PKCE flow for enhanced security
  */
 export function useFacebookAuth(config: FacebookAuthConfig) {
-  /**
-   * Initiates the Facebook login process
-   * Sets up PKCE parameters and opens Facebook OAuth dialog in new tab
-   */
   const initiateLogin = useCallback(
     async (args?: { nonce?: string }) => {
+      let popup: Window | null = null;
+
+      const cleanup = () => {
+        localStorage.removeItem(OAUTH_CONFIG.STORAGE_KEYS.CODE_VERIFIER);
+        localStorage.removeItem(OAUTH_CONFIG.STORAGE_KEYS.STATE);
+        if (popup && !popup.closed) {
+          popup.close();
+        }
+      };
+
       try {
-        // Generate PKCE values with 256 bits of entropy
+        // Generate PKCE values
         const codeVerifier = generatePKCEVerifier();
         const codeChallenge = await generatePKCEChallenge(codeVerifier);
         const state = generatePKCEVerifier();
         const nonce = args?.nonce || config?.nonce || generatePKCEVerifier();
 
-        // Store auth state in localStorage to persist across tabs
+        // Store auth state
         localStorage.setItem(
           OAUTH_CONFIG.STORAGE_KEYS.CODE_VERIFIER,
           codeVerifier
@@ -57,88 +63,118 @@ export function useFacebookAuth(config: FacebookAuthConfig) {
           throw new Error("Facebook App ID is required");
         }
 
-        const redirectUri = config.redirectUri || getCurrentCleanUrl();
+        // Always use our callback URL
+        const redirectUri = `${window.location.origin}/auth/facebook/callback`;
         const url = new URL(
           `https://www.facebook.com/${OAUTH_CONFIG.FACEBOOK_API_VERSION}/dialog/oauth`
         );
 
+        // Add required OIDC parameters
         url.searchParams.append("client_id", config.appId);
         url.searchParams.append("redirect_uri", redirectUri);
         url.searchParams.append("state", state);
-        url.searchParams.append("scope", config?.scope || "openid");
-        url.searchParams.append(
-          "response_type",
-          config?.responseType || "code"
-        );
+        url.searchParams.append("scope", "openid " + (config?.scope || ""));
+        url.searchParams.append("response_type", "code");
         url.searchParams.append("code_challenge", codeChallenge);
-        // Always use S256 code challenge method for better security
         url.searchParams.append("code_challenge_method", "S256");
         url.searchParams.append("nonce", nonce);
 
-        // Open auth URL in new tab
-        const authWindow = window.open(url.toString(), "_blank");
-        if (!authWindow) {
-          throw new Error("Failed to open auth window");
-        }
+        // Create a promise that resolves when the code is received
+        const authPromise = new Promise<void>((resolve, reject) => {
+          const messageHandler = async (event: MessageEvent) => {
+            // Verify origin
+            if (event.origin !== window.location.origin) return;
 
-        // Listen for messages from auth window
-        window.addEventListener("message", async function authListener(event) {
-          // Verify origin
-          const redirectOrigin = new URL(redirectUri).origin;
-          if (event.origin !== redirectOrigin) return;
+            if (event.data?.type === "FACEBOOK_AUTH_SUCCESS") {
+              const { code, returnedState } = event.data;
 
-          // Handle auth response
-          if (event.data.type === "FACEBOOK_AUTH_SUCCESS") {
-            const { code, state: returnedState } = event.data;
+              try {
+                // Validate state
+                if (returnedState !== state) {
+                  throw new Error("Invalid state parameter");
+                }
 
-            try {
-              // Validate state parameter to prevent CSRF attacks
-              if (returnedState !== state) {
-                throw new Error("Invalid state parameter");
+                // Exchange code for token using PKCE
+                const tokenUrl = new URL(
+                  `https://graph.facebook.com/${OAUTH_CONFIG.FACEBOOK_API_VERSION}/oauth/access_token`
+                );
+
+                const params = new URLSearchParams({
+                  client_id: config.appId,
+                  redirect_uri: redirectUri,
+                  code_verifier: codeVerifier,
+                  code: code,
+                });
+
+                const response = await fetch(
+                  `${tokenUrl.toString()}?${params.toString()}`,
+                  {
+                    method: "GET",
+                    headers: { Accept: "application/json" },
+                  }
+                );
+
+                if (!response.ok) {
+                  throw new Error("Failed to fetch access token");
+                }
+
+                const data = (await response.json()) as FacebookTokenResponse;
+
+                if (data.access_token && config.onSuccess) {
+                  config.onSuccess(data.id_token);
+                  resolve();
+                } else {
+                  throw new Error("Access token not received");
+                }
+              } catch (error) {
+                if (error instanceof Error && config.onError) {
+                  config.onError(error);
+                }
+                console.error(error);
+                reject(error);
+              } finally {
+                window.removeEventListener("message", messageHandler);
+                cleanup();
               }
-
-              const tokenUrl = new URL(
-                `https://graph.facebook.com/${OAUTH_CONFIG.FACEBOOK_API_VERSION}/oauth/access_token`
-              );
-
-              tokenUrl.searchParams.append("client_id", config.appId);
-              tokenUrl.searchParams.append("redirect_uri", redirectUri);
-              tokenUrl.searchParams.append("code_verifier", codeVerifier);
-              tokenUrl.searchParams.append("code", code);
-
-              const response = await fetch(tokenUrl.toString(), {
-                method: "GET",
-                headers: {
-                  Accept: "application/json",
-                },
-              });
-
-              if (!response.ok) {
-                throw new Error("Failed to fetch access token");
-              }
-
-              const data = (await response.json()) as FacebookTokenResponse;
-
-              if (data.access_token && config.onSuccess) {
-                config.onSuccess(data.id_token);
-              } else {
-                throw new Error("Access token not received");
-              }
-            } catch (error: unknown) {
-              if (error instanceof Error && config.onError) {
-                config.onError(error);
-              }
-              console.error(error);
-            } finally {
-              // Clean up
-              window.removeEventListener("message", authListener);
-              localStorage.removeItem(OAUTH_CONFIG.STORAGE_KEYS.CODE_VERIFIER);
-              localStorage.removeItem(OAUTH_CONFIG.STORAGE_KEYS.STATE);
-              authWindow.close();
+            } else if (event.data?.type === "FACEBOOK_AUTH_ERROR") {
+              const { error } = event.data;
+              window.removeEventListener("message", messageHandler);
+              cleanup();
+              reject(new Error(error));
             }
+          };
+
+          window.addEventListener("message", messageHandler);
+
+          // Open popup window
+          const width = 600;
+          const height = 700;
+          const left = Math.max(
+            0,
+            (window.innerWidth - width) / 2 + window.screenX
+          );
+          const top = Math.max(
+            0,
+            (window.innerHeight - height) / 2 + window.screenY
+          );
+
+          popup = window.open(
+            url.toString(),
+            "facebook-auth-window",
+            `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,location=no,status=no,scrollbars=yes`
+          );
+
+          if (!popup) {
+            throw new Error(
+              "Failed to open popup window. Please allow popups for this site."
+            );
           }
         });
-      } catch (error: unknown) {
+
+        // Wait for authentication to complete
+        await authPromise;
+      } catch (error) {
+        cleanup();
         if (error instanceof Error && config.onError) {
           config.onError(error);
         }
@@ -147,35 +183,6 @@ export function useFacebookAuth(config: FacebookAuthConfig) {
     },
     [config]
   );
-
-  // Handle OAuth callback on component mount
-  useEffect(() => {
-    const handleCallback = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const code = urlParams.get("code");
-      const stateParam = urlParams.get("state");
-
-      // Early return if no auth code present
-      if (!code || !stateParam) {
-        return;
-      }
-
-      // Post message to parent window and close
-      if (window.opener) {
-        window.opener.postMessage(
-          {
-            type: "FACEBOOK_AUTH_SUCCESS",
-            code,
-            state: stateParam,
-          },
-          window.location.origin
-        );
-        window.close();
-      }
-    };
-
-    handleCallback();
-  }, []);
 
   return {
     initiateLogin,

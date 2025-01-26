@@ -117,7 +117,7 @@ export class AbstractAccountContractClass {
     return this.contract.list_identities(obj);
   }
 
-  async getAccountByIdentityWithPermissions(
+  async getAccountByIdentity(
     obj: Parameters<AbstractAccountContract["get_account_by_identity"]>[0]
   ) {
     return this.contract.get_account_by_identity(obj);

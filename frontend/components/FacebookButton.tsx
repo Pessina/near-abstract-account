@@ -17,6 +17,7 @@ export default function FacebookButton({ text, onSuccess, onError, nonce }: Face
         scope: 'email',
         appId: facebookAppId,
         onSuccess: (idToken) => {
+            console.log({ idToken })
             if (idToken) {
                 onSuccess(idToken);
             } else {

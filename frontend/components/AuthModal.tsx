@@ -1,52 +1,98 @@
 "use client"
 
 import canonicalize from "canonicalize"
-import React from "react"
+import { useState } from "react"
 
-import { AuthAdapter } from "@/app/_utils/AuthAdapter"
-import AuthButton from "@/components/AuthButton"
-import FacebookButton from "@/components/FacebookButton"
-import GoogleButton from "@/components/GoogleButton"
-import { Button } from "@/components/ui/button"
+import AuthenticationButtons from "./AuthenticationButtons"
+import FacebookButton from "./FacebookButton"
+import GoogleButton from "./GoogleButton"
+
+import { AuthConfig, AuthAdapter } from "@/app/_utils/AuthAdapter"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Transaction } from "@/contracts/AbstractAccountContract/types/transaction"
+import { Separator } from "@/components/ui/separator"
+import { UserOperation, Transaction } from "@/contracts/AbstractAccountContract/types/transaction"
 import { useAbstractAccountContract } from "@/contracts/AbstractAccountContract/useAbstractAccountContract"
+import { useToast } from "@/hooks/use-toast"
 import { useEnv } from "@/hooks/useEnv"
 import { NEAR_MAX_GAS } from "@/lib/constants"
 import { parseOIDCToken } from "@/lib/utils"
 
-type AuthModalProps = {
+interface AuthModalProps {
     isOpen: boolean
     onClose: () => void
-    transaction: Transaction
     accountId: string
+    transaction: Transaction
+    userOp: UserOperation
 }
 
-export default function AuthModal({ isOpen, onClose, transaction, accountId }: AuthModalProps) {
-    const { contract } = useAbstractAccountContract()
+interface Permissions {
+    enable_act_as: boolean
+}
+
+export default function AuthModal({
+    isOpen,
+    onClose,
+    accountId,
+    userOp,
+}: AuthModalProps) {
+    const [permissions, setPermissions] = useState<Permissions>({
+        enable_act_as: false,
+    })
+    const { toast } = useToast()
     const { googleClientId, facebookAppId } = useEnv()
+    const { contract } = useAbstractAccountContract()
 
-    const transactionCanonicalized = canonicalize(transaction)
+    const canonicalizedTransaction = canonicalize(userOp.transaction)
 
-    if (!contract) {
-        return <div>Loading...</div>
+    const handleAuth = async (config: AuthConfig) => {
+        try {
+            if (!contract) {
+                throw new Error("Contract not initialized")
+            }
+
+            const { credentials, authIdentity } = await AuthAdapter.sign(userOp.transaction, config)
+
+            const updatedUserOp: UserOperation = {
+                ...userOp,
+                auth: {
+                    identity: authIdentity,
+                    credentials
+                }
+            }
+
+            await contract.auth({
+                args: {
+                    user_op: updatedUserOp
+                },
+                gas: NEAR_MAX_GAS,
+                amount: "10"
+            })
+
+            onClose()
+            toast({
+                title: "Success",
+                description: "Transaction executed successfully",
+            })
+        } catch (err) {
+            toast({
+                title: "Error",
+                description: err instanceof Error ? err.message : "Transaction failed",
+                variant: "destructive",
+            })
+        }
     }
 
-    const handleAuthenticate = async (config: Parameters<typeof AuthAdapter.sign>[1]) => {
-        const result = await AuthAdapter.sign(transaction, config)
-        await contract.auth({
-            args: {
-                user_op: {
-                    transaction: transaction,
-                    act_as: undefined, // TODO: Should be customizable in the future
-                    auth: {
-                        identity: result.authIdentity,
-                        credentials: result.credentials,
-                    },
-                },
-            },
-            gas: NEAR_MAX_GAS,
-            amount: "10" // TODO: Should be calculated dynamic base don the contract fee
+    const handleSocialLogin = (token: string, provider: "google" | "facebook") => {
+        const { issuer, email } = parseOIDCToken(token)
+        handleAuth({
+            type: "oidc",
+            config: {
+                clientId: provider === "google" ? googleClientId : facebookAppId,
+                issuer,
+                email,
+                sub: null,
+                token
+            }
         })
     }
 
@@ -56,104 +102,63 @@ export default function AuthModal({ isOpen, onClose, transaction, accountId }: A
                 <DialogHeader>
                     <DialogTitle>Authentication Required</DialogTitle>
                     <DialogDescription>
-                        Choose an authentication method to authorize this transaction
+                        Please authenticate to proceed with the transaction
                     </DialogDescription>
                 </DialogHeader>
+
                 <div className="space-y-4">
-                    <div className="space-y-4">
-                        <h3 className="text-lg font-semibold">Passkey Authentication</h3>
-                        <div className="flex space-x-4">
-                            <Button
-                                onClick={() => {
-                                    handleAuthenticate({
-                                        type: "webauthn",
-                                        config: {
-                                            username: accountId
-                                        }
-                                    })
-                                }}
-                                variant="secondary"
-                            >
-                                Authenticate with Passkey
-                            </Button>
+                    <AuthenticationButtons onAuth={handleAuth} accountId={accountId} />
+
+                    <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-background px-2 text-muted-foreground">
+                                Or continue with
+                            </span>
                         </div>
                     </div>
-                    <div className="flex flex-col gap-4">
-                        <h3 className="text-lg font-semibold">Social Login</h3>
-                        <div className="flex gap-2">
-                            <GoogleButton
-                                nonce={transactionCanonicalized}
-                                onSuccess={(token) => {
-                                    const { issuer, email } = parseOIDCToken(token)
-                                    handleAuthenticate({
-                                        type: "oidc",
-                                        config: {
-                                            clientId: googleClientId,
-                                            issuer,
-                                            email,
-                                            sub: null,
-                                            token
-                                        }
-                                    })
-                                }}
-                                onError={() => {
-                                    console.error("Google authentication failed")
-                                }}
-                            />
-                        </div>
-                        <div className="flex gap-2">
-                            <FacebookButton
-                                nonce={transactionCanonicalized}
-                                text="Authenticate with Facebook"
-                                onSuccess={(token) => {
-                                    const { issuer, email } = parseOIDCToken(token)
-                                    handleAuthenticate({
-                                        type: "oidc",
-                                        config: {
-                                            clientId: facebookAppId,
-                                            issuer,
-                                            email,
-                                            sub: null,
-                                            token
-                                        }
-                                    })
-                                }}
-                                onError={() => {
-                                    console.error("Facebook authentication failed")
-                                }}
-                            />
-                        </div>
-                        <div className="flex gap-2">
-                            <AuthButton
-                                onClick={() => {
-                                    handleAuthenticate({
-                                        type: "wallet",
-                                        config: {
-                                            type: "solana",
-                                            wallet: "phantom"
-                                        }
-                                    })
-                                }}
-                                imageSrc="/sol.svg"
-                                imageAlt="Phantom logo"
-                                buttonText="Authenticate with Phantom"
-                            />
-                        </div>
-                        <div className="flex gap-2">
-                            <AuthButton
-                                onClick={() => {
-                                    handleAuthenticate({
-                                        type: "wallet",
-                                        config: {
-                                            type: "ethereum",
-                                            wallet: "metamask"
-                                        }
-                                    })
-                                }}
-                                imageSrc="/metamask.svg"
-                                imageAlt="Metamask logo"
-                                buttonText="Authenticate with Metamask"
-                            />
+
+                    <div className="flex gap-4">
+                        <GoogleButton
+                            nonce={canonicalizedTransaction}
+                            onSuccess={(token) => handleSocialLogin(token, "google")}
+                            onError={() => toast({
+                                title: "Error",
+                                description: "Google authentication failed",
+                                variant: "destructive",
+                            })}
+                        />
+                        <FacebookButton
+                            text="Continue with Facebook"
+                            nonce={canonicalizedTransaction}
+                            onSuccess={(token) => handleSocialLogin(token, "facebook")}
+                            onError={(error) => toast({
+                                title: "Error",
+                                description: error.message || "Facebook authentication failed",
+                                variant: "destructive",
+                            })}
+                        />
+                    </div>
+
+                    <Separator className="my-4" />
+
+                    <div className="space-y-4">
+                        <h4 className="text-sm font-medium">Identity Permissions</h4>
+                        <div className="space-y-2">
+                            <div className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    id="act-as"
+                                    checked={permissions.enable_act_as}
+                                    onChange={(e) =>
+                                        setPermissions(prev => ({ ...prev, enable_act_as: e.target.checked }))
+                                    }
+                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                />
+                                <label htmlFor="act-as" className="text-sm">Enable Act As</label>
+                            </div>
                         </div>
                     </div>
                 </div>
