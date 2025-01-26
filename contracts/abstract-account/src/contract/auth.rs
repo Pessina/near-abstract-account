@@ -2,7 +2,7 @@ use crate::mods::external_contracts::{
     ethereum_auth, oidc_auth, solana_auth, webauthn_auth, VALIDATE_ETH_SIGNATURE_GAS,
     VALIDATE_P256_SIGNATURE_GAS,
 };
-use crate::types::auth_identity::{AuthTypeNames, Identity};
+use crate::types::identity::{AuthTypeNames, Identity};
 use crate::*;
 use base64::engine::{general_purpose::URL_SAFE_NO_PAD, Engine};
 use interfaces::auth::{
@@ -186,11 +186,11 @@ impl AbstractAccountContract {
         require!(account.nonce == user_op.transaction.nonce, "Nonce mismatch");
 
         if let Some(ref act_as) = user_op.act_as {
-            let auth_identity = account
+            let identity = account
                 .get_identity(act_as)
                 .expect("act_as Identity not found on account");
 
-            if let Some(ref permissions) = auth_identity.permissions {
+            if let Some(ref permissions) = identity.permissions {
                 if !permissions.enable_act_as {
                     env::panic_str("Auth identity does not have enable_act_as permission");
                 }

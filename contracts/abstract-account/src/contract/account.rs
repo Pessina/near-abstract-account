@@ -5,7 +5,11 @@ use crate::*;
 
 #[near]
 impl AbstractAccountContract {
-    pub fn add_account(&mut self, account_id: String, identity: IdentityWithPermissions) {
+    pub fn add_account(
+        &mut self,
+        account_id: String,
+        identity_with_permissions: IdentityWithPermissions,
+    ) {
         let storage_usage_start = env::storage_usage();
         let predecessor = env::predecessor_account_id();
         self.storage_balance_of(predecessor.clone())
@@ -19,7 +23,7 @@ impl AbstractAccountContract {
         // subsequent method calls will fail automatically
         self.accounts.insert(
             account_id.to_string(),
-            Account::new(vec![identity], self.max_nonce),
+            Account::new(vec![identity_with_permissions], self.max_nonce),
         );
         self.accounts.flush();
 
@@ -42,7 +46,7 @@ impl AbstractAccountContract {
     pub fn add_identity(
         &mut self,
         account_id: String,
-        identity: IdentityWithPermissions,
+        identity_with_permissions: IdentityWithPermissions,
         #[callback_result] auth_result: Result<bool, near_sdk::PromiseError>,
     ) {
         match auth_result {
@@ -50,7 +54,7 @@ impl AbstractAccountContract {
                 self.accounts
                     .get_mut(&account_id)
                     .unwrap()
-                    .add_identity(identity);
+                    .add_identity(identity_with_permissions);
             }
             Ok(false) => env::panic_str("Authentication failed"),
             _ => env::panic_str("Failed to add auth identity"),

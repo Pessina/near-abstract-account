@@ -1,5 +1,5 @@
 use crate::mods::signer::SignRequest;
-use crate::types::auth_identity::IdentityWithPermissions;
+use crate::types::identity::IdentityWithPermissions;
 use interfaces::traits::signable_message::SignableMessage;
 use near_sdk::{
     env,
@@ -8,7 +8,7 @@ use near_sdk::{
 use schemars::JsonSchema;
 use serde_json::Value;
 
-use super::auth_identity::{Identity, IdentityPermissions};
+use super::identity::{Identity, IdentityPermissions};
 
 #[derive(Deserialize, Serialize, JsonSchema, Clone)]
 #[serde(crate = "near_sdk::serde")]

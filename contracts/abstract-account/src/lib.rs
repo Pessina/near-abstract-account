@@ -14,10 +14,10 @@ use near_sdk_contract_tools::Nep145;
 use schemars::JsonSchema;
 use types::{
     account::Account,
-    auth_identity::{Identity, IdentityWithPermissions},
+    identity::{Identity, IdentityWithPermissions},
     transaction::{Transaction, UserOp},
 };
-use types::{auth_identity::AuthTypeNames, transaction::Action};
+use types::{identity::AuthTypeNames, transaction::Action};
 
 const KEY_PREFIX_ACCOUNTS: &[u8] = b"q";
 const KEY_PREFIX_AUTH_CONTRACTS: &[u8] = b"a";

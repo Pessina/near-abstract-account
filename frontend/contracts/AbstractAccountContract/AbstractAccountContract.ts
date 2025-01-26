@@ -2,7 +2,11 @@ import { Contract, Account as NearAccount } from "near-api-js";
 
 import { ContractChangeMethodArgs } from "../types";
 
-import { IdentityWithPermissions, UserOperation } from "./types/transaction";
+import {
+  Identity,
+  IdentityWithPermissions,
+  UserOperation,
+} from "./types/transaction";
 
 export interface StorageBalance {
   total: string;
@@ -31,7 +35,7 @@ export type AbstractAccountContract = Contract & {
   add_account: (
     args: ContractChangeMethodArgs<{
       account_id: string;
-      identity: IdentityWithPermissions;
+      identity_with_permissions: IdentityWithPermissions;
     }>
   ) => Promise<void>;
   get_account_by_id: (args: { account_id: string }) => Promise<Account | null>;
@@ -39,9 +43,7 @@ export type AbstractAccountContract = Contract & {
   list_identities: (args: {
     account_id: string;
   }) => Promise<IdentityWithPermissions[] | null>;
-  get_account_by_identity: (args: {
-    identity: IdentityWithPermissions;
-  }) => Promise<string[]>;
+  get_account_by_identity: (args: { identity: Identity }) => Promise<string[]>;
   get_all_contracts: () => Promise<string[]>;
   get_signer_account: () => Promise<string>;
   auth: <T>(

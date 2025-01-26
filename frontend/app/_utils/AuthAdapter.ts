@@ -55,9 +55,7 @@ export class AuthAdapter {
     }
   }
 
-  static async getIdentityWithPermissions(
-    config: AuthConfig
-  ): Promise<Identity> {
+  static async getIdentity(config: AuthConfig): Promise<Identity> {
     switch (config.type) {
       case "wallet": {
         const wallet = this.getWalletInstance(config.config);

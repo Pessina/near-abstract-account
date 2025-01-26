@@ -6,6 +6,7 @@ import {
   StorageBalance,
 } from '../../types/operations'
 import { ContractChangeMethodArgs } from '@/types/contract'
+import { Identity } from '@/types/auth'
 
 export type AbstractAccountContract = Contract & {
   add_account: (
@@ -19,9 +20,7 @@ export type AbstractAccountContract = Contract & {
   list_identities: (args: {
     account_id: string
   }) => Promise<IdentityWithPermissions[] | null>
-  get_account_by_identity: (args: {
-    identity: IdentityWithPermissions
-  }) => Promise<string[]>
+  get_account_by_identity: (args: { identity: Identity }) => Promise<string[]>
   get_all_contracts: () => Promise<string[]>
   get_signer_account: () => Promise<string>
   auth: <T>(

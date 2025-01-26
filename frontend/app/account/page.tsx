@@ -86,12 +86,12 @@ export default function AccountPage() {
         config: AuthConfig;
         accountId: string;
     }) => {
-        const authIdentity = await AuthAdapter.getIdentityWithPermissions(config);
+        const authIdentity = await AuthAdapter.getIdentity(config);
 
         await contract.addAccount({
             args: {
                 account_id: accountId,
-                identity: {
+                identity_with_permissions: {
                     identity: authIdentity,
                     permissions: null
                 }
@@ -108,7 +108,7 @@ export default function AccountPage() {
         config: AuthConfig;
         accountId: string;
     }) => {
-        const authIdentity = await AuthAdapter.getIdentityWithPermissions(config);
+        const authIdentity = await AuthAdapter.getIdentity(config);
         const account = await contract.getAccountById({ account_id: accountId })
 
         const transaction = AbstractAccountContractBuilder.transaction.addIdentity({

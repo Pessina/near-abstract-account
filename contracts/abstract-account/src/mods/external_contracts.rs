@@ -30,5 +30,5 @@ pub trait SolanaAuth {
 
 #[ext_contract(oidc_auth)]
 pub trait OidcAuth {
-    fn verify(&self, oidc_data: OIDCValidationData, oidc_auth_identity: OIDCAuthenticator) -> bool;
+    fn verify(&self, oidc_data: OIDCValidationData, oidc_identity: OIDCAuthenticator) -> bool;
 }

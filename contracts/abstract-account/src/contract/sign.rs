@@ -1,5 +1,5 @@
 use crate::*;
-use crate::{types::auth_identity::Identity, AbstractAccountContract};
+use crate::{types::identity::Identity, AbstractAccountContract};
 use interfaces::traits::path::Path;
 use mods::signer::{ext_signer, SignRequest, SIGN_GAS};
 use near_sdk::{env, near, Promise};

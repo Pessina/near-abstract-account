@@ -1,4 +1,4 @@
-use super::auth_identity::{Identity, IdentityWithPermissions};
+use super::identity::{Identity, IdentityWithPermissions};
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
@@ -23,8 +23,8 @@ impl Account {
             .find(|curr| &curr.identity == identity)
     }
 
-    pub fn add_identity(&mut self, identity: IdentityWithPermissions) {
-        self.identities.push(identity);
+    pub fn add_identity(&mut self, identity_with_permissions: IdentityWithPermissions) {
+        self.identities.push(identity_with_permissions);
     }
 
     pub fn remove_identity(&mut self, identity: &Identity) {
