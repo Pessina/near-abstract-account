@@ -56,7 +56,6 @@ export default function LoginPage() {
         try {
             setError(null)
             const authIdentity = await AuthAdapter.getIdentity(config)
-            console.log("authIdentity", authIdentity)
             const accounts = await contract.getAccountByIdentity({ identity: authIdentity })
 
             if (accounts.length === 0) {

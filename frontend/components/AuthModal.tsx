@@ -1,5 +1,6 @@
 "use client"
 
+import { useQueryClient } from "@tanstack/react-query"
 import canonicalize from "canonicalize"
 import { useState } from "react"
 
@@ -41,6 +42,7 @@ export default function AuthModal({
     const { toast } = useToast()
     const { googleClientId, facebookAppId } = useEnv()
     const { contract } = useAbstractAccountContract()
+    const queryClient = useQueryClient()
 
     const canonicalizedTransaction = canonicalize(userOp.transaction)
 
@@ -67,6 +69,12 @@ export default function AuthModal({
                 gas: NEAR_MAX_GAS,
                 amount: "10"
             })
+
+            // Invalidate queries to refetch account data
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['account', accountId] }),
+                queryClient.invalidateQueries({ queryKey: ['identities', accountId] })
+            ])
 
             onClose()
             toast({
