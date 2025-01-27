@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const publicRoutes = ["/login", "/register"];
-const callbackRoutes = ["/facebook/callback"];
 
 export function middleware(request: NextRequest) {
   const hasSession =
@@ -10,19 +9,17 @@ export function middleware(request: NextRequest) {
     request.headers.get("x-has-session") === "true";
   const isPublicRoute = publicRoutes.includes(request.nextUrl.pathname);
 
-  if (callbackRoutes.includes(request.nextUrl.pathname)) {
-    return NextResponse.next();
-  }
-
-  // Redirect to login if accessing protected route without session
   if (!hasSession && !isPublicRoute) {
     const loginUrl = new URL("/login", request.url);
+    loginUrl.search = request.nextUrl.search;
+    loginUrl.hash = request.nextUrl.hash;
     return NextResponse.redirect(loginUrl);
   }
 
-  // Redirect to account if accessing public route with session
   if (hasSession && isPublicRoute) {
     const accountUrl = new URL("/account", request.url);
+    accountUrl.search = request.nextUrl.search;
+    accountUrl.hash = request.nextUrl.hash;
     return NextResponse.redirect(accountUrl);
   }
 

@@ -5,7 +5,9 @@ import "./globals.css"
 import GoogleProvider from "./_providers/GoogleProvider"
 
 import { AccountProvider } from "@/app/_providers/AccountContext"
+import { FacebookProvider } from "@/app/_providers/FacebookProvider"
 import { QueryClientProvider } from "@/app/_providers/QueryClientProvider"
+
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
@@ -24,13 +26,15 @@ export default function RootLayout({
         className={`antialiased h-full w-full ${inter.className}`}
         suppressHydrationWarning
       >
-        <AccountProvider>
-          <GoogleProvider>
-            <QueryClientProvider>
-              {children}
-            </QueryClientProvider>
-          </GoogleProvider>
-        </AccountProvider>
+        <QueryClientProvider>
+          <AccountProvider>
+            <GoogleProvider>
+              <FacebookProvider>
+                {children}
+              </FacebookProvider>
+            </GoogleProvider>
+          </AccountProvider>
+        </QueryClientProvider>
       </body>
     </html>
   )

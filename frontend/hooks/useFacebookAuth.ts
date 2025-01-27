@@ -2,7 +2,6 @@ import { useCallback } from "react";
 
 import { generatePKCEVerifier, generatePKCEChallenge } from "@/lib/pkce";
 
-// Constants for OAuth configuration
 const OAUTH_CONFIG = {
   FACEBOOK_API_VERSION: "v21.0",
   STORAGE_KEYS: {
@@ -26,12 +25,9 @@ interface FacebookAuthConfig {
   redirectUri?: string;
   onSuccess?: (idToken?: string) => void;
   onError?: (error: Error) => void;
+  callbackUri?: string;
 }
 
-/**
- * Custom hook for handling Facebook OAuth authentication
- * Implements PKCE flow for enhanced security
- */
 export function useFacebookAuth(config: FacebookAuthConfig) {
   const initiateLogin = useCallback(
     async (args?: { nonce?: string }) => {
@@ -46,13 +42,11 @@ export function useFacebookAuth(config: FacebookAuthConfig) {
       };
 
       try {
-        // Generate PKCE values
         const codeVerifier = generatePKCEVerifier();
         const codeChallenge = await generatePKCEChallenge(codeVerifier);
         const state = generatePKCEVerifier();
         const nonce = args?.nonce || config?.nonce || generatePKCEVerifier();
 
-        // Store auth state
         localStorage.setItem(
           OAUTH_CONFIG.STORAGE_KEYS.CODE_VERIFIER,
           codeVerifier
@@ -63,13 +57,12 @@ export function useFacebookAuth(config: FacebookAuthConfig) {
           throw new Error("Facebook App ID is required");
         }
 
-        // Always use our callback URL
-        const redirectUri = `${window.location.origin}/facebook/callback`;
+        const redirectUri =
+          config.callbackUri ?? window.location.href.split("?")[0];
         const url = new URL(
           `https://www.facebook.com/${OAUTH_CONFIG.FACEBOOK_API_VERSION}/dialog/oauth`
         );
 
-        // Add required OIDC parameters
         url.searchParams.append("client_id", config.appId);
         url.searchParams.append("redirect_uri", redirectUri);
         url.searchParams.append("state", state);
@@ -79,22 +72,18 @@ export function useFacebookAuth(config: FacebookAuthConfig) {
         url.searchParams.append("code_challenge_method", "S256");
         url.searchParams.append("nonce", nonce);
 
-        // Create a promise that resolves when the code is received
         const authPromise = new Promise<void>((resolve, reject) => {
           const messageHandler = async (event: MessageEvent) => {
-            // Verify origin
             if (event.origin !== window.location.origin) return;
 
             if (event.data?.type === "FACEBOOK_AUTH_SUCCESS") {
               const { code, returnedState } = event.data;
 
               try {
-                // Validate state
                 if (returnedState !== state) {
                   throw new Error("Invalid state parameter");
                 }
 
-                // Exchange code for token using PKCE
                 const tokenUrl = new URL(
                   `https://graph.facebook.com/${OAUTH_CONFIG.FACEBOOK_API_VERSION}/oauth/access_token`
                 );
@@ -146,22 +135,16 @@ export function useFacebookAuth(config: FacebookAuthConfig) {
 
           window.addEventListener("message", messageHandler);
 
-          // Open popup window
-          const width = 600;
-          const height = 700;
-          const left = Math.max(
-            0,
-            (window.innerWidth - width) / 2 + window.screenX
-          );
-          const top = Math.max(
-            0,
-            (window.innerHeight - height) / 2 + window.screenY
-          );
-
           popup = window.open(
             url.toString(),
             "facebook-auth-window",
-            `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,location=no,status=no,scrollbars=yes`
+            `width=600,height=700,left=${Math.max(
+              0,
+              (window.innerWidth - 600) / 2 + window.screenX
+            )},top=${Math.max(
+              0,
+              (window.innerHeight - 700) / 2 + window.screenY
+            )},toolbar=no,menubar=no,location=no,status=no,scrollbars=yes`
           );
 
           if (!popup) {
@@ -171,7 +154,6 @@ export function useFacebookAuth(config: FacebookAuthConfig) {
           }
         });
 
-        // Wait for authentication to complete
         await authPromise;
       } catch (error) {
         cleanup();

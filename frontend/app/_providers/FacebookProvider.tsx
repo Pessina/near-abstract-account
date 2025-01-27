@@ -3,7 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
-export default function FacebookCallback() {
+export const FacebookProvider = ({ children }: { children: React.ReactNode }) => {
     const searchParams = useSearchParams();
 
     useEffect(() => {
@@ -14,7 +14,6 @@ export default function FacebookCallback() {
 
         if (window.opener) {
             if (error || errorReason) {
-                // Send error to parent window
                 window.opener.postMessage(
                     {
                         type: "FACEBOOK_AUTH_ERROR",
@@ -23,7 +22,6 @@ export default function FacebookCallback() {
                     window.location.origin
                 );
             } else if (code && state) {
-                // Send success to parent window
                 window.opener.postMessage(
                     {
                         type: "FACEBOOK_AUTH_SUCCESS",
@@ -33,14 +31,10 @@ export default function FacebookCallback() {
                     window.location.origin
                 );
             }
-            // Close this window after sending the message
+
             window.close();
         }
     }, [searchParams]);
 
-    return (
-        <div className="flex min-h-screen items-center justify-center">
-            <p className="text-center text-gray-500">Completing authentication...</p>
-        </div>
-    );
-} 
+    return children;
+};
