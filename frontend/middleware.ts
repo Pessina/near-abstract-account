@@ -11,15 +11,11 @@ export function middleware(request: NextRequest) {
 
   if (!hasSession && !isPublicRoute) {
     const loginUrl = new URL("/login", request.url);
-    loginUrl.search = request.nextUrl.search;
-    loginUrl.hash = request.nextUrl.hash;
     return NextResponse.redirect(loginUrl);
   }
 
   if (hasSession && isPublicRoute) {
     const accountUrl = new URL("/account", request.url);
-    accountUrl.search = request.nextUrl.search;
-    accountUrl.hash = request.nextUrl.hash;
     return NextResponse.redirect(accountUrl);
   }
 
