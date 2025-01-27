@@ -30,7 +30,7 @@ export default function AccountPage() {
 
     const router = useRouter()
     const { contract } = useAbstractAccountContract()
-    const { accountId, setAccount, setAccountId } = useAccount()
+    const { accountId, setAccountId } = useAccount()
     const { googleClientId, facebookAppId } = useEnv()
     const { toast } = useToast()
     const {
@@ -147,7 +147,6 @@ export default function AccountPage() {
     }
 
     const handleLogout = () => {
-        setAccount(null)
         setAccountId(null)
         document.cookie = "NEAR_ABSTRACT_ACCOUNT_SESSION=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
         router.push("/login")

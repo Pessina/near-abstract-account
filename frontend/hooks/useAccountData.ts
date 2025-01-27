@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import React from "react";
+import { useEffect, useRef } from "react";
 
 import { useAccount } from "@/app/_providers/AccountContext";
 import { UserOperation } from "@/contracts/AbstractAccountContract/types/transaction";
@@ -9,11 +9,11 @@ import { useToast } from "@/hooks/use-toast";
 
 export function useAccountData() {
   const { contract } = useAbstractAccountContract();
-  const { accountId, setAccount, logout } = useAccount();
+  const { accountId, logout } = useAccount();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const router = useRouter();
-  const previousDataRef = React.useRef<typeof accountQuery.data>(null);
+  const previousDataRef = useRef<typeof accountQuery.data>(null);
 
   const accountQuery = useQuery({
     queryKey: ["account", accountId],
@@ -25,14 +25,13 @@ export function useAccountData() {
     staleTime: 0,
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (accountQuery.data && accountQuery.data !== previousDataRef.current) {
       previousDataRef.current = accountQuery.data;
-      setAccount(accountQuery.data);
     }
-  }, [accountQuery.data, setAccount]);
+  }, [accountQuery.data]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (accountQuery.error) {
       toast({
         variant: "destructive",
@@ -55,7 +54,7 @@ export function useAccountData() {
     staleTime: 0,
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (identitiesQuery.error) {
       toast({
         variant: "destructive",

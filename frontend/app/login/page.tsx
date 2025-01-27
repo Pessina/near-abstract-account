@@ -29,7 +29,7 @@ export default function LoginPage() {
     const [error, setError] = useState<string | null>(null)
     const router = useRouter()
     const { contract } = useAbstractAccountContract()
-    const { setAccount, setAccountId } = useAccount()
+    const { setAccountId } = useAccount()
     const { googleClientId, facebookAppId } = useEnv()
 
     if (!contract) {
@@ -40,9 +40,7 @@ export default function LoginPage() {
         try {
             const account = await contract.getAccountById({ account_id: selectedAccountId })
             if (account) {
-                setAccount(account)
                 setAccountId(selectedAccountId)
-                // Set session header for middleware
                 document.cookie = "NEAR_ABSTRACT_ACCOUNT_SESSION=true; path=/"
                 router.push("/account")
             }

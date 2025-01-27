@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { KeyPair, Near, connect, keyStores } from "near-api-js";
+import { useState, useEffect } from "react";
+
 import { useEnv } from "./useEnv";
 
 interface NearState {

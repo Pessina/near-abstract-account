@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 
 import AuthModal from "@/components/AuthModal"
@@ -53,8 +53,7 @@ export default function TransactionForm() {
     const actAs = watch("actAs")
     const accountId = watch("accountId")
 
-    // Fetch available identities when account ID changes
-    React.useEffect(() => {
+    useEffect(() => {
         async function fetchIdentities() {
             if (!contract || !accountId) return;
             try {

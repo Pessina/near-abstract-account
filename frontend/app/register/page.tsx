@@ -23,7 +23,7 @@ export default function RegisterPage() {
     const [error, setError] = useState<string | null>(null)
     const router = useRouter()
     const { contract } = useAbstractAccountContract()
-    const { setAccount, setAccountId: setContextAccountId } = useAccount()
+    const { setAccountId: setContextAccountId } = useAccount()
     const { googleClientId, facebookAppId } = useEnv()
 
     if (!contract) {
@@ -59,7 +59,6 @@ export default function RegisterPage() {
 
             const newAccount = await contract.getAccountById({ account_id: accountId })
             if (newAccount) {
-                setAccount(newAccount)
                 setContextAccountId(accountId)
                 // Set session header for middleware
                 document.cookie = "NEAR_ABSTRACT_ACCOUNT_SESSION=true; path=/"
