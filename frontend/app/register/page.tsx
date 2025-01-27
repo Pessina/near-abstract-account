@@ -38,7 +38,6 @@ export default function RegisterPage() {
                 return
             }
 
-            // Check if account already exists
             const existingAccount = await contract.getAccountById({ account_id: accountId })
             if (existingAccount) {
                 setError("This account ID is already taken")

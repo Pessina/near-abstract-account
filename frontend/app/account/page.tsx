@@ -13,7 +13,6 @@ import FacebookButton from "@/components/FacebookButton"
 import GoogleButton from "@/components/GoogleButton"
 import Header from "@/components/Header"
 import IdentitiesList from "@/components/IdentitiesList"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Transaction, IdentityWithPermissions, UserOperation } from "@/contracts/AbstractAccountContract/types/transaction"
@@ -30,15 +29,13 @@ export default function AccountPage() {
 
     const router = useRouter()
     const { contract } = useAbstractAccountContract()
-    const { accountId, setAccountId } = useAccount()
+    const { accountId } = useAccount()
     const { googleClientId, facebookAppId } = useEnv()
     const { toast } = useToast()
     const {
         account,
         identities,
         isLoading,
-        addIdentityMutation,
-        deleteAccountMutation
     } = useAccountData()
 
     if (!contract || !accountId) {
@@ -117,7 +114,6 @@ export default function AccountPage() {
             nonce: account.nonce ?? 0,
         })
 
-        // For delete account, we'll use the first identity as the auth identity
         const authIdentity = account.identities[0]?.identity
         if (!authIdentity) {
             toast({
@@ -132,7 +128,7 @@ export default function AccountPage() {
             auth: {
                 identity: authIdentity,
                 credentials: {
-                    token: "",  // This will be filled by the auth process
+                    token: "", // This will be filled by the auth process
                 }
             },
             transaction
@@ -144,12 +140,6 @@ export default function AccountPage() {
             userOp
         })
         setAuthModalOpen(true)
-    }
-
-    const handleLogout = () => {
-        setAccountId(null)
-        document.cookie = "NEAR_ABSTRACT_ACCOUNT_SESSION=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
-        router.push("/login")
     }
 
     return (
@@ -169,9 +159,6 @@ export default function AccountPage() {
                 <div className="grid gap-8">
                     <div className="flex justify-between items-center">
                         <h1 className="text-3xl font-bold">Account Management</h1>
-                        <Button variant="outline" onClick={handleLogout}>
-                            Logout
-                        </Button>
                     </div>
 
                     {account && <AccountInfo account={account} accountId={accountId} />}
@@ -189,11 +176,6 @@ export default function AccountPage() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            {addIdentityMutation.error && (
-                                <Alert variant="destructive">
-                                    <AlertDescription>Failed to add authentication method</AlertDescription>
-                                </Alert>
-                            )}
                             <div className="grid gap-4">
                                 <Button
                                     onClick={() => {
@@ -206,7 +188,6 @@ export default function AccountPage() {
                                     }}
                                     variant="outline"
                                     className="w-full flex items-center justify-center gap-2"
-                                    disabled={addIdentityMutation.isPending}
                                 >
                                     <PasskeyIcon />
                                     <span>Add Passkey</span>
@@ -225,7 +206,6 @@ export default function AccountPage() {
                                         }}
                                         variant="outline"
                                         className="flex-1 flex items-center justify-center gap-2"
-                                        disabled={addIdentityMutation.isPending}
                                     >
                                         <MetaMaskIcon />
                                         <span>Add MetaMask</span>
@@ -242,7 +222,6 @@ export default function AccountPage() {
                                         }}
                                         variant="outline"
                                         className="flex-1 flex items-center justify-center gap-2"
-                                        disabled={addIdentityMutation.isPending}
                                     >
                                         <PhantomIcon />
                                         <span>Add Phantom</span>
@@ -324,7 +303,6 @@ export default function AccountPage() {
                             <Button
                                 variant="destructive"
                                 onClick={handleDeleteAccount}
-                                disabled={deleteAccountMutation.isPending}
                             >
                                 Delete Account
                             </Button>

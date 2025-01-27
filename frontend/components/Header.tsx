@@ -13,11 +13,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 export default function Header() {
-    const { accountId, setAccount, setAccountId } = useAccount()
+    const { accountId, setAccountId } = useAccount()
     const router = useRouter()
 
     const handleLogout = () => {
-        setAccount(null)
         setAccountId(null)
         // Clear session cookie
         document.cookie = "NEAR_ABSTRACT_ACCOUNT_SESSION=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
@@ -46,7 +45,7 @@ export default function Header() {
                             <DropdownMenuItem onClick={() => router.push("/account")}>
                                 Manage Account
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push("/signature")}>
+                            <DropdownMenuItem onClick={() => router.push("/transaction")}>
                                 Request Signature
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={handleLogout}>

@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react"
 
 interface AccountContextType {
@@ -15,6 +16,7 @@ const STORAGE_KEY = "NEAR_ABSTRACT_ACCOUNT_SESSION"
 export function AccountProvider({ children }: { children: React.ReactNode }) {
     const [accountId, setAccountIdState] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(true)
+    const router = useRouter()
 
     useEffect(() => {
         const savedSession = localStorage.getItem(STORAGE_KEY)
@@ -31,9 +33,11 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     }, [])
 
     const logout = useCallback(async () => {
-        setAccountIdState(null)
         localStorage.removeItem(STORAGE_KEY)
-    }, [])
+        document.cookie = "NEAR_ABSTRACT_ACCOUNT_SESSION=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
+        setAccountIdState(null)
+        router.push("/login")
+    }, [router])
 
     if (isLoading) {
         return null
