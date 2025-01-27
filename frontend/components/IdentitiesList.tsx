@@ -16,12 +16,12 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { IdentityWithPermissions } from "@/contracts/AbstractAccountContract/types/transaction"
+import { Identity, IdentityWithPermissions } from "@/contracts/AbstractAccountContract/types/transaction"
 import { useToast } from "@/hooks/use-toast"
 
 interface IdentitiesListProps {
     identities: IdentityWithPermissions[]
-    onRemove: (identity: IdentityWithPermissions) => void
+    onRemove: (identity: Identity) => void
 }
 
 export default function IdentitiesList({ identities, onRemove }: IdentitiesListProps) {
@@ -35,21 +35,21 @@ export default function IdentitiesList({ identities, onRemove }: IdentitiesListP
         })
     }
 
-    const getIdentityIcon = (identity: IdentityWithPermissions) => {
-        if ("WebAuthn" in identity.identity) return <Key className="h-4 w-4" />
-        if ("OIDC" in identity.identity) return <Mail className="h-4 w-4" />
-        if ("Wallet" in identity.identity) return <Wallet className="h-4 w-4" />
+    const getIdentityIcon = (identity: Identity) => {
+        if ("WebAuthn" in identity) return <Key className="h-4 w-4" />
+        if ("OIDC" in identity) return <Mail className="h-4 w-4" />
+        if ("Wallet" in identity) return <Wallet className="h-4 w-4" />
         return null
     }
 
-    const getIdentityName = (identity: IdentityWithPermissions) => {
-        if ("WebAuthn" in identity.identity) return "Passkey"
-        if ("OIDC" in identity.identity) {
-            const oidc = identity.identity.OIDC
+    const getIdentityName = (identity: Identity) => {
+        if ("WebAuthn" in identity) return "Passkey"
+        if ("OIDC" in identity) {
+            const oidc = identity.OIDC
             return `${oidc.issuer} (${oidc.email || oidc.sub})`
         }
-        if ("Wallet" in identity.identity) {
-            const wallet = identity.identity.Wallet
+        if ("Wallet" in identity) {
+            const wallet = identity.Wallet
             return `${wallet.wallet_type} (${wallet.public_key.slice(0, 8)}...)`
         }
         return "Unknown"
@@ -68,10 +68,10 @@ export default function IdentitiesList({ identities, onRemove }: IdentitiesListP
                     <Collapsible key={index}>
                         <div className="flex items-center justify-between space-x-4 rounded-lg border p-4">
                             <div className="flex items-center space-x-4">
-                                {getIdentityIcon(identity)}
+                                {getIdentityIcon(identity.identity)}
                                 <div>
                                     <p className="text-sm font-medium leading-none">
-                                        {getIdentityName(identity)}
+                                        {getIdentityName(identity.identity)}
                                     </p>
                                     <p className="text-sm text-muted-foreground">
                                         {identity.permissions?.enable_act_as
@@ -96,7 +96,7 @@ export default function IdentitiesList({ identities, onRemove }: IdentitiesListP
                                 <Button
                                     variant="destructive"
                                     size="sm"
-                                    onClick={() => onRemove(identity)}
+                                    onClick={() => onRemove(identity.identity)}
                                 >
                                     Remove
                                 </Button>

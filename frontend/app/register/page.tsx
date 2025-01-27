@@ -59,7 +59,6 @@ export default function RegisterPage() {
             const newAccount = await contract.getAccountById({ account_id: accountId })
             if (newAccount) {
                 setContextAccountId(accountId)
-                // Set session header for middleware
                 document.cookie = "NEAR_ABSTRACT_ACCOUNT_SESSION=true; path=/"
                 router.push("/account")
             }

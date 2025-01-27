@@ -1,15 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 import { useAccount } from "@/app/_providers/AccountContext";
 import { useAbstractAccountContract } from "@/contracts/AbstractAccountContract/useAbstractAccountContract";
-import { useToast } from "@/hooks/use-toast";
 
 export function useAccountData() {
   const { contract } = useAbstractAccountContract();
   const { accountId, logout } = useAccount();
-  const { toast } = useToast();
-  const previousDataRef = useRef<typeof accountQuery.data>(null);
 
   const accountQuery = useQuery({
     queryKey: ["account", accountId],
@@ -20,28 +17,6 @@ export function useAccountData() {
     enabled: !!contract && !!accountId,
     staleTime: 0,
   });
-
-  useEffect(() => {
-    if (!accountQuery.isLoading && accountQuery.data === null) {
-      logout();
-    }
-  }, [accountQuery.data, accountQuery.isLoading, logout]);
-
-  useEffect(() => {
-    if (accountQuery.data && accountQuery.data !== previousDataRef.current) {
-      previousDataRef.current = accountQuery.data;
-    }
-  }, [accountQuery.data]);
-
-  useEffect(() => {
-    if (accountQuery.error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load account data",
-      });
-    }
-  }, [accountQuery.error, toast]);
 
   const identitiesQuery = useQuery({
     queryKey: ["identities", accountId],
@@ -57,14 +32,10 @@ export function useAccountData() {
   });
 
   useEffect(() => {
-    if (identitiesQuery.error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load authentication methods",
-      });
+    if (!accountQuery.isLoading && accountQuery.data === null) {
+      logout();
     }
-  }, [identitiesQuery.error, toast]);
+  }, [accountQuery.data, accountQuery.isLoading, logout]);
 
   return {
     account: accountQuery.data,

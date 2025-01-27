@@ -23,7 +23,6 @@ interface AuthModalProps {
     onClose: () => void
     accountId: string
     transaction: Transaction
-    userOp: UserOperation
 }
 
 interface Permissions {
@@ -34,7 +33,7 @@ export default function AuthModal({
     isOpen,
     onClose,
     accountId,
-    userOp,
+    transaction,
 }: AuthModalProps) {
     const [permissions, setPermissions] = useState<Permissions>({
         enable_act_as: false,
@@ -44,7 +43,7 @@ export default function AuthModal({
     const { contract } = useAbstractAccountContract()
     const queryClient = useQueryClient()
 
-    const canonicalizedTransaction = canonicalize(userOp.transaction)
+    const canonicalizedTransaction = canonicalize(transaction)
 
     const handleAuth = async (config: AuthConfig) => {
         try {
@@ -52,10 +51,10 @@ export default function AuthModal({
                 throw new Error("Contract not initialized")
             }
 
-            const { credentials, authIdentity } = await AuthAdapter.sign(userOp.transaction, config)
+            const { credentials, authIdentity } = await AuthAdapter.sign(transaction, config)
 
-            const updatedUserOp: UserOperation = {
-                ...userOp,
+            const userOp: UserOperation = {
+                transaction,
                 auth: {
                     identity: authIdentity,
                     credentials
@@ -64,7 +63,7 @@ export default function AuthModal({
 
             await contract.auth({
                 args: {
-                    user_op: updatedUserOp
+                    user_op: userOp
                 },
                 gas: NEAR_MAX_GAS,
                 amount: "10"

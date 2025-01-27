@@ -1,6 +1,5 @@
 "use client"
 
-import { useRouter } from "next/navigation"
 import React, { useState } from "react"
 
 import { AuthAdapter, AuthConfig } from "../_utils/AuthAdapter"
@@ -15,8 +14,7 @@ import Header from "@/components/Header"
 import IdentitiesList from "@/components/IdentitiesList"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Transaction, IdentityWithPermissions, UserOperation } from "@/contracts/AbstractAccountContract/types/transaction"
-import { useAbstractAccountContract } from "@/contracts/AbstractAccountContract/useAbstractAccountContract"
+import { Transaction, Identity } from "@/contracts/AbstractAccountContract/types/transaction"
 import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth"
 import { useToast } from "@/hooks/use-toast"
 import { useAccountData } from "@/hooks/useAccountData"
@@ -25,10 +23,8 @@ import { parseOIDCToken } from "@/lib/utils"
 
 export default function AccountPage() {
     const [authModalOpen, setAuthModalOpen] = useState(false)
-    const [authProps, setAuthProps] = useState<{ accountId: string, transaction: Transaction, userOp: UserOperation } | null>(null)
+    const [authProps, setAuthProps] = useState<{ accountId: string, transaction: Transaction } | null>(null)
 
-    const router = useRouter()
-    const { contract } = useAbstractAccountContract()
     const { accountId } = useAccount()
     const { googleClientId, facebookAppId } = useEnv()
     const { toast } = useToast()
@@ -38,12 +34,7 @@ export default function AccountPage() {
         isLoading,
     } = useAccountData()
 
-    if (!contract || !accountId) {
-        router.push("/login")
-        return null
-    }
-
-    if (isLoading || !account) {
+    if (isLoading || !account || !accountId) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
                 <div className="text-center">Loading account...</div>
@@ -52,8 +43,6 @@ export default function AccountPage() {
     }
 
     const handleAddIdentity = async (config: AuthConfig) => {
-        if (!account) return
-
         const authIdentity = await AuthAdapter.getIdentity(config)
         const transaction = AbstractAccountContractBuilder.transaction.addIdentity({
             accountId,
@@ -61,54 +50,29 @@ export default function AccountPage() {
             identity: authIdentity,
         })
 
-        const userOp = {
-            auth: {
-                identity: authIdentity,
-                credentials: {
-                    token: "",  // This will be filled by the auth process
-                }
-            },
-            transaction
-        }
-
         setAuthProps({
             accountId,
             transaction,
-            userOp
+
         })
         setAuthModalOpen(true)
     }
 
-    const handleRemoveIdentity = async (authIdentity: IdentityWithPermissions) => {
-        if (!account) return
-
+    const handleRemoveIdentity = async (identity: Identity) => {
         const transaction = AbstractAccountContractBuilder.transaction.removeIdentity({
             accountId,
             nonce: account.nonce ?? 0,
-            authIdentity
+            identity,
         })
-
-        const userOp = {
-            auth: {
-                identity: authIdentity.identity,
-                credentials: {
-                    token: "",  // This will be filled by the auth process
-                }
-            },
-            transaction
-        }
 
         setAuthProps({
             accountId,
             transaction,
-            userOp
         })
         setAuthModalOpen(true)
     }
 
     const handleDeleteAccount = async () => {
-        if (!account) return
-
         const transaction = AbstractAccountContractBuilder.transaction.removeAccount({
             accountId,
             nonce: account.nonce ?? 0,
@@ -124,20 +88,10 @@ export default function AccountPage() {
             return
         }
 
-        const userOp = {
-            auth: {
-                identity: authIdentity,
-                credentials: {
-                    token: "", // This will be filled by the auth process
-                }
-            },
-            transaction
-        }
-
         setAuthProps({
             accountId,
             transaction,
-            userOp
+
         })
         setAuthModalOpen(true)
     }
@@ -160,14 +114,11 @@ export default function AccountPage() {
                     <div className="flex justify-between items-center">
                         <h1 className="text-3xl font-bold">Account Management</h1>
                     </div>
-
                     {account && <AccountInfo account={account} accountId={accountId} />}
-
                     <IdentitiesList
                         identities={identities || []}
                         onRemove={handleRemoveIdentity}
                     />
-
                     <Card>
                         <CardHeader>
                             <CardTitle>Add Authentication Method</CardTitle>

@@ -71,12 +71,12 @@ export class AbstractAccountContractBuilder {
     removeIdentity: (args: {
       accountId: string;
       nonce: number;
-      authIdentity: IdentityWithPermissions;
+      identity: Identity;
     }): Transaction => ({
       account_id: args.accountId,
       nonce: args.nonce,
       action: {
-        RemoveIdentity: args.authIdentity.identity,
+        RemoveIdentity: args.identity,
       },
     }),
 
