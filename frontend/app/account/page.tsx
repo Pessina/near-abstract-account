@@ -134,6 +134,7 @@ export default function AccountPage() {
                                             type: "webauthn",
                                             config: {
                                                 username: accountId,
+                                                operation: "create",
                                             },
                                         })
                                     }}

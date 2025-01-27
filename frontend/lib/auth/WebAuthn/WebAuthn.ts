@@ -12,6 +12,8 @@ import { WebAuthnCredentials } from "@/contracts/AbstractAccountContract/types/a
 import { Identity } from "@/contracts/AbstractAccountContract/types/transaction";
 import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth";
 
+export type WebAuthnOperation = "create" | "get";
+
 export class WebAuthn extends IdentityClass<Identity, WebAuthnCredentials> {
   private static _generateRandomBytes(): Buffer {
     return crypto.randomBytes(16);
@@ -24,8 +26,18 @@ export class WebAuthn extends IdentityClass<Identity, WebAuthnCredentials> {
     );
   }
 
-  async getIdentity({ id }: { id: string }): Promise<Identity> {
+  async getIdentity({
+    id,
+    operation,
+  }: {
+    id: string;
+    operation: WebAuthnOperation;
+  }): Promise<Identity> {
     WebAuthn.isSupportedByBrowser();
+
+    if (operation === "get") {
+      return (await this.sign(id)).authIdentity;
+    }
 
     const options: PublicKeyCredentialCreationOptions = {
       timeout: 60000,

@@ -12,7 +12,7 @@ import {
 import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth";
 import { Ethereum } from "@/lib/auth/Ethereum/Ethereum";
 import { Solana } from "@/lib/auth/Solana/Solana";
-import { WebAuthn } from "@/lib/auth/WebAuthn/WebAuthn";
+import { WebAuthn, WebAuthnOperation } from "@/lib/auth/WebAuthn/WebAuthn";
 
 type EthereumWalletType = "metamask" | "okx";
 type SolanaWalletType = "phantom" | "solflare";
@@ -31,6 +31,7 @@ type OIDCConfig = {
 
 type WebAuthnConfig = {
   username: string;
+  operation: WebAuthnOperation;
 };
 
 export type AuthConfig =
@@ -68,6 +69,7 @@ export class AuthAdapter {
         const webAuthn = new WebAuthn();
         const authIdentity = await webAuthn.getIdentity({
           id: config.config.username,
+          operation: config.config.operation,
         });
         if (!authIdentity)
           throw new Error("Failed to get WebAuthn auth AddIdentity");

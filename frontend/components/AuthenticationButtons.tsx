@@ -21,6 +21,7 @@ export default function AuthenticationButtons({ onAuth, accountId, mode = "login
                         type: "webauthn",
                         config: {
                             username: accountId || "user",
+                            operation: mode === "login" ? "get" : "create",
                         },
                     })
                 }}
