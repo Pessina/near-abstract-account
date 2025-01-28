@@ -53,8 +53,8 @@ export default function LoginPage() {
     const handleLogin = async (config: AuthConfig) => {
         try {
             setError(null)
-            const authIdentity = await AuthAdapter.getIdentity(config)
-            const accounts = await contract.getAccountByIdentity({ identity: authIdentity })
+            const identity = await AuthAdapter.getIdentity(config)
+            const accounts = await contract.getAccountByIdentity({ identity })
 
             if (accounts.length === 0) {
                 setError("No accounts found for this identity. Would you like to create a new account?")

@@ -78,23 +78,14 @@ export default function AccountPage() {
             nonce: account.nonce ?? 0,
         })
 
-        const authIdentity = account.identities[0]?.identity
-        if (!authIdentity) {
-            toast({
-                title: "Error",
-                description: "No identities found to authenticate with",
-                variant: "destructive",
-            })
-            return
-        }
-
         setAuthProps({
             accountId,
             transaction,
-
         })
         setAuthModalOpen(true)
     }
+
+
 
     return (
         <div className="min-h-screen bg-gray-50">

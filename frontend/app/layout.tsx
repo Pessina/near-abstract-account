@@ -7,6 +7,7 @@ import GoogleProvider from "./_providers/GoogleProvider"
 import { AccountProvider } from "@/app/_providers/AccountContext"
 import { FacebookProvider } from "@/app/_providers/FacebookProvider"
 import { QueryClientProvider } from "@/app/_providers/QueryClientProvider"
+import { Toaster } from "@/components/ui/toaster"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -31,6 +32,7 @@ export default function RootLayout({
             <GoogleProvider>
               <FacebookProvider>
                 {children}
+                <Toaster />
               </FacebookProvider>
             </GoogleProvider>
           </AccountProvider>

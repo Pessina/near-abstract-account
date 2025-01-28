@@ -66,20 +66,19 @@ export default function AuthModal({
                     user_op: userOp
                 },
                 gas: NEAR_MAX_GAS,
-                amount: "10"
+                amount: "10" // TODO: Should be dynamic according to the contract current fee
             })
 
-            // Invalidate queries to refetch account data
             await Promise.all([
                 queryClient.invalidateQueries({ queryKey: ['account', accountId] }),
                 queryClient.invalidateQueries({ queryKey: ['identities', accountId] })
             ])
 
-            onClose()
             toast({
                 title: "Success",
                 description: "Transaction executed successfully",
             })
+            onClose()
         } catch (err) {
             toast({
                 title: "Error",
