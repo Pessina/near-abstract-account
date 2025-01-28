@@ -11,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useAbstractAccountContract } from "@/contracts/AbstractAccountContract/useAbstractAccountContract";
+import { useAbstractAccountContract } from "@/contracts/useAbstractAccountContract";
 
 interface TransactionForm {
   to: string;

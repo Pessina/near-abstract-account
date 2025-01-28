@@ -1,5 +1,6 @@
 "use client"
 
+import { Transaction, Identity, AbstractAccountContractBuilder } from "chainsig-aa.js"
 import React, { useState } from "react"
 
 import { AuthAdapter, AuthConfig } from "../_utils/AuthAdapter"
@@ -14,8 +15,6 @@ import Header from "@/components/Header"
 import IdentitiesList from "@/components/IdentitiesList"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Transaction, Identity } from "@/contracts/AbstractAccountContract/types/transaction"
-import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth"
 import { useToast } from "@/hooks/use-toast"
 import { useAccountData } from "@/hooks/useAccountData"
 import { useEnv } from "@/hooks/useEnv"
@@ -47,7 +46,12 @@ export default function AccountPage() {
         const transaction = AbstractAccountContractBuilder.transaction.addIdentity({
             accountId,
             nonce: account.nonce ?? 0,
-            identity: authIdentity,
+            identity_with_permissions: {
+                identity: authIdentity,
+                permissions: {
+                    enable_act_as: false,
+                },
+            },
         })
 
         setAuthProps({
@@ -84,8 +88,6 @@ export default function AccountPage() {
         })
         setAuthModalOpen(true)
     }
-
-
 
     return (
         <div className="min-h-screen bg-gray-50">

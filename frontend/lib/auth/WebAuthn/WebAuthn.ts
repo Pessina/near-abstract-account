@@ -2,15 +2,16 @@ import crypto from "crypto";
 
 import { parseAuthenticatorData } from "@simplewebauthn/server/helpers";
 import cbor from "cbor";
+import {
+  WebAuthnCredentials,
+  Identity,
+  AbstractAccountContractBuilder,
+} from "chainsig-aa.js";
 import { toHex } from "viem";
 
 import { IdentityClass } from "../Identity";
 
 import { parseSignature } from "./utils";
-
-import { WebAuthnCredentials } from "@/contracts/AbstractAccountContract/types/auth";
-import { Identity } from "@/contracts/AbstractAccountContract/types/transaction";
-import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth";
 
 export type WebAuthnOperation = "create" | "get";
 
@@ -90,7 +91,7 @@ export class WebAuthn extends IdentityClass<Identity, WebAuthnCredentials> {
     const prefix = yLastBit === 0 ? "0x02" : "0x03";
     const compressedPublicKey = prefix + x.slice(2); // Remove '0x' from x before concatenating
 
-    return AbstractAccountContractBuilder.authIdentity.webauthn({
+    return AbstractAccountContractBuilder.identity.webauthn({
       key_id: toHex(new Uint8Array(cred.rawId)),
       compressed_public_key: compressedPublicKey,
     });
@@ -144,7 +145,7 @@ export class WebAuthn extends IdentityClass<Identity, WebAuthnCredentials> {
     );
     const signature = parseSignature(new Uint8Array(cred?.response?.signature));
 
-    const authIdentity = AbstractAccountContractBuilder.authIdentity.webauthn({
+    const authIdentity = AbstractAccountContractBuilder.identity.webauthn({
       key_id: toHex(new Uint8Array(cred.rawId)),
     });
 

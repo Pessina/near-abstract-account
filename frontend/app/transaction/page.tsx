@@ -1,5 +1,6 @@
 "use client"
 
+import { Action, Identity, UserOperation, AbstractAccountContractBuilder } from "chainsig-aa.js"
 import React, { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 
@@ -9,9 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Action, Identity, UserOperation } from "@/contracts/AbstractAccountContract/types/transaction"
-import { useAbstractAccountContract } from "@/contracts/AbstractAccountContract/useAbstractAccountContract"
-import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth"
+import { useAbstractAccountContract } from "@/contracts/useAbstractAccountContract"
 import { useToast } from "@/hooks/use-toast"
 
 type FormValues = {

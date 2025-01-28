@@ -2,6 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query"
 import canonicalize from "canonicalize"
+import { UserOperation, Transaction } from "chainsig-aa.js"
 import { useState } from "react"
 
 import AuthenticationButtons from "./AuthenticationButtons"
@@ -11,8 +12,7 @@ import GoogleButton from "./GoogleButton"
 import { AuthConfig, AuthAdapter } from "@/app/_utils/AuthAdapter"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
-import { UserOperation, Transaction } from "@/contracts/AbstractAccountContract/types/transaction"
-import { useAbstractAccountContract } from "@/contracts/AbstractAccountContract/useAbstractAccountContract"
+import { useAbstractAccountContract } from "@/contracts/useAbstractAccountContract"
 import { useToast } from "@/hooks/use-toast"
 import { useEnv } from "@/hooks/useEnv"
 import { NEAR_MAX_GAS } from "@/lib/constants"

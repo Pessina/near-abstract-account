@@ -1,8 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Account, Identity } from "chainsig-aa.js";
 
-import { Account } from "@/contracts/AbstractAccountContract/AbstractAccountContract";
-import { Identity } from "@/contracts/AbstractAccountContract/types/transaction";
-import { useAbstractAccountContract } from "@/contracts/AbstractAccountContract/useAbstractAccountContract";
+import { useAbstractAccountContract } from "@/contracts/useAbstractAccountContract";
 import { useToast } from "@/hooks/use-toast";
 
 interface AccountWithId extends Account {

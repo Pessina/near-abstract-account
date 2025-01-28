@@ -1,4 +1,10 @@
 import {
+  WalletCredentials,
+  WalletType,
+  AbstractAccountContractBuilder,
+  Identity,
+} from "chainsig-aa.js";
+import {
   type WalletClient,
   type EIP1193Provider,
   custom,
@@ -10,13 +16,6 @@ import {
 } from "viem";
 
 import { IdentityClass } from "../Identity";
-
-import {
-  WalletCredentials,
-  WalletType,
-} from "@/contracts/AbstractAccountContract/types/auth";
-import { Identity } from "@/contracts/AbstractAccountContract/types/transaction";
-import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth";
 
 export class Ethereum extends IdentityClass<Identity, WalletCredentials> {
   private walletClient: WalletClient | null = null;
@@ -73,7 +72,7 @@ export class Ethereum extends IdentityClass<Identity, WalletCredentials> {
     const prefix = yLastByte % 2 === 0 ? "02" : "03";
     const compressedKey = "0x" + prefix + uncompressedKey.slice(4, 68);
 
-    return AbstractAccountContractBuilder.authIdentity.wallet({
+    return AbstractAccountContractBuilder.identity.wallet({
       wallet_type: WalletType.Ethereum,
       public_key: compressedKey,
     });

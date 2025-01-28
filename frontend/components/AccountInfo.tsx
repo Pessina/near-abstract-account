@@ -1,5 +1,6 @@
 "use client"
 
+import { Account } from "chainsig-aa.js"
 import { Copy } from "lucide-react"
 import React from "react"
 
@@ -16,7 +17,6 @@ import {
     HoverCardContent,
     HoverCardTrigger,
 } from "@/components/ui/hover-card"
-import { Account } from "@/contracts/AbstractAccountContract/AbstractAccountContract"
 import { useToast } from "@/hooks/use-toast"
 
 interface AccountInfoProps {

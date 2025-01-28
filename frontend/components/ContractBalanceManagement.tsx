@@ -1,13 +1,13 @@
 "use client"
 
+import { StorageBalance } from "chainsig-aa.js"
 import { PlusIcon, MinusIcon, RefreshCwIcon } from "lucide-react"
 import React, { useCallback, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { StorageBalance } from "@/contracts/AbstractAccountContract/AbstractAccountContract"
-import { useAbstractAccountContract } from "@/contracts/AbstractAccountContract/useAbstractAccountContract"
+import { useAbstractAccountContract } from "@/contracts/useAbstractAccountContract"
 import { useEnv } from "@/hooks/useEnv"
 import { ONE_YOCTO_NEAR } from "@/lib/constants"
 

@@ -1,5 +1,6 @@
 "use client"
 
+import { Identity, IdentityWithPermissions } from "chainsig-aa.js"
 import { Copy, Key, Mail, Wallet } from "lucide-react"
 import React from "react"
 
@@ -16,7 +17,6 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { Identity, IdentityWithPermissions } from "@/contracts/AbstractAccountContract/types/transaction"
 import { useToast } from "@/hooks/use-toast"
 
 interface IdentitiesListProps {

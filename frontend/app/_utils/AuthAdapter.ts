@@ -1,15 +1,13 @@
 import canonicalize from "canonicalize";
-
 import {
   WalletCredentials,
   WebAuthnCredentials,
   OIDCCredentials,
-} from "@/contracts/AbstractAccountContract/types/auth";
-import {
+  AbstractAccountContractBuilder,
   Identity,
   Transaction,
-} from "@/contracts/AbstractAccountContract/types/transaction";
-import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth";
+} from "chainsig-aa.js";
+
 import { Ethereum } from "@/lib/auth/Ethereum/Ethereum";
 import { Solana } from "@/lib/auth/Solana/Solana";
 import { WebAuthn, WebAuthnOperation } from "@/lib/auth/WebAuthn/WebAuthn";
@@ -76,7 +74,7 @@ export class AuthAdapter {
         return authIdentity;
       }
       case "oidc": {
-        return AbstractAccountContractBuilder.authIdentity.oidc({
+        return AbstractAccountContractBuilder.identity.oidc({
           client_id: config.config.clientId,
           issuer: config.config.issuer,
           email: config.config.email,
@@ -121,7 +119,7 @@ export class AuthAdapter {
         if (!config.config.token) throw new Error("Token is required");
 
         return {
-          authIdentity: AbstractAccountContractBuilder.authIdentity.oidc({
+          authIdentity: AbstractAccountContractBuilder.identity.oidc({
             client_id: config.config.clientId,
             issuer: config.config.issuer,
             email: config.config.email,

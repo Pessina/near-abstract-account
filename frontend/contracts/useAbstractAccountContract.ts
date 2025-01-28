@@ -1,14 +1,13 @@
 "use client";
 
+import { AbstractAccountContract } from "chainsig-aa.js";
 import { useState, useEffect } from "react";
-
-import { AbstractAccountContractClass } from "./AbstractAccountContract";
 
 import { useEnv } from "@/hooks/useEnv";
 import { useInitNear } from "@/hooks/useInitNear";
 
 export const useAbstractAccountContract = () => {
-  const [contract, setContract] = useState<AbstractAccountContractClass | null>(
+  const [contract, setContract] = useState<AbstractAccountContract | null>(
     null
   );
   const { near, error, isLoading } = useInitNear();
@@ -20,7 +19,7 @@ export const useAbstractAccountContract = () => {
 
       try {
         const account = await near.account(nearAccountId);
-        const contractInstance = new AbstractAccountContractClass({
+        const contractInstance = new AbstractAccountContract({
           account,
           contractId: abstractAccountContract,
         });

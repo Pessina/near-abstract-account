@@ -1,13 +1,12 @@
 "use client";
 
+import { Account, Identity, IdentityWithPermissions } from "chainsig-aa.js";
 import { ChevronDown, ChevronUp, Copy, Key, Shield } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Account } from "@/contracts/AbstractAccountContract/AbstractAccountContract";
-import { Identity, IdentityWithPermissions } from "@/contracts/AbstractAccountContract/types/transaction";
 import { useToast } from "@/hooks/use-toast";
 
 function getIdentityPath(identity: Identity): string {

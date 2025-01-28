@@ -3,15 +3,14 @@ import {
   PhantomWalletAdapter,
   SolflareWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
-
-import { IdentityClass } from "../Identity";
-
 import {
   WalletCredentials,
   WalletType,
-} from "@/contracts/AbstractAccountContract/types/auth";
-import { Identity } from "@/contracts/AbstractAccountContract/types/transaction";
-import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth";
+  Identity,
+  AbstractAccountContractBuilder,
+} from "chainsig-aa.js";
+
+import { IdentityClass } from "../Identity";
 
 export type SolanaWalletType = "phantom" | "solflare";
 
@@ -56,7 +55,7 @@ export class Solana extends IdentityClass<Identity, WalletCredentials> {
     if (!this.isAvailable()) throw new Error("Solana wallet not available");
 
     const wallet = await this.connectWallet();
-    return AbstractAccountContractBuilder.authIdentity.wallet({
+    return AbstractAccountContractBuilder.identity.wallet({
       wallet_type: WalletType.Solana,
       public_key: wallet.publicKey?.toBase58() ?? "",
     });
@@ -73,7 +72,7 @@ export class Solana extends IdentityClass<Identity, WalletCredentials> {
 
     const encodedMessage = new TextEncoder().encode(message);
     const signature = await wallet.signMessage(encodedMessage);
-    const authIdentity = AbstractAccountContractBuilder.authIdentity.wallet({
+    const authIdentity = AbstractAccountContractBuilder.identity.wallet({
       wallet_type: WalletType.Solana,
       public_key: wallet.publicKey?.toBase58() ?? "",
     });

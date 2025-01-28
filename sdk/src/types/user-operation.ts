@@ -1,4 +1,16 @@
-import { Identity, Credentials, Auth, WalletType } from './auth'
+import {
+  Identity,
+  IdentityWithPermissions,
+  IdentityPermissions,
+} from './account'
+import {
+  WebAuthnCredentials,
+  WalletCredentials,
+  OIDCCredentials,
+  OIDCIdentity,
+  WalletIdentity,
+  WebAuthnIdentity,
+} from './auth'
 
 export interface UserOperation {
   auth: Auth
@@ -24,13 +36,19 @@ export interface AddIdentityWithAuth {
   credentials: Credentials
 }
 
-export interface IdentityWithPermissions {
+export interface Auth {
   identity: Identity
-  permissions: IdentityPermissions
+  credentials: Credentials
 }
 
-export interface IdentityPermissions {
-  enable_act_as: boolean
+export type Credentials =
+  | WebAuthnCredentials
+  | WalletCredentials
+  | OIDCCredentials
+
+export interface SignPayloadsRequest {
+  contract_id: string
+  payloads: SignRequest[]
 }
 
 export interface SignRequest {
@@ -39,11 +57,7 @@ export interface SignRequest {
   key_version: number
 }
 
-export interface SignPayloadsRequest {
-  contract_id: string
-  payloads: SignRequest[]
-}
-
+// TODO: Check where to place this
 export interface ActionSignableMessage {
   account_id: string
   nonce: string
@@ -51,7 +65,7 @@ export interface ActionSignableMessage {
   permissions?: IdentityPermissions
 }
 
-export interface Signature {
+export interface MPCSignature {
   big_r: {
     affine_point: string
   }
@@ -59,14 +73,4 @@ export interface Signature {
     scalar: string
   }
   recovery_id: number
-}
-
-export interface Account {
-  identities: IdentityWithPermissions[]
-  nonce: number
-}
-
-export interface StorageBalance {
-  total: string
-  available: string
 }

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 
 import { useAccount } from "@/app/_providers/AccountContext";
-import { useAbstractAccountContract } from "@/contracts/AbstractAccountContract/useAbstractAccountContract";
+import { useAbstractAccountContract } from "@/contracts/useAbstractAccountContract";
 
 export function useAccountData() {
   const { contract } = useAbstractAccountContract();

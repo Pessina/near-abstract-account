@@ -19,7 +19,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
-import { useAbstractAccountContract } from "@/contracts/AbstractAccountContract/useAbstractAccountContract"
+import { useAbstractAccountContract } from "@/contracts/useAbstractAccountContract"
 import { useEnv } from "@/hooks/useEnv"
 import { parseOIDCToken } from "@/lib/utils"
 
