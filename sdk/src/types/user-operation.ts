@@ -1,15 +1,12 @@
-import {
+import type {
   Identity,
   IdentityWithPermissions,
   IdentityPermissions,
 } from './account'
-import {
+import type {
   WebAuthnCredentials,
   WalletCredentials,
   OIDCCredentials,
-  OIDCIdentity,
-  WalletIdentity,
-  WebAuthnIdentity,
 } from './auth'
 
 export interface UserOperation {

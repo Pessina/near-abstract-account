@@ -18,9 +18,11 @@ export const useAbstractAccountContract = () => {
       if (!near) return;
 
       try {
-        const account = await near.account(nearAccountId);
+        const nearAccount = await near.account(nearAccountId);
         const contractInstance = new AbstractAccountContract({
-          account,
+          near,
+          nearAccount,
+          accountId: nearAccountId,
           contractId: abstractAccountContract,
         });
         setContract(contractInstance);

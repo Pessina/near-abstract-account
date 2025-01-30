@@ -1,10 +1,14 @@
-import { Identity, IdentityWithPermissions } from '@/types/account'
-import { WebAuthnIdentity, WalletIdentity, OIDCIdentity } from '@/types/auth'
-import {
+import type { Identity, IdentityWithPermissions } from '../types/account'
+import type {
+  WebAuthnIdentity,
+  WalletIdentity,
+  OIDCIdentity,
+} from '../types/auth'
+import type {
   Credentials,
   SignPayloadsRequest,
   Transaction,
-} from '@/types/user-operation'
+} from '../types/user-operation'
 
 export class AbstractAccountContractBuilder {
   static identity = {

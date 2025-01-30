@@ -1,4 +1,4 @@
-import { OIDCIdentity, WalletIdentity, WebAuthnIdentity } from './auth'
+import type { OIDCIdentity, WalletIdentity, WebAuthnIdentity } from './auth'
 
 export interface Account {
   identities: IdentityWithPermissions[]

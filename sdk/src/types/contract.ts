@@ -1,12 +1,14 @@
 import { Contract } from 'near-api-js'
-import { IdentityWithPermissions, Identity, Account } from './account'
-import { UserOperation } from './user-operation'
-import { TxExecutionStatus } from '@near-js/types'
+import type { IdentityWithPermissions, Identity, Account } from './account'
+import type { UserOperation } from './user-operation'
+import type { TxExecutionStatus } from '@near-js/types'
+import { Account as NearAccount } from 'near-api-js'
 
 export type ContractChangeMethodArgs<T = void> = {
   args: T
   gas?: string
   amount?: string
+  signerAccount?: NearAccount
 }
 
 export type ExtendedContractChangeArgs<T = void> =

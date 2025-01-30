@@ -1,21 +1,30 @@
-import { CustomNearAccount } from '@/near/CustomNearAccount'
-import { AbstractAccountContractType } from '@/types/contract'
-import { Action, actionCreators } from '@near-js/transactions'
-import { Contract, Account as NearAccount } from 'near-api-js'
+import { sendTransactionUntil } from '../near/transaction'
+import type { AbstractAccountContractType } from '../types/contract'
+import { actionCreators } from '@near-js/transactions'
+import { Contract, Near, Account as NearAccount } from 'near-api-js'
 
 export class AbstractAccountContract {
   private contract: AbstractAccountContractType
-  private account: CustomNearAccount
+  private near: Near
+  private accountId: string
   private contractId: string
 
   constructor({
-    account,
+    near,
     contractId,
+    accountId,
+    nearAccount,
   }: {
-    account: NearAccount
+    near: Near
     contractId: string
+    accountId: string
+    nearAccount: NearAccount
   }) {
-    this.contract = new Contract(account, contractId, {
+    this.near = near
+    this.accountId = accountId
+    this.contractId = contractId
+
+    this.contract = new Contract(nearAccount, contractId, {
       viewMethods: [
         'get_account_by_id',
         'list_account_ids',
@@ -33,9 +42,6 @@ export class AbstractAccountContract {
       ],
       useLocalViewExecution: false,
     }) as unknown as AbstractAccountContractType
-
-    this.account = new CustomNearAccount(account.connection, account.accountId)
-    this.contractId = contractId
   }
 
   async getAccountById(
@@ -77,28 +83,28 @@ export class AbstractAccountContract {
   async auth(obj: Parameters<AbstractAccountContractType['auth']>[0]) {
     const { retryCount, waitUntil, ...rest } = obj
 
-    const action: Action = actionCreators.functionCall(
-      'auth',
-      obj.args,
-      obj.gas ? BigInt(obj.gas) : undefined,
-      obj.amount ? BigInt(obj.amount) : undefined
-    )
-
     if (waitUntil) {
-      return this.account.sendTransactionUntil(
-        this.contractId,
-        [action],
-        waitUntil
-      )
+      return sendTransactionUntil(this.near, this.accountId, this.contractId, [
+        actionCreators.functionCall(
+          'auth',
+          { user_op: 'sdfsd' },
+          300000000000000n, // Near max gas
+          10n // Deposit to handle network congestion
+        ),
+      ])
     }
-    if (retryCount) {
-      return this.account.sendTransactionWithRetry(
-        this.contractId,
-        [action],
-        retryCount
-      )
-    }
-    return this.contract.auth(rest)
+
+    // if (retryCount) {
+    //   return this.customNearAccount.sendTransactionWithRetry(
+    //     this.contractId,
+    //     [action],
+    //     retryCount
+    //   )
+    // }
+
+    const account = await this.near.account(this.accountId)
+
+    return this.contract.auth({ signerAccount: account, ...rest })
   }
 
   async storageBalanceOf(

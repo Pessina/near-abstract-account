@@ -61,13 +61,16 @@ export default function AuthModal({
                 }
             }
 
-            await contract.auth({
+            const ret = await contract.auth({
                 args: {
                     user_op: userOp
                 },
                 gas: NEAR_MAX_GAS,
-                amount: "10" // TODO: Should be dynamic according to the contract current fee
+                amount: "10", // TODO: Should be dynamic according to the contract current fee
+                waitUntil: "NONE"
             })
+
+            console.log({ ret })
 
             await Promise.all([
                 queryClient.invalidateQueries({ queryKey: ['account', accountId] }),

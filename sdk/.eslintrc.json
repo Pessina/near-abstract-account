@@ -27,19 +27,7 @@
         ],
         "pathGroups": [
           {
-            "pattern": "@chains",
-            "group": "internal"
-          },
-          {
-            "pattern": "@chains/**",
-            "group": "internal"
-          },
-          {
-            "pattern": "@utils",
-            "group": "internal"
-          },
-          {
-            "pattern": "@utils/**",
+            "pattern": "@/*",
             "group": "internal"
           }
         ],
