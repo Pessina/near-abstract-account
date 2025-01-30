@@ -87,7 +87,7 @@ export class AbstractAccountContract {
       return sendTransactionUntil(this.near, this.accountId, this.contractId, [
         actionCreators.functionCall(
           'auth',
-          { user_op: 'sdfsd' },
+          obj.args,
           300000000000000n, // Near max gas
           10n // Deposit to handle network congestion
         ),

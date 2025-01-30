@@ -83,11 +83,12 @@ export default function AuthModal({
             })
             onClose()
         } catch (err) {
-            toast({
-                title: "Error",
-                description: err instanceof Error ? err.message : "Transaction failed",
-                variant: "destructive",
-            })
+            throw err
+            // toast({
+            //     title: "Error",
+            //     description: err instanceof Error ? err.message : "Transaction failed",
+            //     variant: "destructive",
+            // })
         }
     }
 

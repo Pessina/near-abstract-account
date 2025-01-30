@@ -1,18 +1,18 @@
-import { Action, actionCreators } from '@near-js/transactions'
-import { transactions, utils as nearUtils, Near, KeyPair } from 'near-api-js'
-import { createHash } from 'crypto'
-
-const keyPair = KeyPair.fromString(
-  'ed25519:Hyoj2s6ZjHny5UBuJRmnoXN5jai1jtpxFDGCgwHBnVGm4HW8dYABxoVLVHs9kE72a7RtPYg4QDrmgCTKcK3Sdhk'
-)
+import { Action } from '@near-js/transactions'
+import { transactions, utils as nearUtils, Near, connect } from 'near-api-js'
 
 export const sendTransactionUntil = async (
-  near: Near,
+  nearBase: Near,
   accountId: string,
   receiverId: string,
   actions: Action[]
 ) => {
-  const publicKey = keyPair.getPublicKey()
+  const near = await connect(nearBase.config)
+  const signer = near.connection.signer
+  const publicKey = await signer.getPublicKey(
+    accountId,
+    near.connection.networkId
+  )
 
   const accessKey = (await near.connection.provider.query(
     `access_key/${accountId}/${publicKey.toString()}`,
@@ -31,11 +31,7 @@ export const sendTransactionUntil = async (
     publicKey,
     receiverId,
     ++accessKey.nonce,
-    [
-      {
-        ...actionCreators.functionCall('auth', {}, 300000000000000n, 10n),
-      },
-    ],
+    actions,
     recentBlockHash
   )
 
@@ -44,9 +40,11 @@ export const sendTransactionUntil = async (
     tx
   )
 
-  const serializedTxHash = createHash('sha256').update(serializedTx).digest()
-
-  const nearTransactionSignature = keyPair.sign(serializedTxHash)
+  const nearTransactionSignature = await signer.signMessage(
+    serializedTx,
+    accountId,
+    near.connection.networkId
+  )
 
   const signedTransaction = new transactions.SignedTransaction({
     transaction: tx,
@@ -56,8 +54,10 @@ export const sendTransactionUntil = async (
     }),
   })
 
-  const result =
-    await near.connection.provider.sendTransactionAsync(signedTransaction)
+  const result = await near.connection.provider.sendTransactionUntil(
+    signedTransaction,
+    'INCLUDED_FINAL'
+  )
 
   console.log({ result })
 
