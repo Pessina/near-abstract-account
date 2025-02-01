@@ -7,6 +7,7 @@ export const sendTransactionUntil = async (
   receiverId: string,
   actions: Action[]
 ) => {
+  // TODO: this a dirty hack to avoid the (transaction instanceof SignedTransaction) check in the sendTransactionUntil function
   const near = await connect(nearBase.config)
   const signer = near.connection.signer
   const publicKey = await signer.getPublicKey(
