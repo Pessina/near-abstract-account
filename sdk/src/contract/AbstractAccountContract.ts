@@ -1,5 +1,9 @@
+import { NEAR_MAX_GAS } from '../near'
 import { sendTransactionUntil } from '../near/transaction'
-import type { AbstractAccountContractType } from '../types/contract'
+import type {
+  AbstractAccountContractType,
+  ExtendedContractChangeArgs,
+} from '../types/contract'
 import { actionCreators } from '@near-js/transactions'
 import { Contract, Near, Account as NearAccount } from 'near-api-js'
 
@@ -44,6 +48,16 @@ export class AbstractAccountContract {
     }) as unknown as AbstractAccountContractType
   }
 
+  private async withSignerAccount<T, R>(
+    method: (params: ExtendedContractChangeArgs<T>) => Promise<R>,
+    params: ExtendedContractChangeArgs<T>
+  ): Promise<R> {
+    return method({
+      ...params,
+      signerAccount: await this.near.account(this.accountId),
+    })
+  }
+
   async getAccountById(
     obj: Parameters<AbstractAccountContractType['get_account_by_id']>[0]
   ) {
@@ -77,34 +91,22 @@ export class AbstractAccountContract {
   async addAccount(
     obj: Parameters<AbstractAccountContractType['add_account']>[0]
   ) {
-    return this.contract.add_account(obj)
+    return this.withSignerAccount(
+      this.contract.add_account.bind(this.contract),
+      obj
+    )
   }
 
   async auth(obj: Parameters<AbstractAccountContractType['auth']>[0]) {
-    const { retryCount, waitUntil, ...rest } = obj
+    const { waitUntil, args, gas = NEAR_MAX_GAS, amount = 0 } = obj
 
     if (waitUntil) {
       return sendTransactionUntil(this.near, this.accountId, this.contractId, [
-        actionCreators.functionCall(
-          'auth',
-          obj.args,
-          300000000000000n, // Near max gas
-          10n // Deposit to handle network congestion
-        ),
+        actionCreators.functionCall('auth', args, BigInt(gas), BigInt(amount)),
       ])
     }
 
-    // if (retryCount) {
-    //   return this.customNearAccount.sendTransactionWithRetry(
-    //     this.contractId,
-    //     [action],
-    //     retryCount
-    //   )
-    // }
-
-    const account = await this.near.account(this.accountId)
-
-    return this.contract.auth({ signerAccount: account, ...rest })
+    return this.withSignerAccount(this.contract.auth.bind(this.contract), obj)
   }
 
   async storageBalanceOf(
@@ -116,12 +118,18 @@ export class AbstractAccountContract {
   async storageDeposit(
     obj: Parameters<AbstractAccountContractType['storage_deposit']>[0]
   ) {
-    return this.contract.storage_deposit(obj)
+    return this.withSignerAccount(
+      this.contract.storage_deposit.bind(this.contract),
+      obj
+    )
   }
 
   async storageWithdraw(
     obj: Parameters<AbstractAccountContractType['storage_withdraw']>[0]
   ) {
-    return this.contract.storage_withdraw(obj)
+    return this.withSignerAccount(
+      this.contract.storage_withdraw.bind(this.contract),
+      obj
+    )
   }
 }

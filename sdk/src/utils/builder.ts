@@ -93,24 +93,38 @@ export class AbstractAccountContractBuilder {
     }),
   }
 
-  //   TODO: This methods will be responsible to generate the path for each Identity, those methods exist on the interface on Rust
-  //   static path = {
-  //     auth: (args: { user_op: UserOperation }): Transaction => ({
-  //       account_id: args.accountId,
-  //       nonce: args.nonce,
-  //       action: 'Auth',
-  //     }),
-  //   }
+  // TODO: This could likely be exposed by the contract to avoid code duplication
+  static path = {
+    wallet: (args: {
+      walletType: 'Ethereum' | 'Solana'
+      publicKey: string
+    }): string => {
+      const path =
+        args.walletType === 'Ethereum'
+          ? args.publicKey.startsWith('0x')
+            ? args.publicKey.slice(2)
+            : args.publicKey
+          : args.publicKey
 
-  //   TODO: This methods will be responsible to generating the payload of the credentials on Transaction and AddIdentityWithAuth
-  //   static credentialsPayload = {
-  //     oidc: (args: OIDCCredentials): Credentials => ({
-  //       OIDC: args,
-  //     }),
-  //   }
+      return `wallet/${path}`
+    },
 
-  //   TODO: This methods will be responsible to generate the @near-js/transactions Action type, possibly inject the nonce on the action also
-  // static near = {
-  //     buildAction:
-  // }
+    webauthn: (args: { compressedPublicKey: string }): string => {
+      return `webauthn/${args.compressedPublicKey}`
+    },
+
+    oidc: (args: {
+      issuer: string
+      clientId: string
+      email?: string
+      sub?: string
+    }): string => {
+      if (!args.email && !args.sub) {
+        throw new Error('OIDC auth identity must have either email or sub')
+      }
+
+      const identifier = args.sub || args.email
+      return `oidc/${args.issuer}/${args.clientId}/${identifier}`
+    },
+  }
 }

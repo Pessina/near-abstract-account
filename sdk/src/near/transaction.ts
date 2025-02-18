@@ -1,15 +1,18 @@
 import { Action } from '@near-js/transactions'
 import { transactions, utils as nearUtils, Near, connect } from 'near-api-js'
+import type { TxExecutionStatus } from '@near-js/types'
 
 export const sendTransactionUntil = async (
   nearBase: Near,
   accountId: string,
   receiverId: string,
-  actions: Action[]
+  actions: Action[],
+  until: TxExecutionStatus = 'EXECUTED_OPTIMISTIC',
+  retryCount = 3
 ) => {
   // TODO: this a dirty hack to avoid the (transaction instanceof SignedTransaction) check in the sendTransactionUntil function
   const near = await connect(nearBase.config)
-  const signer = near.connection.signer
+  const { signer } = near.connection
   const publicKey = await signer.getPublicKey(
     accountId,
     near.connection.networkId
@@ -60,32 +63,24 @@ export const sendTransactionUntil = async (
     'INCLUDED_FINAL'
   )
 
-  console.log({ result })
-
   if (!result.transaction.hash) {
     throw new Error('No transaction hash found')
   }
-  const nearTxHash = result.transaction.hash
 
-  let attempts = 0
-  let txOutcome
-  while (attempts < 5) {
+  let i = 0
+  do {
     try {
-      txOutcome = await near.connection.provider.txStatus(
-        nearTxHash,
+      return await near.connection.provider.txStatus(
+        result.transaction.hash,
         accountId,
-        'EXECUTED_OPTIMISTIC'
+        until
       )
-      break
     } catch (error) {
-      attempts++
-      if (attempts === 3) throw error
-      await new Promise((resolve) => setTimeout(resolve, 5000))
+      if (i === retryCount - 1) throw error
+      await new Promise((resolve) => setTimeout(resolve, 5000)) // Near RPC timeout
     }
-  }
-  if (!txOutcome) {
-    throw new Error('No transaction outcome found')
-  }
+    i++
+  } while (i < retryCount)
 
-  return txOutcome
+  throw new Error('Failed to get transaction status')
 }

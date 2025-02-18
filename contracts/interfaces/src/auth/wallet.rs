@@ -39,6 +39,7 @@ pub struct WalletAuthenticator {
     pub wallet_type: WalletType,
     pub public_key: String, // TODO: Compressed public key if possible
 }
+
 impl Path for WalletAuthenticator {
     fn path(&self) -> String {
         let path = match self.wallet_type {
