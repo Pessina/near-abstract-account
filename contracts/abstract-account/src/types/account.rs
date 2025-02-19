@@ -1,4 +1,4 @@
-use super::auth_identity::AuthIdentity;
+use super::identity::{Identity, IdentityWithPermissions};
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
@@ -8,24 +8,26 @@ use schemars::JsonSchema;
 #[derive(Debug, BorshDeserialize, BorshSerialize, Deserialize, Serialize, JsonSchema, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub struct Account {
-    pub auth_identities: Vec<AuthIdentity>,
+    pub identities: Vec<IdentityWithPermissions>,
+    pub nonce: u128,
 }
 
 impl Account {
-    pub fn new(auth_identities: Vec<AuthIdentity>) -> Self {
-        Self { auth_identities }
+    pub fn new(identities: Vec<IdentityWithPermissions>, nonce: u128) -> Self {
+        Self { identities, nonce }
     }
 
-    pub fn has_auth_identity(&self, auth_identity: &AuthIdentity) -> bool {
-        self.auth_identities.contains(auth_identity)
+    pub fn get_identity(&self, identity: &Identity) -> Option<&IdentityWithPermissions> {
+        self.identities
+            .iter()
+            .find(|curr| &curr.identity == identity)
     }
 
-    pub fn add_auth_identity(&mut self, auth_identity: AuthIdentity) {
-        self.auth_identities.push(auth_identity);
+    pub fn add_identity(&mut self, identity_with_permissions: IdentityWithPermissions) {
+        self.identities.push(identity_with_permissions);
     }
 
-    pub fn remove_auth_identity(&mut self, auth_identity: AuthIdentity) {
-        self.auth_identities
-            .retain(|identity| identity != &auth_identity);
+    pub fn remove_identity(&mut self, identity: &Identity) {
+        self.identities.retain(|curr| &curr.identity != identity);
     }
 }

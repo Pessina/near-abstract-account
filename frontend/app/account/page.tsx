@@ -1,340 +1,261 @@
 "use client"
 
+import { Transaction, Identity, AbstractAccountContractBuilder } from "chainsig-aa.js"
+import { Key } from "lucide-react"
+import Image from "next/image"
 import React, { useState } from "react"
 
-import { AuthAdapter, AuthConfig } from "../_utils/AuthAdapter"
+import { AuthAdapter, AuthConfig } from "../../lib/auth/AuthAdapter"
 
-import AuthButton from "@/components/AuthButton"
+import AccountInfo from "@/app/account/components/AccountInfo"
+import IdentitiesList from "@/app/account/components/IdentitiesList"
 import AuthModal from "@/components/AuthModal"
 import FacebookButton from "@/components/FacebookButton"
 import GoogleButton from "@/components/GoogleButton"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { AuthIdentity } from "@/contracts/AbstractAccountContract/AbstractAccountContract"
-import { Transaction } from "@/contracts/AbstractAccountContract/types/transaction"
-import { useAbstractAccountContract } from "@/contracts/AbstractAccountContract/useAbstractAccountContract"
-import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth"
+import { useToast } from "@/hooks/use-toast"
+import { useAccountData } from "@/hooks/useAccountData"
 import { useEnv } from "@/hooks/useEnv"
 import { parseOIDCToken } from "@/lib/utils"
+import { useAccount } from "@/providers/AccountContext"
+import metamask from "@/public/metamask.svg"
+import phantom from "@/public/sol.svg"
 
 export default function AccountPage() {
-    const [accounts, setAccounts] = useState<string[]>([])
-    const [selectedAccount, setSelectedAccount] = useState("")
-    const [authIdentities, setAuthIdentities] = useState<AuthIdentity[]>([])
     const [authModalOpen, setAuthModalOpen] = useState(false)
     const [authProps, setAuthProps] = useState<{ accountId: string, transaction: Transaction } | null>(null)
-    const [newAccountId, setNewAccountId] = useState("")
-    const [authAction, setAuthAction] = useState<"register" | "add">("register")
 
-    const { contract } = useAbstractAccountContract()
+    const { accountId } = useAccount()
     const { googleClientId, facebookAppId } = useEnv()
+    const { toast } = useToast()
+    const {
+        account,
+        identities,
+        isLoading,
+    } = useAccountData()
 
-    if (!contract) {
-        return <div>Loading...</div>
+    if (isLoading || !account || !accountId) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="text-center">Loading account...</div>
+            </div>
+        )
     }
 
-    const handleDeleteAccount = async (accountId: string) => {
-        const transaction = AbstractAccountContractBuilder.transaction.removeAccount()
-        setAuthProps({
+    const handleAddIdentity = async (config: AuthConfig) => {
+        const authIdentity = await AuthAdapter.getIdentity(config)
+        const transaction = AbstractAccountContractBuilder.transaction.addIdentity({
             accountId,
-            transaction
-        })
-        setAuthModalOpen(true)
-    }
-
-    const handleRemoveAuthIdentity = async (accountId: string, authIdentity: AuthIdentity) => {
-        const transaction = AbstractAccountContractBuilder.transaction.removeAuthIdentity({
-            authIdentity
-        })
-        setAuthProps({
-            accountId,
-            transaction
-        })
-        setAuthModalOpen(true)
-    }
-
-    const handleRegister = async ({
-        config,
-        accountId,
-    }: {
-        config: AuthConfig;
-        accountId: string;
-    }) => {
-        const authIdentity = await AuthAdapter.getAuthIdentity(config);
-
-        await contract.addAccount({
-            args: {
-                account_id: accountId,
-                auth_identity: authIdentity
-            }
-        });
-
-        await loadAccounts();
-    }
-
-    const handleAddAuthIdentity = async ({
-        config,
-        accountId,
-    }: {
-        config: AuthConfig;
-        accountId: string;
-    }) => {
-        const authIdentity = await AuthAdapter.getAuthIdentity(config);
-        const transaction = AbstractAccountContractBuilder.transaction.addAuthIdentity({
-            authIdentity
+            nonce: account.nonce ?? 0,
+            identity_with_permissions: {
+                identity: authIdentity,
+                permissions: {
+                    enable_act_as: false,
+                },
+            },
         })
 
         setAuthProps({
             accountId,
-            transaction
+            transaction,
+
         })
         setAuthModalOpen(true)
     }
 
-    const loadAccounts = async () => {
-        const accountList = await contract.listAccountIds()
-        setAccounts(accountList)
+    const handleRemoveIdentity = async (identity: Identity) => {
+        const transaction = AbstractAccountContractBuilder.transaction.removeIdentity({
+            accountId,
+            nonce: account.nonce ?? 0,
+            identity,
+        })
+
+        setAuthProps({
+            accountId,
+            transaction,
+        })
+        setAuthModalOpen(true)
     }
 
-    const loadAuthIdentities = async (accountId: string) => {
-        const identities = await contract.listAuthIdentities({ account_id: accountId })
+    const handleDeleteAccount = async () => {
+        const transaction = AbstractAccountContractBuilder.transaction.removeAccount({
+            accountId,
+            nonce: account.nonce ?? 0,
+        })
 
-        if (!identities) {
-            console.error("No identities found for account", accountId)
-            return
-        }
-
-        setAuthIdentities(identities)
-        setSelectedAccount(accountId)
+        setAuthProps({
+            accountId,
+            transaction,
+        })
+        setAuthModalOpen(true)
     }
 
     return (
-        <div className="flex justify-center items-center h-full">
+        <div className="min-h-screen bg-gray-50">
             {authProps && (
                 <AuthModal
                     isOpen={authModalOpen}
-                    onClose={() => setAuthModalOpen(false)}
+                    onClose={() => {
+                        setAuthModalOpen(false)
+                        setAuthProps(null)
+                    }}
                     {...authProps}
                 />
             )}
-            <Card className="w-full md:max-w-2xl">
-                <CardHeader>
-                    <CardTitle className="text-2xl font-bold text-center">Account Management</CardTitle>
-                    <CardDescription className="text-center">Manage your accounts and authentication methods</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="border p-4 rounded">
-                        <h3 className="text-lg font-semibold mb-4">Create New Account</h3>
-                        <div className="space-y-4">
-                            <Input
-                                placeholder="Account ID"
-                                value={newAccountId}
-                                onChange={(e) => setNewAccountId(e.target.value)}
-                            />
-                            <Select onValueChange={(value) => setAuthAction(value as "register" | "add")}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select action" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="register">Register New Account</SelectItem>
-                                    <SelectItem value="add">Add Auth Method</SelectItem>
-                                </SelectContent>
-                            </Select>
-
-                            <div className="space-y-4">
-                                <h3 className="text-lg font-semibold">Passkey Authentication</h3>
+            <main className="container mx-auto px-4 py-8">
+                <div className="grid gap-8">
+                    <div className="flex justify-between items-center">
+                        <h1 className="text-3xl font-bold">Account Management</h1>
+                    </div>
+                    {account && <AccountInfo account={account} accountId={accountId} />}
+                    <IdentitiesList
+                        identities={identities || []}
+                        onRemove={handleRemoveIdentity}
+                    />
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Add Authentication Method</CardTitle>
+                            <CardDescription>
+                                Add a new way to authenticate to your account
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="grid gap-4">
                                 <Button
                                     onClick={() => {
-                                        const config = {
-                                            type: "webauthn" as const,
+                                        handleAddIdentity({
+                                            type: "webauthn",
                                             config: {
-                                                username: newAccountId,
+                                                username: accountId,
+                                                operation: "create",
                                             },
-                                        };
-                                        if (authAction === "register") {
-                                            handleRegister({
-                                                config,
-                                                accountId: newAccountId,
-                                            });
-                                        } else {
-                                            handleAddAuthIdentity({
-                                                config,
-                                                accountId: newAccountId,
-                                            });
-                                        }
+                                        })
                                     }}
+                                    variant="outline"
+                                    className="w-full flex items-center justify-center gap-2"
                                 >
-                                    {authAction === "register" ? "Register" : "Add"} with Passkey
+                                    <Key className="w-6 h-6 text-indigo-600" />
+                                    <span>Add Passkey</span>
                                 </Button>
-                            </div>
-                            <div className="space-y-4">
-                                <h3 className="text-lg font-semibold">Social Login</h3>
-                                <div className="flex gap-2">
+
+                                <div className="flex gap-4">
+                                    <Button
+                                        onClick={() => {
+                                            handleAddIdentity({
+                                                type: "wallet",
+                                                config: {
+                                                    wallet: "metamask",
+                                                    type: "ethereum",
+                                                },
+                                            })
+                                        }}
+                                        variant="outline"
+                                        className="flex-1 flex items-center justify-center gap-2"
+                                    >
+                                        <Image src={metamask} alt="MetaMask" width="24" height="24" />
+                                        <span>Add MetaMask</span>
+                                    </Button>
+                                    <Button
+                                        onClick={() => {
+                                            handleAddIdentity({
+                                                type: "wallet",
+                                                config: {
+                                                    wallet: "phantom",
+                                                    type: "solana",
+                                                },
+                                            })
+                                        }}
+                                        variant="outline"
+                                        className="flex-1 flex items-center justify-center gap-2"
+                                    >
+                                        <Image src={phantom} alt="Phantom" width="24" height="24" />
+                                        <span>Add Phantom</span>
+                                    </Button>
+                                </div>
+
+                                <div className="relative">
+                                    <div className="absolute inset-0 flex items-center">
+                                        <span className="w-full border-t" />
+                                    </div>
+                                    <div className="relative flex justify-center text-xs uppercase">
+                                        <span className="bg-gray-50 px-2 text-muted-foreground">
+                                            Or continue with
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-4">
                                     <GoogleButton
+                                        nonce=""
                                         onSuccess={(idToken) => {
-                                            const { email, issuer } = parseOIDCToken(idToken)
-                                            const config = {
-                                                type: "oidc" as const,
+                                            const { issuer, email } = parseOIDCToken(idToken)
+                                            handleAddIdentity({
+                                                type: "oidc",
                                                 config: {
                                                     clientId: googleClientId,
-                                                    issuer: issuer,
-                                                    email: email,
+                                                    issuer,
+                                                    email,
                                                     sub: null,
-                                                },
-                                            };
-                                            if (authAction === "register") {
-                                                handleRegister({
-                                                    config,
-                                                    accountId: newAccountId,
-                                                });
-                                            } else {
-                                                handleAddAuthIdentity({
-                                                    config,
-                                                    accountId: newAccountId,
-                                                });
-                                            }
+                                                    token: idToken
+                                                }
+                                            })
                                         }}
                                         onError={() => {
-                                            console.error("Error with Google authentication")
+                                            toast({
+                                                variant: "destructive",
+                                                title: "Error",
+                                                description: "Google authentication failed"
+                                            })
                                         }}
                                     />
                                     <FacebookButton
-                                        text={`${authAction === "register" ? "Register" : "Add"} with Facebook`}
+                                        nonce=""
+                                        text="Add Facebook"
                                         onSuccess={(idToken) => {
-                                            const { email, issuer } = parseOIDCToken(idToken)
-                                            const config = {
-                                                type: "oidc" as const,
+                                            const { issuer, email } = parseOIDCToken(idToken)
+                                            handleAddIdentity({
+                                                type: "oidc",
                                                 config: {
                                                     clientId: facebookAppId,
-                                                    issuer: issuer,
-                                                    email: email,
+                                                    issuer,
+                                                    email,
                                                     sub: null,
-                                                },
-                                            };
-                                            if (authAction === "register") {
-                                                handleRegister({
-                                                    config,
-                                                    accountId: newAccountId,
-                                                });
-                                            } else {
-                                                handleAddAuthIdentity({
-                                                    config,
-                                                    accountId: newAccountId,
-                                                });
-                                            }
+                                                    token: idToken
+                                                }
+                                            })
                                         }}
-                                        onError={() => {
-                                            console.error("Error with Facebook authentication")
+                                        onError={(error) => {
+                                            toast({
+                                                variant: "destructive",
+                                                title: "Error",
+                                                description: error.message || "Facebook authentication failed"
+                                            })
                                         }}
                                     />
                                 </div>
                             </div>
-                            <div className="space-y-4">
-                                <h3 className="text-lg font-semibold">Wallet Authentication</h3>
-                                <div className="flex flex-wrap gap-4">
-                                    <AuthButton
-                                        onClick={() => {
-                                            const config = {
-                                                type: "wallet" as const,
-                                                config: {
-                                                    wallet: "metamask" as const,
-                                                    type: "ethereum" as const,
-                                                },
-                                            };
-                                            if (authAction === "register") {
-                                                handleRegister({
-                                                    config,
-                                                    accountId: newAccountId,
-                                                });
-                                            } else {
-                                                handleAddAuthIdentity({
-                                                    config,
-                                                    accountId: newAccountId,
-                                                });
-                                            }
-                                        }}
-                                        imageSrc="/metamask.svg"
-                                        imageAlt="MetaMask logo"
-                                        buttonText={`${authAction === "register" ? "Register" : "Add"} with MetaMask`}
-                                    />
-                                    <AuthButton
-                                        onClick={() => {
-                                            const config = {
-                                                type: "wallet" as const,
-                                                config: {
-                                                    wallet: "phantom" as const,
-                                                    type: "solana" as const,
-                                                },
-                                            };
-                                            if (authAction === "register") {
-                                                handleRegister({
-                                                    config,
-                                                    accountId: newAccountId,
-                                                });
-                                            } else {
-                                                handleAddAuthIdentity({
-                                                    config,
-                                                    accountId: newAccountId,
-                                                });
-                                            }
-                                        }}
-                                        imageSrc="/sol.svg"
-                                        imageAlt="Phantom logo"
-                                        buttonText={`${authAction === "register" ? "Register" : "Add"} with Phantom`}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-semibold mb-4">Existing Accounts</h3>
-                        <Button onClick={loadAccounts} className="mb-4">
-                            List Accounts
-                        </Button>
-                        <div className="space-y-2">
-                            {accounts.map((accountId) => (
-                                <div key={accountId} className="flex justify-between items-center p-2 border rounded">
-                                    <span>{accountId}</span>
-                                    <div className="space-x-2">
-                                        <Button
-                                            onClick={() => loadAuthIdentities(accountId)}
-                                            variant="secondary"
-                                        >
-                                            View Auth Methods
-                                        </Button>
-                                        <Button
-                                            onClick={() => handleDeleteAccount(accountId)}
-                                            variant="destructive"
-                                        >
-                                            Delete
-                                        </Button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    {selectedAccount && (
-                        <div>
-                            <h3 className="text-lg font-semibold mb-4">Auth Identities for {selectedAccount}</h3>
-                            <div className="space-y-2">
-                                {authIdentities.map((identity, index) => (
-                                    <div key={index} className="flex justify-between items-center p-2 border rounded">
-                                        <span>{JSON.stringify(identity)}</span>
-                                        <Button
-                                            onClick={() => handleRemoveAuthIdentity(selectedAccount, identity)}
-                                            variant="destructive"
-                                        >
-                                            Remove
-                                        </Button>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-red-600">Danger Zone</CardTitle>
+                            <CardDescription>
+                                These actions are irreversible. Please be certain.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Button
+                                variant="destructive"
+                                onClick={handleDeleteAccount}
+                            >
+                                Delete Account
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </div>
+            </main>
         </div>
     )
 }

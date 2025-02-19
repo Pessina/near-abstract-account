@@ -1,5 +1,5 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
-use interfaces::auth::oidc::{OIDCAuthIdentity, OIDCValidationData};
+use interfaces::auth::oidc::{OIDCAuthenticator, OIDCValidationData};
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     near,
@@ -60,11 +60,7 @@ impl OIDCAuthContract {
         TODO:
         - Define a struct for the oidc and keys to avoid direct json field access
     */
-    pub fn verify(
-        &self,
-        oidc_data: OIDCValidationData,
-        oidc_auth_identity: OIDCAuthIdentity,
-    ) -> bool {
+    pub fn verify(&self, oidc_data: OIDCValidationData, oidc_identity: OIDCAuthenticator) -> bool {
         let parts: Vec<&str> = oidc_data.token.split('.').collect();
         if parts.len() != 3 {
             panic!("Invalid JWT format - token must have 3 parts");
@@ -78,11 +74,11 @@ impl OIDCAuthContract {
             serde_json::from_slice(&payload_json).expect("Failed to parse JWT payload as JSON");
 
         let token_issuer = payload["iss"].as_str().unwrap_or_default();
-        if token_issuer != oidc_auth_identity.issuer {
+        if token_issuer != oidc_identity.issuer {
             panic!("Token issuer does not match expected issuer");
         }
         let token_client_id = payload["aud"].as_str().unwrap_or_default();
-        if token_client_id != oidc_auth_identity.client_id {
+        if token_client_id != oidc_identity.client_id {
             panic!("Token audience does not match expected client ID");
         }
 
@@ -92,8 +88,8 @@ impl OIDCAuthContract {
         match (
             token_email,
             token_sub,
-            &oidc_auth_identity.email,
-            &oidc_auth_identity.sub,
+            &oidc_identity.email,
+            &oidc_identity.sub,
         ) {
             (Some(email), _, Some(expected_email), _) if email == expected_email => {}
             (_, Some(sub), _, Some(expected_sub)) if sub == expected_sub => {}
@@ -149,8 +145,8 @@ impl OIDCAuthContract {
        - This should be updated on a secure way: decentralized oracles, zk, zk tls, dao...
     */
     pub fn update_keys(&mut self, issuer: String, keys: Vec<PublicKey>) {
-        if keys.len() != 2 {
-            panic!("Invalid number of keys");
+        if keys.is_empty() {
+            panic!("Must provide at least one key");
         }
 
         let mut key_set = self
@@ -158,8 +154,10 @@ impl OIDCAuthContract {
             .remove(&issuer)
             .unwrap_or_else(|| IterableSet::new(issuer.clone().into_bytes()));
         key_set.clear();
-        key_set.insert(keys[0].clone());
-        key_set.insert(keys[1].clone());
+
+        for key in keys {
+            key_set.insert(key);
+        }
 
         self.pub_keys.insert(issuer, key_set);
     }
@@ -232,7 +230,7 @@ mod tests {
             message: "test_123_felipe".to_string()
         };
 
-        let oidc_auth_identity = OIDCAuthIdentity {
+        let oidc_identity = OIDCAuthenticator {
             client_id: "739911069797-idp062866964gbndo6693h32tga5cvl1.apps.googleusercontent.com"
                 .to_string(),
             issuer: "https://accounts.google.com".to_string(),
@@ -240,7 +238,7 @@ mod tests {
             sub: None,
         };
 
-        assert!(contract.verify(oidc_data, oidc_auth_identity));
+        assert!(contract.verify(oidc_data, oidc_identity));
     }
 
     #[test]
@@ -251,14 +249,14 @@ mod tests {
             message: "test_123_felipe".to_string()
         };
 
-        let oidc_auth_identity = OIDCAuthIdentity {
+        let oidc_identity = OIDCAuthenticator {
             client_id: "2103496220045843".to_string(),
             issuer: "https://www.facebook.com".to_string(),
             email: Some("fs.pessina@gmail.com".to_string()),
             sub: None,
         };
 
-        assert!(contract.verify(oidc_data, oidc_auth_identity));
+        assert!(contract.verify(oidc_data, oidc_identity));
     }
 
     #[test]
@@ -269,7 +267,7 @@ mod tests {
             message: "".to_string()
         };
 
-        let oidc_auth_identity = OIDCAuthIdentity {
+        let oidc_identity = OIDCAuthenticator {
             client_id: "739911069797-idp062866964gbndo6693h32tga5cvl1.apps.googleusercontent.com"
                 .to_string(),
             issuer: "https://accounts.google.com".to_string(),
@@ -277,7 +275,7 @@ mod tests {
             sub: None,
         };
 
-        assert!(!contract.verify(oidc_data, oidc_auth_identity));
+        assert!(!contract.verify(oidc_data, oidc_identity));
     }
 
     #[test]
@@ -288,14 +286,14 @@ mod tests {
             message: "".to_string()
         };
 
-        let oidc_auth_identity = OIDCAuthIdentity {
+        let oidc_identity = OIDCAuthenticator {
             client_id: "2103496220045843".to_string(),
             issuer: "https://www.facebook.com".to_string(),
             email: Some("fs.pessina@gmail.com".to_string()),
             sub: None,
         };
 
-        assert!(!contract.verify(oidc_data, oidc_auth_identity));
+        assert!(!contract.verify(oidc_data, oidc_identity));
     }
 
     // TODO: Include test for sub and email

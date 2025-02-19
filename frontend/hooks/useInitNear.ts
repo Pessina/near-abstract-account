@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { KeyPairString } from "@near-js/crypto";
 import { KeyPair, Near, connect, keyStores } from "near-api-js";
+import { useState, useEffect } from "react";
+
 import { useEnv } from "./useEnv";
 
 interface NearState {
@@ -22,12 +24,10 @@ export const useInitNear = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        // Setup keystore
-        const keyPair = KeyPair.fromString(nearPrivateKey);
+        const keyPair = KeyPair.fromString(nearPrivateKey as KeyPairString);
         const keyStore = new keyStores.InMemoryKeyStore();
         await keyStore.setKey(networkId, nearAccountId, keyPair);
 
-        // Configure network
         const config = {
           networkId,
           nodeUrl:

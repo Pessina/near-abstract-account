@@ -71,7 +71,7 @@ impl WebAuthnAuthContract {
                 .strip_prefix("0x")
                 .unwrap_or(&webauthn_data.authenticator_data),
         )
-        .map_err(|_| "Invalid hex encoding in authenticator data")?;
+        .map_err(|_| "Invalid hex encoding in identity data")?;
 
         let mut hasher = Sha256::new();
         hasher.update(webauthn_data.client_data.as_bytes());

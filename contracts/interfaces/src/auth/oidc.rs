@@ -18,20 +18,21 @@ use crate::traits::path::Path;
     Clone,
 )]
 #[serde(crate = "near_sdk::serde")]
-pub struct OIDCAuthIdentity {
+pub struct OIDCAuthenticator {
     pub client_id: String,
     pub issuer: String,
     pub email: Option<String>,
     pub sub: Option<String>,
 }
 
-impl Path for OIDCAuthIdentity {
+impl Path for OIDCAuthenticator {
     fn path(&self) -> String {
-        match (self.email.clone(), self.sub.clone()) {
-            (Some(email), None) => format!("oidc/{}/{}/{}", self.issuer, self.client_id, email),
-            (None, Some(sub)) | (Some(_), Some(sub)) => {
-                format!("oidc/{}/{}/{}", self.issuer, self.client_id, sub)
-            }
+        let issuer = &self.issuer;
+        let client_id = &self.client_id;
+
+        match (self.email.as_ref(), self.sub.as_ref()) {
+            (_, Some(sub)) => format!("oidc/{}/{}/{}", issuer, client_id, sub),
+            (Some(email), None) => format!("oidc/{}/{}/{}", issuer, client_id, email),
             (None, None) => panic!("OIDC auth identity must have either email or sub"),
         }
     }

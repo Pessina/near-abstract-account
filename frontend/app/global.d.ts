@@ -1,5 +1,5 @@
-import type { EIP1193Provider } from 'viem';
-import type { Wallet } from '@solana/wallet-adapter-base';
+import type { Wallet } from "@solana/wallet-adapter-base";
+import type { EIP1193Provider } from "viem";
 
 declare global {
   interface Window {
@@ -13,4 +13,4 @@ declare global {
   }
 }
 
-export {}
+export {};

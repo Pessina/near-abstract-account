@@ -1,19 +1,21 @@
-import { AuthIdentity } from "../AuthIdentity";
-import { parseSignature } from "./utils";
-import cbor from "cbor";
 import crypto from "crypto";
-import { toHex } from "viem";
-import { parseAuthenticatorData } from "@simplewebauthn/server/helpers";
-import {
-  WebAuthnAuthIdentity,
-  WebAuthnCredentials,
-} from "@/contracts/AbstractAccountContract/types/auth";
-import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth";
 
-export class WebAuthn extends AuthIdentity<
-  WebAuthnAuthIdentity,
-  WebAuthnCredentials
-> {
+import { parseAuthenticatorData } from "@simplewebauthn/server/helpers";
+import cbor from "cbor";
+import {
+  WebAuthnCredentials,
+  Identity,
+  AbstractAccountContractBuilder,
+} from "chainsig-aa.js";
+import { toHex } from "viem";
+
+import { IdentityClass } from "../Identity";
+
+import { parseSignature } from "./utils";
+
+export type WebAuthnOperation = "create" | "get";
+
+export class WebAuthn extends IdentityClass<Identity, WebAuthnCredentials> {
   private static _generateRandomBytes(): Buffer {
     return crypto.randomBytes(16);
   }
@@ -25,8 +27,18 @@ export class WebAuthn extends AuthIdentity<
     );
   }
 
-  async getAuthIdentity({ id }: { id: string }): Promise<WebAuthnAuthIdentity> {
+  async getIdentity({
+    id,
+    operation,
+  }: {
+    id: string;
+    operation: WebAuthnOperation;
+  }): Promise<Identity> {
     WebAuthn.isSupportedByBrowser();
+
+    if (operation === "get") {
+      return (await this.sign(id)).authIdentity;
+    }
 
     const options: PublicKeyCredentialCreationOptions = {
       timeout: 60000,
@@ -79,14 +91,14 @@ export class WebAuthn extends AuthIdentity<
     const prefix = yLastBit === 0 ? "0x02" : "0x03";
     const compressedPublicKey = prefix + x.slice(2); // Remove '0x' from x before concatenating
 
-    return AbstractAccountContractBuilder.authIdentity.webauthn({
+    return AbstractAccountContractBuilder.identity.webauthn({
       key_id: toHex(new Uint8Array(cred.rawId)),
       compressed_public_key: compressedPublicKey,
     });
   }
 
   async sign(message: string): Promise<{
-    authIdentity: WebAuthnAuthIdentity;
+    authIdentity: Identity;
     credentials: WebAuthnCredentials;
   }> {
     WebAuthn.isSupportedByBrowser();
@@ -133,7 +145,7 @@ export class WebAuthn extends AuthIdentity<
     );
     const signature = parseSignature(new Uint8Array(cred?.response?.signature));
 
-    const authIdentity = AbstractAccountContractBuilder.authIdentity.webauthn({
+    const authIdentity = AbstractAccountContractBuilder.identity.webauthn({
       key_id: toHex(new Uint8Array(cred.rawId)),
     });
 

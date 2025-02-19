@@ -1,5 +1,5 @@
 use interfaces::auth::{
-    oidc::{OIDCAuthIdentity, OIDCValidationData},
+    oidc::{OIDCAuthenticator, OIDCValidationData},
     wallet::WalletValidationData,
     webauthn::WebAuthnValidationData,
 };
@@ -30,5 +30,5 @@ pub trait SolanaAuth {
 
 #[ext_contract(oidc_auth)]
 pub trait OidcAuth {
-    fn verify(&self, oidc_data: OIDCValidationData, oidc_auth_identity: OIDCAuthIdentity) -> bool;
+    fn verify(&self, oidc_data: OIDCValidationData, oidc_identity: OIDCAuthenticator) -> bool;
 }

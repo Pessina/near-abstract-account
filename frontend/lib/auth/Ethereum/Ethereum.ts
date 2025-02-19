@@ -1,4 +1,10 @@
 import {
+  WalletCredentials,
+  WalletType,
+  AbstractAccountContractBuilder,
+  Identity,
+} from "chainsig-aa.js";
+import {
   type WalletClient,
   type EIP1193Provider,
   custom,
@@ -8,18 +14,10 @@ import {
   keccak256,
   toBytes,
 } from "viem";
-import { AuthIdentity } from "../AuthIdentity";
-import {
-  WalletAuthIdentity,
-  WalletCredentials,
-  WalletType as AuthIdentityWalletType,
-} from "@/contracts/AbstractAccountContract/types/auth";
-import { AbstractAccountContractBuilder } from "@/contracts/AbstractAccountContract/utils/auth";
 
-export class Ethereum extends AuthIdentity<
-  WalletAuthIdentity,
-  WalletCredentials
-> {
+import { IdentityClass } from "../Identity";
+
+export class Ethereum extends IdentityClass<Identity, WalletCredentials> {
   private walletClient: WalletClient | null = null;
 
   private getProvider(): EIP1193Provider {
@@ -42,10 +40,10 @@ export class Ethereum extends AuthIdentity<
     return this.walletClient;
   }
 
-  async getAuthIdentity(args?: {
+  async getIdentity(args?: {
     signature?: string;
     message?: string;
-  }): Promise<WalletAuthIdentity> {
+  }): Promise<Identity> {
     let recoveredSignature: string;
     let signedMessage: string;
 
@@ -74,14 +72,14 @@ export class Ethereum extends AuthIdentity<
     const prefix = yLastByte % 2 === 0 ? "02" : "03";
     const compressedKey = "0x" + prefix + uncompressedKey.slice(4, 68);
 
-    return AbstractAccountContractBuilder.authIdentity.wallet({
-      wallet_type: AuthIdentityWalletType.Ethereum,
+    return AbstractAccountContractBuilder.identity.wallet({
+      wallet_type: WalletType.Ethereum,
       public_key: compressedKey,
     });
   }
 
   async sign(message: string): Promise<{
-    authIdentity: WalletAuthIdentity;
+    authIdentity: Identity;
     credentials: WalletCredentials;
   }> {
     const client = await this.getWalletClient();
@@ -91,7 +89,7 @@ export class Ethereum extends AuthIdentity<
       message,
     });
 
-    const authIdentity = await this.getAuthIdentity({
+    const authIdentity = await this.getIdentity({
       signature,
       message,
     });
