@@ -16,15 +16,11 @@ interface AccountWithId extends Account {
 }
 
 export default function AdminPage() {
-    const { accounts, identities, isLoading, updatePermissions } = useAdminData();
+    const { accounts, identities, isLoading } = useAdminData();
 
     if (isLoading) {
         return <div className="flex justify-center items-center h-full">Loading...</div>;
     }
-
-    const handleUpdatePermissions = (accountId: string, identityPath: string, permissions: string[]) => {
-        updatePermissions({ accountId, identityPath, permissions });
-    };
 
     return (
         <div className="container mx-auto p-6 space-y-6">
@@ -34,23 +30,16 @@ export default function AdminPage() {
                     <CardDescription>Manage accounts, identities, and authentication</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    {/* OIDC Keys Management */}
                     <div>
                         <h2 className="text-lg font-semibold mb-4">OIDC Keys Management</h2>
                         <UpdateOIDCKeys />
                     </div>
-
                     <Separator />
-
-                    {/* Contract Balance */}
                     <div>
                         <h2 className="text-lg font-semibold mb-4">Contract Balance</h2>
                         <ContractBalanceManagement />
                     </div>
-
                     <Separator />
-
-                    {/* Accounts Management */}
                     <div>
                         <h2 className="text-lg font-semibold mb-4">Accounts Management</h2>
                         <div className="space-y-4">
@@ -59,7 +48,6 @@ export default function AdminPage() {
                                     key={account.account_id}
                                     account={account}
                                     identities={identities?.get(account.account_id) || []}
-                                    onUpdatePermissions={handleUpdatePermissions}
                                 />
                             ))}
                         </div>

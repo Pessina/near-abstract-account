@@ -9,7 +9,7 @@ import type {
   SignPayloadsRequest,
   Transaction,
 } from '../types/user-operation'
-import { isAddress, keccak256 } from 'viem'
+import { bytesToHex, hexToBytes, isAddress, keccak256, type Hex } from 'viem'
 
 export class AbstractAccountContractBuilder {
   static identity = {
@@ -94,55 +94,33 @@ export class AbstractAccountContractBuilder {
     }),
   }
 
-  // TODO: This could likely be exposed by the contract to avoid code duplication
   static path = {
-    wallet: (args: {
-      walletType: 'Ethereum' | 'Solana'
-      publicKey: string
-    }): string => {
-      if (args.walletType === 'Ethereum') {
-        const key = args.publicKey.startsWith('0x')
-          ? args.publicKey.slice(2)
-          : args.publicKey
-        try {
-          if (key.length % 2 !== 0) throw new Error('Invalid hex string length')
-          const pubKeyBytes = Buffer.from(key, 'hex')
-          if (pubKeyBytes.length !== 33 && pubKeyBytes.length !== 65)
-            throw new Error('Public key must be 33 or 65 bytes')
-          // Always drop the first byte, as in the Rust implementation.
-          const keyToHash = pubKeyBytes.slice(1)
-          const keyToHashHex = '0x' + keyToHash.toString('hex')
-          const hash = keccak256(keyToHashHex as `0x${string}`)
-          // Take the last 20 bytes (40 hex characters) from the 32-byte hash.
-          const address = '0x' + hash.slice(-40)
+    getPath: (identity: Identity): string => {
+      if ('Wallet' in identity) {
+        const wallet = identity.Wallet
+        if (wallet.wallet_type === 'Ethereum') {
+          const address =
+            '0x' + keccak256(wallet.public_key.slice(2) as Hex).slice(-40)
           if (!isAddress(address))
             throw new Error('Failed to derive valid address')
           return `wallet/${address}`
-        } catch (err) {
-          throw new Error(
-            `Invalid Ethereum public key: ${(err as Error).message}`
-          )
         }
-      }
-      return `wallet/${args.publicKey}`
-    },
-
-    webauthn: (args: { compressedPublicKey: string }): string => {
-      return `webauthn/${args.compressedPublicKey}`
-    },
-
-    oidc: (args: {
-      issuer: string
-      clientId: string
-      email?: string
-      sub?: string
-    }): string => {
-      if (!args.email && !args.sub) {
-        throw new Error('OIDC auth identity must have either email or sub')
+        return `wallet/${wallet.public_key}`
       }
 
-      const identifier = args.sub || args.email
-      return `oidc/${args.issuer}/${args.clientId}/${identifier}`
+      if ('WebAuthn' in identity) {
+        return `webauthn/${identity.WebAuthn.key_id}`
+      }
+
+      if ('OIDC' in identity) {
+        const { OIDC: oidc } = identity
+        if (!oidc.email && !oidc.sub)
+          throw new Error('OIDC auth identity must have either email or sub')
+        const identifier = oidc.sub || oidc.email
+        return `oidc/${oidc.issuer}/${oidc.client_id}/${identifier}`
+      }
+
+      throw new Error('Unknown identity type')
     },
   }
 }

@@ -5,23 +5,18 @@ import React, { useState } from "react"
 
 import { AuthAdapter, AuthConfig } from "../../lib/auth/AuthAdapter"
 
-import { useAccount } from "@/providers/AccountContext"
+import SelectAccountModal from "./components/SelectAccountModal"
+
 import AuthenticationButtons from "@/components/AuthenticationButtons"
 import FacebookButton from "@/components/FacebookButton"
 import GoogleButton from "@/components/GoogleButton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
 import { useAbstractAccountContract } from "@/contracts/useAbstractAccountContract"
 import { useEnv } from "@/hooks/useEnv"
 import { parseOIDCToken } from "@/lib/utils"
+import { useAccount } from "@/providers/AccountContext"
 
 export default function LoginPage() {
     const [accountSelectOpen, setAccountSelectOpen] = useState(false)
@@ -59,9 +54,7 @@ export default function LoginPage() {
             if (accounts.length === 0) {
                 setError("No accounts found for this identity. Would you like to create a new account?")
                 return
-            }
-
-            if (accounts.length === 1) {
+            } else if (accounts.length === 1) {
                 await handleSelectAccount(accounts[0])
             } else {
                 setAvailableAccounts(accounts)
@@ -75,28 +68,12 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <Dialog open={accountSelectOpen} onOpenChange={setAccountSelectOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Select Account</DialogTitle>
-                        <DialogDescription>
-                            Multiple accounts found. Please select which one you want to use.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        {availableAccounts.map((accountId) => (
-                            <Button
-                                key={accountId}
-                                onClick={() => handleSelectAccount(accountId)}
-                                variant="outline"
-                            >
-                                {accountId}
-                            </Button>
-                        ))}
-                    </div>
-                </DialogContent>
-            </Dialog>
-
+            <SelectAccountModal
+                accountSelectOpen={accountSelectOpen}
+                setAccountSelectOpen={setAccountSelectOpen}
+                availableAccounts={availableAccounts}
+                handleSelectAccount={handleSelectAccount}
+            />
             <Card className="w-full max-w-md">
                 <CardHeader className="space-y-1">
                     <CardTitle className="text-2xl font-bold text-center">Welcome Back</CardTitle>
@@ -110,21 +87,8 @@ export default function LoginPage() {
                             <AlertDescription>{error}</AlertDescription>
                         </Alert>
                     )}
-
                     <AuthenticationButtons onAuth={handleLogin} />
-
-                    <div className="relative">
-                        <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t" />
-                        </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-gray-50 px-2 text-muted-foreground">
-                                Or continue with
-                            </span>
-                        </div>
-                    </div>
-
-                    <div className="flex gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                         <GoogleButton
                             nonce=""
                             onSuccess={(idToken) => {

@@ -118,8 +118,7 @@ export default function TransactionForm() {
                     address: string;
                     publicKey: string;
                 };
-                const path = `${getIdentityPath(JSON.parse(selectedIdentity))},`
-                console.log({ path })
+                const path = `${AbstractAccountContractBuilder.path.getPath(JSON.parse(selectedIdentity))},`
                 switch (selectedChain) {
                     case "evm": {
                         addressAndPublicKey = await chains.evm.deriveAddressAndPublicKey(abstractAccountContract, path)
@@ -164,41 +163,6 @@ export default function TransactionForm() {
     if (!contract) {
         return <div>Loading...</div>
     }
-
-    const getIdentityPath = (identity: Identity) => {
-        if ("WebAuthn" in identity) {
-            if (!identity.WebAuthn.compressed_public_key) {
-                throw new Error("WebAuthn identity must have a compressed public key");
-            }
-
-            return AbstractAccountContractBuilder.path.webauthn({
-                compressedPublicKey: identity.WebAuthn.compressed_public_key || "",
-            });
-        }
-        if ("OIDC" in identity) {
-            if (!identity.OIDC.issuer || !identity.OIDC.client_id) {
-                throw new Error("OIDC identity must have an issuer and client ID");
-            }
-
-            return AbstractAccountContractBuilder.path.oidc({
-                issuer: identity.OIDC.issuer,
-                clientId: identity.OIDC.client_id,
-                email: identity.OIDC.email || undefined,
-                sub: identity.OIDC.sub || undefined,
-            });
-        }
-        if ("Wallet" in identity) {
-            if (!identity.Wallet.public_key) {
-                throw new Error("Wallet identity must have a public key");
-            }
-
-            return AbstractAccountContractBuilder.path.wallet({
-                walletType: identity.Wallet.wallet_type,
-                publicKey: identity.Wallet.public_key,
-            });
-        }
-        throw new Error("Unknown identity type");
-    };
 
     const onSubmit = async (data: FormValues) => {
         if (!chains || !selectedIdentity || !addressAndPublicKey) {
@@ -466,9 +430,6 @@ function getIdentityDisplayName(identity: Identity): string {
     if ("Wallet" in identity) {
         const wallet = identity.Wallet;
         return `${wallet.wallet_type} (${wallet.public_key.slice(0, 8)}...)`;
-    }
-    if ("Account" in identity) {
-        return `Account (${identity.Account})`;
     }
     return "Unknown Identity";
 }

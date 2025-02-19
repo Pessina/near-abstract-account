@@ -2,7 +2,7 @@
 
 import { StorageBalance } from "chainsig-aa.js"
 import { PlusIcon, MinusIcon, RefreshCwIcon } from "lucide-react"
-import React, { useCallback, useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -58,7 +58,7 @@ export default function ContractBalanceManagement() {
         }
     }
 
-    React.useEffect(() => {
+    useEffect(() => {
         loadBalance()
     }, [loadBalance])
 
