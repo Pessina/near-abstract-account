@@ -82,7 +82,10 @@ export default function LoginPage() {
                             <AlertDescription>{error}</AlertDescription>
                         </Alert>
                     )}
-                    <AuthenticationButtons onAuth={handleLogin} nonce="" />
+                    <AuthenticationButtons
+                        onAuth={handleLogin}
+                        nonce=""
+                    />
                     <div className="relative">
                         <div className="absolute inset-0 flex items-center">
                             <span className="w-full border-t" />

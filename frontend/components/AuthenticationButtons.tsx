@@ -31,12 +31,12 @@ const AuthenticationButtons: React.FC<AuthenticationButtonsProps> = ({
 
     return (
         <div className="space-y-4">
-            <Button
+            {accountId && <Button
                 onClick={() => {
                     onAuth({
                         type: "webauthn",
                         config: {
-                            username: accountId || "user",
+                            username: accountId,
                             operation: mode === "login" ? "get" : "create",
                         },
                     })
@@ -47,6 +47,7 @@ const AuthenticationButtons: React.FC<AuthenticationButtonsProps> = ({
                 <Key className="w-6 h-6 text-indigo-600" />
                 <span>{mode === "login" ? "Continue" : "Register"} with Passkey</span>
             </Button>
+            }
 
             <div className="grid grid-cols-2 gap-4">
                 <Button

@@ -119,6 +119,7 @@ export default function TransactionForm() {
                     publicKey: string;
                 };
                 const path = `${AbstractAccountContractBuilder.path.getPath(JSON.parse(selectedIdentity))},`
+                console.log({ path })
                 switch (selectedChain) {
                     case "evm": {
                         addressAndPublicKey = await chains.evm.deriveAddressAndPublicKey(abstractAccountContract, path)

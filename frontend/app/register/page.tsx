@@ -88,7 +88,12 @@ export default function RegisterPage() {
                             onChange={(e) => setAccountId(e.target.value)}
                         />
                     </div>
-                    <AuthenticationButtons onAuth={handleRegister} accountId={accountId} mode="register" nonce="" />
+                    <AuthenticationButtons
+                        onAuth={handleRegister}
+                        nonce=""
+                        accountId={accountId}
+                        mode="register"
+                    />
                     <div className="text-center">
                         <Button
                             onClick={() => router.push("/login")}

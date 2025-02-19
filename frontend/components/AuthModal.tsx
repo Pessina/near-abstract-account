@@ -96,7 +96,11 @@ export default function AuthModal({
                 </DialogHeader>
 
                 <div className="space-y-4">
-                    <AuthenticationButtons onAuth={handleAuth} accountId={accountId} nonce={canonicalizedTransaction} />
+                    <AuthenticationButtons
+                        onAuth={handleAuth}
+                        nonce={canonicalizedTransaction}
+                        accountId={accountId}
+                    />
                     <Separator className="my-4" />
                     <div className="space-y-4">
                         <h4 className="text-sm font-medium">Identity Permissions</h4>

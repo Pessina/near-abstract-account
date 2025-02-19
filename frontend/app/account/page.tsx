@@ -111,7 +111,11 @@ export default function AccountPage() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <AuthenticationButtons onAuth={handleAddIdentity} nonce="" />
+                            <AuthenticationButtons
+                                onAuth={handleAddIdentity}
+                                nonce=""
+                                accountId={accountId}
+                            />
                         </CardContent>
                     </Card>
 
