@@ -328,21 +328,19 @@ export default function TransactionForm() {
                     onSuccess={async (result) => {
                         if (!chains) throw new Error("Chains not initialized")
 
+                        let txHash: string | undefined;
                         const rsv = utils.cryptography.toRSV(result as MPCSignature)
-                        console.log({ rsv })
                         if (selectedChain == "evm") {
                             const tx = chains.evm.attachTransactionSignature({ transaction: transaction as EVMUnsignedTransaction, mpcSignatures: [rsv] })
-                            const txHash = await chains?.evm.broadcastTx(tx)
-                            console.log({ txHash })
+                            txHash = await chains?.evm.broadcastTx(tx)
                         } else if (selectedChain == "btc") {
                             const tx = chains.btc.attachTransactionSignature({ transaction: transaction as BTCUnsignedTransaction, mpcSignatures: [rsv] })
-                            const txHash = await chains?.btc.broadcastTx(tx)
-                            console.log({ txHash })
+                            txHash = await chains?.btc.broadcastTx(tx)
                         } else if (selectedChain == "osmo") {
                             const tx = chains.osmosis.attachTransactionSignature({ transaction: transaction as CosmosUnsignedTransaction, mpcSignatures: [rsv] })
-                            const txHash = await chains?.osmosis.broadcastTx(tx)
-                            console.log({ txHash })
+                            txHash = await chains?.osmosis.broadcastTx(tx)
                         }
+                        console.log({ txHash })
                     }}
                 />}
             <Card className="w-full md:max-w-2xl">

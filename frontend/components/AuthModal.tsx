@@ -69,9 +69,8 @@ export default function AuthModal({
                 },
                 gas: NEAR_MAX_GAS,
                 amount: "10", // TODO: Should be dynamic according to the contract current fee
-                waitUntil: "NONE"
+                waitUntil: "EXECUTED_OPTIMISTIC"
             })
-
 
             await Promise.all([
                 queryClient.invalidateQueries({ queryKey: ['account', accountId] }),
@@ -86,6 +85,7 @@ export default function AuthModal({
             onSuccess?.(ret)
             onClose()
         } catch (err) {
+            console.error(err)
             throw err
         }
     }
