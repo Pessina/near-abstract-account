@@ -1,5 +1,6 @@
 "use client"
 
+import { LogOut, User, Send, Settings } from "lucide-react"
 import { useRouter } from "next/navigation"
 import React from "react"
 
@@ -28,27 +29,36 @@ export default function Header() {
     }
 
     return (
-        <header className="border-b">
-            <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+        <header className="border-b bg-white/75 backdrop-blur-sm sticky top-0 z-50">
+            <div className="container mx-auto px-4 py-3 flex justify-end items-center">
                 <div className="flex items-center gap-4">
-                    <span className="font-semibold">Near Abstract Account</span>
-                </div>
+                    <Button
+                        variant="ghost"
+                        onClick={() => router.push("/account")}
+                        className="flex items-center gap-2"
+                    >
+                        <Settings className="h-4 w-4" />
+                        Manage Account
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        onClick={() => router.push("/transaction")}
+                        className="flex items-center gap-2"
+                    >
+                        <Send className="h-4 w-4" />
+                        Send Transaction
+                    </Button>
 
-                <div className="flex items-center gap-4">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline">
+                            <Button variant="outline" className="flex items-center gap-2">
+                                <User className="h-4 w-4" />
                                 {accountId}
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => router.push("/account")}>
-                                Manage Account
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push("/transaction")}>
-                                Request Signature
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={handleLogout}>
+                            <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                                <LogOut className="h-4 w-4 mr-2" />
                                 Logout
                             </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -57,4 +67,4 @@ export default function Header() {
             </div>
         </header>
     )
-} 
+}

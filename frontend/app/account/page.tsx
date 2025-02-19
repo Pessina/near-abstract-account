@@ -115,10 +115,10 @@ export default function AccountPage() {
                                 onAuth={handleAddIdentity}
                                 nonce=""
                                 accountId={accountId}
+                                mode="register"
                             />
                         </CardContent>
                     </Card>
-
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-red-600">Danger Zone</CardTitle>
