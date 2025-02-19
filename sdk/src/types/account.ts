@@ -2,7 +2,7 @@ import type { OIDCIdentity, WalletIdentity, WebAuthnIdentity } from './auth'
 
 export interface Account {
   identities: IdentityWithPermissions[]
-  nonce: number // TODO: u128 on RS, check support on TS later
+  nonce: number // TODO: u128 on rust, check support on TS later
 }
 export interface IdentityWithPermissions {
   identity: Identity

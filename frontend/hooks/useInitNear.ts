@@ -24,12 +24,10 @@ export const useInitNear = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        // Setup keystore
         const keyPair = KeyPair.fromString(nearPrivateKey as KeyPairString);
         const keyStore = new keyStores.InMemoryKeyStore();
         await keyStore.setKey(networkId, nearAccountId, keyPair);
 
-        // Configure network
         const config = {
           networkId,
           nodeUrl:

@@ -1,17 +1,32 @@
 "use client"
 
 import { Action, Identity, UserOperation, AbstractAccountContractBuilder } from "chainsig-aa.js"
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useMemo } from "react"
 import { useForm } from "react-hook-form"
+import {
+    utils,
+    EVM,
+    Bitcoin,
+    Cosmos,
+    BTCRpcAdapters,
+    MPCSignature,
+    EVMUnsignedTransaction,
+    BTCUnsignedTransaction,
+    CosmosUnsignedTransaction
+} from 'signet.js'
 
 import AuthModal from "@/components/AuthModal"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+    Card,
+    CardContent, CardDescription, CardHeader, CardTitle
+} from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAbstractAccountContract } from "@/contracts/useAbstractAccountContract"
 import { useToast } from "@/hooks/use-toast"
+import { useEnv } from "@/hooks/useEnv"
 
 type FormValues = {
     accountId: string;
@@ -20,6 +35,8 @@ type FormValues = {
     value: string;
     actAs: boolean;
     actAsIdentity?: string;
+    selectedIdentity?: string;
+    chain: "evm" | "btc" | "osmo";
 }
 
 type AuthProps = {
@@ -36,9 +53,16 @@ export default function TransactionForm() {
     const [authProps, setAuthProps] = useState<AuthProps | null>(null)
     const [authModalOpen, setAuthModalOpen] = useState(false)
     const [availableIdentities, setAvailableIdentities] = useState<Identity[]>([])
+    const [addressAndPublicKey, setAddressAndPublicKey] = useState<{
+        address: string;
+        publicKey: string;
+    } | null>(null)
+    const [transaction, setTransaction] = useState<unknown | null>(null)
 
     const { contract } = useAbstractAccountContract()
     const { toast } = useToast()
+    const { networkId, signerContract, infuraRpcUrl, abstractAccountContract } = useEnv()
+
     const { register, handleSubmit, watch, setValue } = useForm<FormValues>({
         defaultValues: {
             accountId: "",
@@ -46,11 +70,77 @@ export default function TransactionForm() {
             to: "",
             value: "",
             actAs: false,
+            chain: "evm",
+            selectedIdentity: undefined
         }
     })
 
     const actAs = watch("actAs")
     const accountId = watch("accountId")
+    const selectedChain = watch("chain")
+    const selectedIdentity = watch("selectedIdentity")
+
+    const chainSigContract = useMemo(() => {
+        if (!contract) return null;
+
+        return new utils.chains.near.ChainSignatureContract({
+            networkId: networkId as "mainnet" | "testnet",
+            contractId: signerContract,
+        })
+    }, [contract, networkId, signerContract])
+
+    const chains = useMemo(() => {
+        if (!chainSigContract) return null;
+
+        return {
+            evm: new EVM({
+                rpcUrl: infuraRpcUrl,
+                contract: chainSigContract,
+            }),
+            btc: new Bitcoin({
+                network: "testnet",
+                btcRpcAdapter: new BTCRpcAdapters.Mempool('https://mempool.space/testnet/api'),
+                contract: chainSigContract,
+            }),
+            osmosis: new Cosmos({
+                chainId: "osmo-test-5",
+                contract: chainSigContract,
+            }),
+        }
+    }, [chainSigContract, infuraRpcUrl])
+
+    useEffect(() => {
+        async function deriveAddress() {
+            if (!chains || !accountId || !selectedIdentity) return;
+
+            try {
+                let addressAndPublicKey: {
+                    address: string;
+                    publicKey: string;
+                };
+                const path = `${getIdentityPath(JSON.parse(selectedIdentity))},`
+                console.log({ path })
+                switch (selectedChain) {
+                    case "evm": {
+                        addressAndPublicKey = await chains.evm.deriveAddressAndPublicKey(abstractAccountContract, path)
+                        break;
+                    }
+                    case "btc": {
+                        addressAndPublicKey = await chains.btc.deriveAddressAndPublicKey(abstractAccountContract, path)
+                        break;
+                    }
+                    case "osmo": {
+                        addressAndPublicKey = await chains.osmosis.deriveAddressAndPublicKey(abstractAccountContract, path)
+                        break;
+                    }
+                }
+                setAddressAndPublicKey(addressAndPublicKey)
+            } catch (err) {
+                console.error("Error deriving address:", err)
+            }
+        }
+        deriveAddress()
+    }, [abstractAccountContract, accountId, chains, selectedChain, selectedIdentity])
 
     useEffect(() => {
         async function fetchIdentities() {
@@ -58,10 +148,7 @@ export default function TransactionForm() {
             try {
                 const account = await contract.getAccountById({ account_id: accountId });
                 if (account) {
-                    const identitiesWithActAs = account.identities.filter(
-                        i => i.permissions?.enable_act_as
-                    );
-                    setAvailableIdentities(identitiesWithActAs.map(i => i.identity));
+                    setAvailableIdentities(account.identities.map(i => i.identity));
                 }
             } catch (err) {
                 toast({
@@ -78,8 +165,96 @@ export default function TransactionForm() {
         return <div>Loading...</div>
     }
 
+    const getIdentityPath = (identity: Identity) => {
+        if ("WebAuthn" in identity) {
+            if (!identity.WebAuthn.compressed_public_key) {
+                throw new Error("WebAuthn identity must have a compressed public key");
+            }
+
+            return AbstractAccountContractBuilder.path.webauthn({
+                compressedPublicKey: identity.WebAuthn.compressed_public_key || "",
+            });
+        }
+        if ("OIDC" in identity) {
+            if (!identity.OIDC.issuer || !identity.OIDC.client_id) {
+                throw new Error("OIDC identity must have an issuer and client ID");
+            }
+
+            return AbstractAccountContractBuilder.path.oidc({
+                issuer: identity.OIDC.issuer,
+                clientId: identity.OIDC.client_id,
+                email: identity.OIDC.email || undefined,
+                sub: identity.OIDC.sub || undefined,
+            });
+        }
+        if ("Wallet" in identity) {
+            if (!identity.Wallet.public_key) {
+                throw new Error("Wallet identity must have a public key");
+            }
+
+            return AbstractAccountContractBuilder.path.wallet({
+                walletType: identity.Wallet.wallet_type,
+                publicKey: identity.Wallet.public_key,
+            });
+        }
+        throw new Error("Unknown identity type");
+    };
+
     const onSubmit = async (data: FormValues) => {
+        if (!chains || !selectedIdentity || !addressAndPublicKey) {
+            toast({
+                title: "Error",
+                description: "Please select an identity to use for signing",
+                variant: "destructive",
+            });
+            return;
+        }
+
         try {
+            let mpcPayloads;
+
+            switch (data.chain) {
+                case "evm": {
+                    const txData = await chains.evm.prepareTransactionForSigning({
+                        from: addressAndPublicKey?.address as `0x${string}`,
+                        to: data.to as `0x${string}`,
+                        value: BigInt(data.value),
+                    })
+                    setTransaction(txData.transaction)
+                    mpcPayloads = txData.mpcPayloads
+                    break;
+                }
+                case "btc": {
+                    const txData = await chains.btc.prepareTransactionForSigning({
+                        publicKey: addressAndPublicKey?.publicKey,
+                        from: addressAndPublicKey?.address,
+                        to: data.to,
+                        value: data.value,
+                    })
+                    setTransaction(txData.transaction)
+                    mpcPayloads = txData.mpcPayloads
+                    break;
+                }
+                case "osmo": {
+                    const txData = await chains.osmosis.prepareTransactionForSigning({
+                        address: addressAndPublicKey?.address,
+                        publicKey: addressAndPublicKey?.publicKey,
+                        messages: [{
+                            typeUrl: "/cosmos.bank.v1beta1.MsgSend",
+                            value: {
+                                fromAddress: addressAndPublicKey?.address,
+                                toAddress: data.to,
+                                amount: [{ denom: "uosmo", amount: data.value }],
+                            },
+                        }],
+                        memo: "Transaction from NEAR",
+                    })
+                    setTransaction(txData.transaction)
+                    mpcPayloads = txData.mpcPayloads
+                    break;
+                }
+            }
+
             const account = await contract.getAccountById({ account_id: data.accountId })
             if (!account) {
                 toast({
@@ -90,7 +265,9 @@ export default function TransactionForm() {
                 return;
             }
 
-            const transaction = AbstractAccountContractBuilder.transaction.sign({
+            const selectedIdentityObj = JSON.parse(selectedIdentity) as Identity;
+
+            const userOpTransaction = AbstractAccountContractBuilder.transaction.sign({
                 accountId: data.accountId,
                 nonce: account.nonce,
                 payloads: {
@@ -98,19 +275,19 @@ export default function TransactionForm() {
                     payloads: [{
                         path: "",
                         key_version: 0,
-                        payload: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31] // 32 byte array
+                        payload: mpcPayloads[0]
                     }]
                 }
             });
 
             const userOp: UserOperation = {
                 auth: {
-                    identity: account.identities[0].identity,
+                    identity: selectedIdentityObj,
                     credentials: {
                         token: "", // This will be filled by the auth process
                     },
                 },
-                transaction,
+                transaction: userOpTransaction,
             };
 
             // If act-as is enabled and an identity is selected, add it to the transaction
@@ -128,7 +305,7 @@ export default function TransactionForm() {
                 transaction: {
                     account_id: data.accountId,
                     nonce: account.nonce,
-                    action: transaction.action,
+                    action: userOpTransaction.action,
                 },
                 userOp,
             })
@@ -144,7 +321,30 @@ export default function TransactionForm() {
 
     return (
         <div className="flex justify-center items-center h-full">
-            {authProps && <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} {...authProps} />}
+            {authProps &&
+                <AuthModal
+                    isOpen={authModalOpen}
+                    onClose={() => setAuthModalOpen(false)} {...authProps}
+                    onSuccess={async (result) => {
+                        if (!chains) throw new Error("Chains not initialized")
+
+                        const rsv = utils.cryptography.toRSV(result as MPCSignature)
+                        console.log({ rsv })
+                        if (selectedChain == "evm") {
+                            const tx = chains.evm.attachTransactionSignature({ transaction: transaction as EVMUnsignedTransaction, mpcSignatures: [rsv] })
+                            const txHash = await chains?.evm.broadcastTx(tx)
+                            console.log({ txHash })
+                        } else if (selectedChain == "btc") {
+                            const tx = chains.btc.attachTransactionSignature({ transaction: transaction as BTCUnsignedTransaction, mpcSignatures: [rsv] })
+                            const txHash = await chains?.btc.broadcastTx(tx)
+                            console.log({ txHash })
+                        } else if (selectedChain == "osmo") {
+                            const tx = chains.osmosis.attachTransactionSignature({ transaction: transaction as CosmosUnsignedTransaction, mpcSignatures: [rsv] })
+                            const txHash = await chains?.osmosis.broadcastTx(tx)
+                            console.log({ txHash })
+                        }
+                    }}
+                />}
             <Card className="w-full md:max-w-2xl">
                 <CardHeader>
                     <CardTitle className="text-2xl font-bold text-center">Create Transaction</CardTitle>
@@ -155,6 +355,48 @@ export default function TransactionForm() {
                         <div>
                             <Label htmlFor="accountId">Account ID</Label>
                             <Input id="accountId" {...register("accountId")} />
+                        </div>
+                        {addressAndPublicKey && (
+                            <div>
+                                <Label>Derived {selectedChain.toUpperCase()} Address</Label>
+                                <div className="p-2 bg-gray-100 rounded">{addressAndPublicKey.address}</div>
+                            </div>
+                        )}
+                        <div>
+                            <Label htmlFor="chain">Chain</Label>
+                            <Select
+                                onValueChange={(value) => setValue("chain", value as "evm" | "btc" | "osmo")}
+                                defaultValue="evm"
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select chain" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="evm">Ethereum</SelectItem>
+                                    <SelectItem value="btc">Bitcoin</SelectItem>
+                                    <SelectItem value="osmo">Osmosis</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label htmlFor="identity">Signing Identity</Label>
+                            <Select
+                                onValueChange={(value) => setValue("selectedIdentity", value)}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select identity for signing" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {availableIdentities.map((identity, index) => (
+                                        <SelectItem
+                                            key={index}
+                                            value={JSON.stringify(identity)}
+                                        >
+                                            {getIdentityDisplayName(identity)}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div>
                             <Label htmlFor="contractId">Contract ID</Label>

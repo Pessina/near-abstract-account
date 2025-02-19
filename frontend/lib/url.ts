@@ -3,6 +3,5 @@
  */
 export function getCurrentCleanUrl(): string {
   const url = new URL(window.location.href);
-  // Keep only origin and pathname
   return `${url.origin}${url.pathname}`;
 }

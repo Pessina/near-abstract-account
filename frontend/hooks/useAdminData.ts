@@ -37,7 +37,6 @@ export function useAdminData() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Query to fetch all accounts
   const accountsQuery = useQuery({
     queryKey: ["accounts"],
     queryFn: async () => {
@@ -59,7 +58,6 @@ export function useAdminData() {
     enabled: !!contract,
   });
 
-  // Query to fetch all identities for each account
   const identitiesQuery = useQuery({
     queryKey: ["admin", "identities"],
     queryFn: async () => {
@@ -78,7 +76,6 @@ export function useAdminData() {
     enabled: !!contract && !!accountsQuery.data,
   });
 
-  // Mutation to update account permissions
   const updatePermissionsMutation = useMutation({
     mutationFn: async ({
       accountId,

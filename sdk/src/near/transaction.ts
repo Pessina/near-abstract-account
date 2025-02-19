@@ -1,6 +1,7 @@
 import { Action } from '@near-js/transactions'
 import { transactions, utils as nearUtils, Near, connect } from 'near-api-js'
 import type { TxExecutionStatus } from '@near-js/types'
+import { getTransactionLastResult } from '@near-js/utils'
 
 export const sendTransactionUntil = async (
   nearBase: Near,
@@ -70,11 +71,17 @@ export const sendTransactionUntil = async (
   let i = 0
   do {
     try {
-      return await near.connection.provider.txStatus(
+      const txOutcome = await near.connection.provider.txStatus(
         result.transaction.hash,
         accountId,
         until
       )
+
+      if (txOutcome) {
+        return getTransactionLastResult(txOutcome)
+      }
+
+      throw new Error('Transaction not found')
     } catch (error) {
       if (i === retryCount - 1) throw error
       await new Promise((resolve) => setTimeout(resolve, 5000)) // Near RPC timeout

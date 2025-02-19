@@ -23,6 +23,7 @@ interface AuthModalProps {
     onClose: () => void
     accountId: string
     transaction: Transaction
+    onSuccess?: (result?: unknown) => void
 }
 
 interface Permissions {
@@ -34,6 +35,7 @@ export default function AuthModal({
     onClose,
     accountId,
     transaction,
+    onSuccess,
 }: AuthModalProps) {
     const [permissions, setPermissions] = useState<Permissions>({
         enable_act_as: false,
@@ -70,7 +72,6 @@ export default function AuthModal({
                 waitUntil: "NONE"
             })
 
-            console.log({ ret })
 
             await Promise.all([
                 queryClient.invalidateQueries({ queryKey: ['account', accountId] }),
@@ -81,14 +82,11 @@ export default function AuthModal({
                 title: "Success",
                 description: "Transaction executed successfully",
             })
+
+            onSuccess?.(ret)
             onClose()
         } catch (err) {
             throw err
-            // toast({
-            //     title: "Error",
-            //     description: err instanceof Error ? err.message : "Transaction failed",
-            //     variant: "destructive",
-            // })
         }
     }
 

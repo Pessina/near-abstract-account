@@ -46,7 +46,6 @@ export default function RegisterPage() {
 
             const authIdentity = await AuthAdapter.getIdentity(config)
 
-
             await contract.addAccount({
                 args: {
                     account_id: accountId,
