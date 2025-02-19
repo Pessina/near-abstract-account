@@ -3,10 +3,10 @@
 import { Account } from "chainsig-aa.js"
 import React from "react"
 
-import AccountDetails from "./_components/AccountDetails"
-import UpdateOIDCKeys from "./_components/UpdateOIDCKeys"
+import AccountDetails from "./components/AccountDetails"
+import UpdateOIDCKeys from "./components/UpdateOIDCKeys"
 
-import ContractBalanceManagement from "@/components/ContractBalanceManagement"
+import ContractBalanceManagement from "@/app/admin/components/ContractBalanceManagement"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { useAdminData } from "@/hooks/useAdminData"

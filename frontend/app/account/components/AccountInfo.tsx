@@ -17,23 +17,15 @@ import {
     HoverCardContent,
     HoverCardTrigger,
 } from "@/components/ui/hover-card"
-import { useToast } from "@/hooks/use-toast"
+import { useCopy } from "@/hooks/useCopy"
 
 interface AccountInfoProps {
     account: Account
     accountId: string
 }
 
-export default function AccountInfo({ account, accountId }: AccountInfoProps) {
-    const { toast } = useToast()
-
-    const copyToClipboard = (text: string, description: string) => {
-        navigator.clipboard.writeText(text)
-        toast({
-            title: "Copied!",
-            description: `${description} copied to clipboard`,
-        })
-    }
+const AccountInfo: React.FC<AccountInfoProps> = ({ account, accountId }) => {
+    const { copyToClipboard } = useCopy()
 
     return (
         <Card>
@@ -100,4 +92,6 @@ export default function AccountInfo({ account, accountId }: AccountInfoProps) {
             </CardContent>
         </Card>
     )
-} 
+}
+
+export default AccountInfo

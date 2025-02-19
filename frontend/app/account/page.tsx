@@ -1,24 +1,26 @@
 "use client"
 
 import { Transaction, Identity, AbstractAccountContractBuilder } from "chainsig-aa.js"
+import { Key } from "lucide-react"
+import Image from "next/image"
 import React, { useState } from "react"
 
-import { AuthAdapter, AuthConfig } from "../_utils/AuthAdapter"
+import { AuthAdapter, AuthConfig } from "../../lib/auth/AuthAdapter"
 
-import { useAccount } from "@/app/_providers/AccountContext"
-import AccountInfo from "@/components/AccountInfo"
-import { MetaMaskIcon, PasskeyIcon, PhantomIcon } from "@/components/AuthIcons"
+import AccountInfo from "@/app/account/components/AccountInfo"
+import IdentitiesList from "@/app/account/components/IdentitiesList"
 import AuthModal from "@/components/AuthModal"
 import FacebookButton from "@/components/FacebookButton"
 import GoogleButton from "@/components/GoogleButton"
-import Header from "@/components/Header"
-import IdentitiesList from "@/components/IdentitiesList"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { useAccountData } from "@/hooks/useAccountData"
 import { useEnv } from "@/hooks/useEnv"
 import { parseOIDCToken } from "@/lib/utils"
+import { useAccount } from "@/providers/AccountContext"
+import metamask from "@/public/metamask.svg"
+import phantom from "@/public/sol.svg"
 
 export default function AccountPage() {
     const [authModalOpen, setAuthModalOpen] = useState(false)
@@ -91,7 +93,6 @@ export default function AccountPage() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <Header />
             {authProps && (
                 <AuthModal
                     isOpen={authModalOpen}
@@ -134,7 +135,7 @@ export default function AccountPage() {
                                     variant="outline"
                                     className="w-full flex items-center justify-center gap-2"
                                 >
-                                    <PasskeyIcon />
+                                    <Key className="w-6 h-6 text-indigo-600" />
                                     <span>Add Passkey</span>
                                 </Button>
 
@@ -152,7 +153,7 @@ export default function AccountPage() {
                                         variant="outline"
                                         className="flex-1 flex items-center justify-center gap-2"
                                     >
-                                        <MetaMaskIcon />
+                                        <Image src={metamask} alt="MetaMask" width="24" height="24" />
                                         <span>Add MetaMask</span>
                                     </Button>
                                     <Button
@@ -168,7 +169,7 @@ export default function AccountPage() {
                                         variant="outline"
                                         className="flex-1 flex items-center justify-center gap-2"
                                     >
-                                        <PhantomIcon />
+                                        <Image src={phantom} alt="Phantom" width="24" height="24" />
                                         <span>Add Phantom</span>
                                     </Button>
                                 </div>

@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation"
 import React from "react"
 
-import { useAccount } from "@/app/_providers/AccountContext"
 import { Button } from "@/components/ui/button"
 import {
     DropdownMenu,
@@ -11,6 +10,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useAccount } from "@/providers/AccountContext"
 
 export default function Header() {
     const { accountId, setAccountId } = useAccount()

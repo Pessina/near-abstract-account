@@ -2,12 +2,13 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 
 import "./globals.css"
-import GoogleProvider from "./_providers/GoogleProvider"
+import GoogleProvider from "../providers/GoogleProvider"
 
-import { AccountProvider } from "@/app/_providers/AccountContext"
-import { FacebookProvider } from "@/app/_providers/FacebookProvider"
-import { QueryClientProvider } from "@/app/_providers/QueryClientProvider"
+import Header from "@/components/Header"
 import { Toaster } from "@/components/ui/toaster"
+import { AccountProvider } from "@/providers/AccountContext"
+import { FacebookProvider } from "@/providers/FacebookProvider"
+import { QueryClientProvider } from "@/providers/QueryClientProvider"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -31,6 +32,7 @@ export default function RootLayout({
           <AccountProvider>
             <GoogleProvider>
               <FacebookProvider>
+                <Header />
                 {children}
                 <Toaster />
               </FacebookProvider>

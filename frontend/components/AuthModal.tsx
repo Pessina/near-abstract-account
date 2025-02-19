@@ -9,12 +9,12 @@ import AuthenticationButtons from "./AuthenticationButtons"
 import FacebookButton from "./FacebookButton"
 import GoogleButton from "./GoogleButton"
 
-import { AuthConfig, AuthAdapter } from "@/app/_utils/AuthAdapter"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 import { useAbstractAccountContract } from "@/contracts/useAbstractAccountContract"
 import { useToast } from "@/hooks/use-toast"
 import { useEnv } from "@/hooks/useEnv"
+import { AuthConfig, AuthAdapter } from "@/lib/auth/AuthAdapter"
 import { NEAR_MAX_GAS } from "@/lib/constants"
 import { parseOIDCToken } from "@/lib/utils"
 

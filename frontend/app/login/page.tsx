@@ -3,9 +3,9 @@
 import { useRouter } from "next/navigation"
 import React, { useState } from "react"
 
-import { AuthAdapter, AuthConfig } from "../_utils/AuthAdapter"
+import { AuthAdapter, AuthConfig } from "../../lib/auth/AuthAdapter"
 
-import { useAccount } from "@/app/_providers/AccountContext"
+import { useAccount } from "@/providers/AccountContext"
 import AuthenticationButtons from "@/components/AuthenticationButtons"
 import FacebookButton from "@/components/FacebookButton"
 import GoogleButton from "@/components/GoogleButton"

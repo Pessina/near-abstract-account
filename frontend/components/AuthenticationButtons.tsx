@@ -1,10 +1,14 @@
 "use client"
 
+import { Key } from "lucide-react"
+import Image from "next/image"
 import React from "react"
 
-import { AuthConfig } from "@/app/_utils/AuthAdapter"
-import { MetaMaskIcon, PasskeyIcon, PhantomIcon } from "@/components/AuthIcons"
+
 import { Button } from "@/components/ui/button"
+import { AuthConfig } from "@/lib/auth/AuthAdapter"
+import metamask from "@/public/metamask.svg"
+import phantom from "@/public/sol.svg"
 
 interface AuthenticationButtonsProps {
     onAuth: (config: AuthConfig) => void
@@ -28,7 +32,7 @@ export default function AuthenticationButtons({ onAuth, accountId, mode = "login
                 variant="outline"
                 className="w-full flex items-center justify-center gap-2"
             >
-                <PasskeyIcon />
+                <Key className="w-6 h-6 text-indigo-600" />
                 <span>{mode === "login" ? "Continue" : "Register"} with Passkey</span>
             </Button>
 
@@ -46,7 +50,7 @@ export default function AuthenticationButtons({ onAuth, accountId, mode = "login
                     variant="outline"
                     className="flex items-center justify-center gap-2"
                 >
-                    <MetaMaskIcon />
+                    <Image src={metamask} alt="MetaMask" width="24" height="24" />
                     <span>MetaMask</span>
                 </Button>
                 <Button
@@ -62,7 +66,7 @@ export default function AuthenticationButtons({ onAuth, accountId, mode = "login
                     variant="outline"
                     className="flex items-center justify-center gap-2"
                 >
-                    <PhantomIcon />
+                    <Image src={phantom} alt="Phantom" width="24" height="24" />
                     <span>Phantom</span>
                 </Button>
             </div>

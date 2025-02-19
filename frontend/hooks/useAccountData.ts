@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 
-import { useAccount } from "@/app/_providers/AccountContext";
+import { useAccount } from "@/providers/AccountContext";
 import { useAbstractAccountContract } from "@/contracts/useAbstractAccountContract";
 
 export function useAccountData() {

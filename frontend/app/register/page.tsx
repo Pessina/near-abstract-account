@@ -3,9 +3,8 @@
 import { useRouter } from "next/navigation"
 import React, { useState } from "react"
 
-import { AuthAdapter, AuthConfig } from "../_utils/AuthAdapter"
+import { AuthAdapter, AuthConfig } from "../../lib/auth/AuthAdapter"
 
-import { useAccount } from "@/app/_providers/AccountContext"
 import AuthenticationButtons from "@/components/AuthenticationButtons"
 import FacebookButton from "@/components/FacebookButton"
 import GoogleButton from "@/components/GoogleButton"
@@ -17,6 +16,7 @@ import { Label } from "@/components/ui/label"
 import { useAbstractAccountContract } from "@/contracts/useAbstractAccountContract"
 import { useEnv } from "@/hooks/useEnv"
 import { parseOIDCToken } from "@/lib/utils"
+import { useAccount } from "@/providers/AccountContext"
 
 export default function RegisterPage() {
     const [accountId, setAccountId] = useState("")
