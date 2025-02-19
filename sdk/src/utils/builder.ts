@@ -100,7 +100,8 @@ export class AbstractAccountContractBuilder {
         const wallet = identity.Wallet
         if (wallet.wallet_type === 'Ethereum') {
           const address =
-            '0x' + keccak256(wallet.public_key.slice(2) as Hex).slice(-40)
+            '0x' +
+            keccak256((`0x` + wallet.public_key.slice(4)) as Hex).slice(-40)
           if (!isAddress(address))
             throw new Error('Failed to derive valid address')
           return `wallet/${address}`
