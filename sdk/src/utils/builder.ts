@@ -110,7 +110,7 @@ export class AbstractAccountContractBuilder {
       }
 
       if ('WebAuthn' in identity) {
-        return `webauthn/${identity.WebAuthn.key_id}`
+        return `webauthn/${identity.WebAuthn.compressed_public_key}`
       }
 
       if ('OIDC' in identity) {
