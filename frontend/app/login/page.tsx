@@ -8,14 +8,10 @@ import { AuthAdapter, AuthConfig } from "../../lib/auth/AuthAdapter"
 import SelectAccountModal from "./components/SelectAccountModal"
 
 import AuthenticationButtons from "@/components/AuthenticationButtons"
-import FacebookButton from "@/components/FacebookButton"
-import GoogleButton from "@/components/GoogleButton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAbstractAccountContract } from "@/contracts/useAbstractAccountContract"
-import { useEnv } from "@/hooks/useEnv"
-import { parseOIDCToken } from "@/lib/utils"
 import { useAccount } from "@/providers/AccountContext"
 
 export default function LoginPage() {
@@ -25,7 +21,6 @@ export default function LoginPage() {
     const router = useRouter()
     const { contract } = useAbstractAccountContract()
     const { setAccountId } = useAccount()
-    const { googleClientId, facebookAppId } = useEnv()
 
     if (!contract) {
         return <div>Loading...</div>
@@ -87,45 +82,7 @@ export default function LoginPage() {
                             <AlertDescription>{error}</AlertDescription>
                         </Alert>
                     )}
-                    <AuthenticationButtons onAuth={handleLogin} />
-                    <div className="grid grid-cols-2 gap-4">
-                        <GoogleButton
-                            nonce=""
-                            onSuccess={(idToken) => {
-                                const { issuer, email } = parseOIDCToken(idToken)
-                                handleLogin({
-                                    type: "oidc",
-                                    config: {
-                                        clientId: googleClientId,
-                                        issuer,
-                                        email,
-                                        sub: null,
-                                        token: idToken
-                                    }
-                                })
-                            }}
-                            onError={() => setError("Google authentication failed")}
-                        />
-                        <FacebookButton
-                            text="Continue with Facebook"
-                            nonce=""
-                            onSuccess={(idToken) => {
-                                const { issuer, email } = parseOIDCToken(idToken)
-                                handleLogin({
-                                    type: "oidc",
-                                    config: {
-                                        clientId: facebookAppId,
-                                        issuer,
-                                        email,
-                                        sub: null,
-                                        token: idToken
-                                    }
-                                })
-                            }}
-                            onError={() => setError("Facebook authentication failed")}
-                        />
-                    </div>
-
+                    <AuthenticationButtons onAuth={handleLogin} nonce="" />
                     <div className="relative">
                         <div className="absolute inset-0 flex items-center">
                             <span className="w-full border-t" />

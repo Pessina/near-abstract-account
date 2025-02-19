@@ -6,17 +6,13 @@ import { UserOperation, Transaction } from "chainsig-aa.js"
 import { useState } from "react"
 
 import AuthenticationButtons from "./AuthenticationButtons"
-import FacebookButton from "./FacebookButton"
-import GoogleButton from "./GoogleButton"
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 import { useAbstractAccountContract } from "@/contracts/useAbstractAccountContract"
 import { useToast } from "@/hooks/use-toast"
-import { useEnv } from "@/hooks/useEnv"
 import { AuthConfig, AuthAdapter } from "@/lib/auth/AuthAdapter"
 import { NEAR_MAX_GAS } from "@/lib/constants"
-import { parseOIDCToken } from "@/lib/utils"
 
 interface AuthModalProps {
     isOpen: boolean
@@ -41,7 +37,6 @@ export default function AuthModal({
         enable_act_as: false,
     })
     const { toast } = useToast()
-    const { googleClientId, facebookAppId } = useEnv()
     const { contract } = useAbstractAccountContract()
     const queryClient = useQueryClient()
 
@@ -90,20 +85,6 @@ export default function AuthModal({
         }
     }
 
-    const handleSocialLogin = (token: string, provider: "google" | "facebook") => {
-        const { issuer, email } = parseOIDCToken(token)
-        handleAuth({
-            type: "oidc",
-            config: {
-                clientId: provider === "google" ? googleClientId : facebookAppId,
-                issuer,
-                email,
-                sub: null,
-                token
-            }
-        })
-    }
-
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-md">
@@ -115,43 +96,8 @@ export default function AuthModal({
                 </DialogHeader>
 
                 <div className="space-y-4">
-                    <AuthenticationButtons onAuth={handleAuth} accountId={accountId} />
-
-                    <div className="relative">
-                        <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t" />
-                        </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-background px-2 text-muted-foreground">
-                                Or continue with
-                            </span>
-                        </div>
-                    </div>
-
-                    <div className="flex gap-4">
-                        <GoogleButton
-                            nonce={canonicalizedTransaction}
-                            onSuccess={(token) => handleSocialLogin(token, "google")}
-                            onError={() => toast({
-                                title: "Error",
-                                description: "Google authentication failed",
-                                variant: "destructive",
-                            })}
-                        />
-                        <FacebookButton
-                            text="Continue with Facebook"
-                            nonce={canonicalizedTransaction}
-                            onSuccess={(token) => handleSocialLogin(token, "facebook")}
-                            onError={(error) => toast({
-                                title: "Error",
-                                description: error.message || "Facebook authentication failed",
-                                variant: "destructive",
-                            })}
-                        />
-                    </div>
-
+                    <AuthenticationButtons onAuth={handleAuth} accountId={accountId} nonce={canonicalizedTransaction} />
                     <Separator className="my-4" />
-
                     <div className="space-y-4">
                         <h4 className="text-sm font-medium">Identity Permissions</h4>
                         <div className="space-y-2">

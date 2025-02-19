@@ -1,6 +1,5 @@
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@radix-ui/react-dialog"
-
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { DialogHeader } from "@/components/ui/dialog"
 
 type SelectAccountModalProps = {
