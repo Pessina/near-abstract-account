@@ -1,34 +1,24 @@
 "use client"
 
 import { Transaction, Identity, AbstractAccountContractBuilder } from "chainsig-aa.js"
-import { Key } from "lucide-react"
-import Image from "next/image"
 import React, { useState } from "react"
 
 import { AuthAdapter, AuthConfig } from "../../lib/auth/AuthAdapter"
 
 import AccountInfo from "@/app/account/components/AccountInfo"
 import IdentitiesList from "@/app/account/components/IdentitiesList"
+import AuthenticationButtons from "@/components/AuthenticationButtons"
 import AuthModal from "@/components/AuthModal"
-import FacebookButton from "@/components/FacebookButton"
-import GoogleButton from "@/components/GoogleButton"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useToast } from "@/hooks/use-toast"
 import { useAccountData } from "@/hooks/useAccountData"
-import { useEnv } from "@/hooks/useEnv"
-import { parseOIDCToken } from "@/lib/utils"
 import { useAccount } from "@/providers/AccountContext"
-import metamask from "@/public/metamask.svg"
-import phantom from "@/public/sol.svg"
 
 export default function AccountPage() {
     const [authModalOpen, setAuthModalOpen] = useState(false)
     const [authProps, setAuthProps] = useState<{ accountId: string, transaction: Transaction } | null>(null)
 
     const { accountId } = useAccount()
-    const { googleClientId, facebookAppId } = useEnv()
-    const { toast } = useToast()
     const {
         account,
         identities,
@@ -121,123 +111,14 @@ export default function AccountPage() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <div className="grid gap-4">
-                                <Button
-                                    onClick={() => {
-                                        handleAddIdentity({
-                                            type: "webauthn",
-                                            config: {
-                                                username: accountId,
-                                                operation: "create",
-                                            },
-                                        })
-                                    }}
-                                    variant="outline"
-                                    className="w-full flex items-center justify-center gap-2"
-                                >
-                                    <Key className="w-6 h-6 text-indigo-600" />
-                                    <span>Add Passkey</span>
-                                </Button>
-
-                                <div className="flex gap-4">
-                                    <Button
-                                        onClick={() => {
-                                            handleAddIdentity({
-                                                type: "wallet",
-                                                config: {
-                                                    wallet: "metamask",
-                                                    type: "ethereum",
-                                                },
-                                            })
-                                        }}
-                                        variant="outline"
-                                        className="flex-1 flex items-center justify-center gap-2"
-                                    >
-                                        <Image src={metamask} alt="MetaMask" width="24" height="24" />
-                                        <span>Add MetaMask</span>
-                                    </Button>
-                                    <Button
-                                        onClick={() => {
-                                            handleAddIdentity({
-                                                type: "wallet",
-                                                config: {
-                                                    wallet: "phantom",
-                                                    type: "solana",
-                                                },
-                                            })
-                                        }}
-                                        variant="outline"
-                                        className="flex-1 flex items-center justify-center gap-2"
-                                    >
-                                        <Image src={phantom} alt="Phantom" width="24" height="24" />
-                                        <span>Add Phantom</span>
-                                    </Button>
-                                </div>
-
-                                <div className="relative">
-                                    <div className="absolute inset-0 flex items-center">
-                                        <span className="w-full border-t" />
-                                    </div>
-                                    <div className="relative flex justify-center text-xs uppercase">
-                                        <span className="bg-gray-50 px-2 text-muted-foreground">
-                                            Or continue with
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div className="flex gap-4">
-                                    <GoogleButton
-                                        nonce=""
-                                        onSuccess={(idToken) => {
-                                            const { issuer, email } = parseOIDCToken(idToken)
-                                            handleAddIdentity({
-                                                type: "oidc",
-                                                config: {
-                                                    clientId: googleClientId,
-                                                    issuer,
-                                                    email,
-                                                    sub: null,
-                                                    token: idToken
-                                                }
-                                            })
-                                        }}
-                                        onError={() => {
-                                            toast({
-                                                variant: "destructive",
-                                                title: "Error",
-                                                description: "Google authentication failed"
-                                            })
-                                        }}
-                                    />
-                                    <FacebookButton
-                                        nonce=""
-                                        text="Add Facebook"
-                                        onSuccess={(idToken) => {
-                                            const { issuer, email } = parseOIDCToken(idToken)
-                                            handleAddIdentity({
-                                                type: "oidc",
-                                                config: {
-                                                    clientId: facebookAppId,
-                                                    issuer,
-                                                    email,
-                                                    sub: null,
-                                                    token: idToken
-                                                }
-                                            })
-                                        }}
-                                        onError={(error) => {
-                                            toast({
-                                                variant: "destructive",
-                                                title: "Error",
-                                                description: error.message || "Facebook authentication failed"
-                                            })
-                                        }}
-                                    />
-                                </div>
-                            </div>
+                            <AuthenticationButtons
+                                onAuth={handleAddIdentity}
+                                nonce=""
+                                accountId={accountId}
+                                mode="register"
+                            />
                         </CardContent>
                     </Card>
-
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-red-600">Danger Zone</CardTitle>

@@ -91,7 +91,7 @@ const Auth0 = () => {
         throw new Error("Transaction not found")
       }
 
-      const txHex = evmChain.addSignature({
+      const txHex = evmChain.attachTransactionSignature({
         transaction,
         mpcSignatures: [rsvSignature],
       })
@@ -105,7 +105,6 @@ const Auth0 = () => {
     }
 
     if (idToken) {
-      console.log("ID Token:", idToken);
       window.history.replaceState(null, "", window.location.pathname);
     }
   }, [evmChain, contract]);

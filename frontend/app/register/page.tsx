@@ -6,16 +6,12 @@ import React, { useState } from "react"
 import { AuthAdapter, AuthConfig } from "../../lib/auth/AuthAdapter"
 
 import AuthenticationButtons from "@/components/AuthenticationButtons"
-import FacebookButton from "@/components/FacebookButton"
-import GoogleButton from "@/components/GoogleButton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAbstractAccountContract } from "@/contracts/useAbstractAccountContract"
-import { useEnv } from "@/hooks/useEnv"
-import { parseOIDCToken } from "@/lib/utils"
 import { useAccount } from "@/providers/AccountContext"
 
 export default function RegisterPage() {
@@ -24,7 +20,6 @@ export default function RegisterPage() {
     const router = useRouter()
     const { contract } = useAbstractAccountContract()
     const { setAccountId: setContextAccountId } = useAccount()
-    const { googleClientId, facebookAppId } = useEnv()
 
     if (!contract) {
         return <div>Loading...</div>
@@ -93,61 +88,12 @@ export default function RegisterPage() {
                             onChange={(e) => setAccountId(e.target.value)}
                         />
                     </div>
-
-                    <AuthenticationButtons onAuth={handleRegister} accountId={accountId} mode="register" />
-
-                    <div className="relative">
-                        <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t" />
-                        </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-gray-50 px-2 text-muted-foreground">
-                                Or register with
-                            </span>
-                        </div>
-                    </div>
-
-                    <div className="flex gap-4">
-                        <GoogleButton
-                            nonce=""
-                            onSuccess={(idToken) => {
-                                const { issuer, email } = parseOIDCToken(idToken)
-                                handleRegister({
-                                    type: "oidc",
-                                    config: {
-                                        clientId: googleClientId,
-                                        issuer,
-                                        email,
-                                        sub: null,
-                                        token: idToken
-                                    }
-                                })
-                            }}
-                            onError={() => setError("Google authentication failed")}
-                        />
-                        <FacebookButton
-                            text="Register with Facebook"
-                            nonce=""
-                            onSuccess={(token) => {
-                                const { issuer, email } = parseOIDCToken(token)
-                                handleRegister({
-                                    type: "oidc",
-                                    config: {
-                                        clientId: facebookAppId,
-                                        issuer,
-                                        email,
-                                        sub: null,
-                                        token
-                                    }
-                                })
-                            }}
-                            onError={(error) => {
-                                const message = error.message || "Facebook authentication failed"
-                                setError(message)
-                            }}
-                        />
-                    </div>
-
+                    <AuthenticationButtons
+                        onAuth={handleRegister}
+                        nonce=""
+                        accountId={accountId}
+                        mode="register"
+                    />
                     <div className="text-center">
                         <Button
                             onClick={() => router.push("/login")}

@@ -1,14 +1,28 @@
 "use client";
 
-import { ChevronRight, Copy, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { PublicKey } from "@/contracts/OIDCAuthContract/OIDCAuthContract";
 import { useOIDCAuthContract } from "@/contracts/OIDCAuthContract/useOIDCAuthContract";
 import { useToast } from "@/hooks/use-toast";
+
+const providers = [
+  {
+    name: 'google',
+    issuer: 'https://accounts.google.com'
+  },
+  {
+    name: 'auth0',
+    issuer: 'https://dev-um3ne30lucm6ehqq.us.auth0.com/'
+  },
+  {
+    name: 'facebook',
+    issuer: 'https://www.facebook.com'
+  }
+];
 
 type OIDCKeys = {
   [issuer: string]: PublicKey[];
@@ -25,45 +39,16 @@ type JWKSResponse = {
   }>;
 };
 
-interface KeyInfoProps {
-  label: string;
-  value: string;
-  canCopy?: boolean;
-  onCopy?: (text: string) => Promise<void>;
-  className?: string;
-}
-
-const KeyInfo = ({ label, value, canCopy = false, onCopy, className = "" }: KeyInfoProps) => (
-  <div className={`flex justify-between items-center py-1 ${className}`}>
-    <span className="text-sm font-medium">{label}:</span>
-    <div className="flex items-center space-x-2">
-      <code className={`bg-muted px-2 py-1 rounded text-sm ${label === "Modulus (n)" ? "truncate max-w-[300px]" : ""}`}>
-        {value}
-      </code>
-      {canCopy && onCopy && (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onCopy(value)}
-        >
-          <Copy className="h-4 w-4" />
-        </Button>
-      )}
-    </div>
-  </div>
-);
-
 export default function UpdateOIDCKeys() {
   const [keys, setKeys] = useState<OIDCKeys | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [loading, setLoading] = useState(false);
   const { contract } = useOIDCAuthContract();
   const { toast } = useToast();
 
   const handleGetKeys = async () => {
     if (!contract) return;
     try {
-      setIsLoading(true);
+      setLoading(true);
       const fetchedKeys = await contract.getKeys();
       const formattedKeys = Object.fromEntries(fetchedKeys);
       setKeys(formattedKeys);
@@ -78,26 +63,24 @@ export default function UpdateOIDCKeys() {
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   const handleUpdateKeys = async () => {
     if (!contract) return;
     try {
-      setIsUpdating(true);
+      setLoading(true);
 
-      const [googleRes, auth0Res, facebookRes] = await Promise.all([
-        fetch('/admin/api/oidc/google/keys'),
-        fetch('/admin/api/oidc/auth0/keys'),
-        fetch('/admin/api/oidc/facebook/keys')
-      ]);
+      const responses = await Promise.all(
+        providers.map(provider =>
+          fetch(`/admin/api/oidc/${provider.name}/keys`)
+        )
+      );
 
-      const [googleData, auth0Data, facebookData] = await Promise.all([
-        googleRes.json(),
-        auth0Res.json(),
-        facebookRes.json()
-      ]) as [JWKSResponse, JWKSResponse, JWKSResponse];
+      const providerData = await Promise.all(
+        responses.map(res => res.json() as Promise<JWKSResponse>)
+      );
 
       const transformKeys = (keys: JWKSResponse['keys']) =>
         keys.map(key => ({
@@ -109,11 +92,14 @@ export default function UpdateOIDCKeys() {
           use: key.use
         }));
 
-      await Promise.all([
-        contract.updateKeys('https://accounts.google.com', transformKeys(googleData.keys)),
-        contract.updateKeys('https://dev-um3ne30lucm6ehqq.us.auth0.com/', transformKeys(auth0Data.keys)),
-        contract.updateKeys('https://www.facebook.com', transformKeys(facebookData.keys))
-      ]);
+      await Promise.all(
+        providers.map((provider, index) =>
+          contract.updateKeys(
+            provider.issuer,
+            transformKeys(providerData[index].keys)
+          )
+        )
+      );
 
       toast({
         title: "Success",
@@ -128,23 +114,7 @@ export default function UpdateOIDCKeys() {
         variant: "destructive",
       });
     } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast({
-        title: "Copied",
-        description: "Value copied to clipboard",
-      });
-    } catch {
-      toast({
-        title: "Error",
-        description: "Failed to copy to clipboard",
-        variant: "destructive",
-      });
+      setLoading(false);
     }
   };
 
@@ -159,10 +129,10 @@ export default function UpdateOIDCKeys() {
           <div className="space-x-4">
             <Button
               onClick={handleGetKeys}
-              disabled={isLoading}
+              disabled={loading}
               variant="outline"
             >
-              {isLoading ? (
+              {loading ? (
                 <RefreshCw className="h-4 w-4 animate-spin mr-2" />
               ) : (
                 <RefreshCw className="h-4 w-4 mr-2" />
@@ -171,10 +141,10 @@ export default function UpdateOIDCKeys() {
             </Button>
             <Button
               onClick={handleUpdateKeys}
-              disabled={isUpdating}
+              disabled={loading}
               variant="default"
             >
-              {isUpdating ? (
+              {loading ? (
                 <RefreshCw className="h-4 w-4 animate-spin mr-2" />
               ) : (
                 <RefreshCw className="h-4 w-4 mr-2" />
@@ -187,28 +157,18 @@ export default function UpdateOIDCKeys() {
         {keys && (
           <div className="space-y-4">
             {Object.entries(keys).map(([issuer, publicKeys]) => (
-              <Collapsible key={issuer}>
-                <div className="flex items-center space-x-4 py-2">
-                  <CollapsibleTrigger className="flex items-center hover:text-primary transition-colors">
-                    <ChevronRight className="h-4 w-4" />
-                    <span className="ml-2 font-medium">{issuer}</span>
-                  </CollapsibleTrigger>
+              <div key={issuer} className="space-y-2">
+                <h3 className="font-medium">{issuer}</h3>
+                <div className="pl-4 space-y-2">
+                  {publicKeys.map((key) => (
+                    <div key={key.kid} className="p-2 bg-secondary/50 rounded-md">
+                      <span className="text-sm">
+                        {key.kid} ({key.alg}, {key.kty})
+                      </span>
+                    </div>
+                  ))}
                 </div>
-                <CollapsibleContent>
-                  <div className="pl-6 space-y-4">
-                    {publicKeys.map((key) => (
-                      <div key={key.kid} className="space-y-2 border-b pb-4 last:border-b-0">
-                        <KeyInfo label="Key ID" value={key.kid} canCopy onCopy={copyToClipboard} />
-                        <KeyInfo label="Algorithm" value={key.alg} />
-                        <KeyInfo label="Key Type" value={key.kty} />
-                        <KeyInfo label="Use" value={key.use} />
-                        <KeyInfo label="Modulus (n)" value={key.n} canCopy onCopy={copyToClipboard} />
-                        <KeyInfo label="Exponent (e)" value={key.e} canCopy onCopy={copyToClipboard} />
-                      </div>
-                    ))}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
+              </div>
             ))}
           </div>
         )}
