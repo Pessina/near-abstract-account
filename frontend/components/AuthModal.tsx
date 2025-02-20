@@ -39,7 +39,7 @@ export default function AuthModal({
     const { toast } = useToast()
     const { contract } = useAbstractAccountContract()
     const queryClient = useQueryClient()
-    const { accountId, authIdentities } = useAccount()
+    const { accountId } = useAccount()
 
     const canonicalizedTransaction = canonicalize(transaction)
 
@@ -104,24 +104,6 @@ export default function AuthModal({
                         onAuth={handleAuth}
                         nonce={canonicalizedTransaction}
                         accountId={accountId}
-                        authMethods={authIdentities?.map(i => {
-                            if ("Wallet" in i.identity) {
-                                if (i.identity.Wallet.wallet_type === "Solana") {
-                                    return AuthMethod.Phantom
-                                } else if (i.identity.Wallet.wallet_type === "Ethereum") {
-                                    return AuthMethod.MetaMask
-                                }
-                            } else if ("OIDC" in i.identity) {
-                                if (i.identity.OIDC.issuer.includes('google')) {
-                                    return AuthMethod.Google
-                                } else if (i.identity.OIDC.issuer.includes('facebook')) {
-                                    return AuthMethod.Facebook
-                                }
-                            } else if ("WebAuthn" in i.identity) {
-                                return AuthMethod.Passkey
-                            }
-                            return undefined
-                        }).filter(Boolean) as AuthMethod[]}
                     />
                     <Separator className="my-4" />
                     <div className="space-y-4">
