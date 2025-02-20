@@ -1,31 +1,23 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 
-import { useAccount } from "@/providers/AccountContext";
 import { useAbstractAccountContract } from "@/contracts/useAbstractAccountContract";
+import { useAccount } from "@/providers/AccountContext";
 
 export function useAccountData() {
   const { contract } = useAbstractAccountContract();
-  const { accountId, logout } = useAccount();
+  const {
+    accountId,
+    logout,
+    authIdentities,
+    isLoading: isContextLoading,
+  } = useAccount();
 
   const accountQuery = useQuery({
     queryKey: ["account", accountId],
     queryFn: async () => {
       if (!contract || !accountId) return null;
       return contract.getAccountById({ account_id: accountId });
-    },
-    enabled: !!contract && !!accountId,
-    staleTime: 0,
-  });
-
-  const identitiesQuery = useQuery({
-    queryKey: ["identities", accountId],
-    queryFn: async () => {
-      if (!contract || !accountId) return [];
-      const result = await contract.listAuthIdentities({
-        account_id: accountId,
-      });
-      return result || [];
     },
     enabled: !!contract && !!accountId,
     staleTime: 0,
@@ -39,8 +31,7 @@ export function useAccountData() {
 
   return {
     account: accountQuery.data,
-    identities: identitiesQuery.data,
-    isLoading:
-      (accountQuery.isLoading || identitiesQuery.isLoading) && !!accountId,
+    authIdentities,
+    isLoading: (accountQuery.isLoading || isContextLoading) && !!accountId,
   };
 }

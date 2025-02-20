@@ -5,7 +5,7 @@ import canonicalize from "canonicalize"
 import { UserOperation, Transaction } from "chainsig-aa.js"
 import { useState } from "react"
 
-import AuthenticationButtons from "./AuthenticationButtons"
+import AuthenticationButtons, { AuthMethod } from "./AuthenticationButtons"
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
@@ -13,6 +13,7 @@ import { useAbstractAccountContract } from "@/contracts/useAbstractAccountContra
 import { useToast } from "@/hooks/use-toast"
 import { AuthConfig, AuthAdapter } from "@/lib/auth/AuthAdapter"
 import { NEAR_MAX_GAS } from "@/lib/constants"
+import { useAccount } from "@/providers/AccountContext"
 
 interface AuthModalProps {
     isOpen: boolean
@@ -29,7 +30,6 @@ interface Permissions {
 export default function AuthModal({
     isOpen,
     onClose,
-    accountId,
     transaction,
     onSuccess,
 }: AuthModalProps) {
@@ -39,6 +39,7 @@ export default function AuthModal({
     const { toast } = useToast()
     const { contract } = useAbstractAccountContract()
     const queryClient = useQueryClient()
+    const { accountId, authIdentities } = useAccount()
 
     const canonicalizedTransaction = canonicalize(transaction)
 
@@ -85,6 +86,10 @@ export default function AuthModal({
         }
     }
 
+    if (!accountId) {
+        throw new Error("Auth modal can only be used when logged in")
+    }
+
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-md">
@@ -94,12 +99,29 @@ export default function AuthModal({
                         Please authenticate to proceed with the transaction
                     </DialogDescription>
                 </DialogHeader>
-
                 <div className="space-y-4">
                     <AuthenticationButtons
                         onAuth={handleAuth}
                         nonce={canonicalizedTransaction}
                         accountId={accountId}
+                        authMethods={authIdentities?.map(i => {
+                            if ("Wallet" in i.identity) {
+                                if (i.identity.Wallet.wallet_type === "Solana") {
+                                    return AuthMethod.Phantom
+                                } else if (i.identity.Wallet.wallet_type === "Ethereum") {
+                                    return AuthMethod.MetaMask
+                                }
+                            } else if ("OIDC" in i.identity) {
+                                if (i.identity.OIDC.issuer.includes('google')) {
+                                    return AuthMethod.Google
+                                } else if (i.identity.OIDC.issuer.includes('facebook')) {
+                                    return AuthMethod.Facebook
+                                }
+                            } else if ("WebAuthn" in i.identity) {
+                                return AuthMethod.Passkey
+                            }
+                            return undefined
+                        }).filter(Boolean) as AuthMethod[]}
                     />
                     <Separator className="my-4" />
                     <div className="space-y-4">

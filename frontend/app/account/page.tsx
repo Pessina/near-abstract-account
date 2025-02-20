@@ -17,11 +17,9 @@ import { useAccount } from "@/providers/AccountContext"
 export default function AccountPage() {
     const [authModalOpen, setAuthModalOpen] = useState(false)
     const [authProps, setAuthProps] = useState<{ accountId: string, transaction: Transaction } | null>(null)
-
-    const { accountId } = useAccount()
+    const { accountId, authIdentities } = useAccount()
     const {
         account,
-        identities,
         isLoading,
     } = useAccountData()
 
@@ -100,7 +98,7 @@ export default function AccountPage() {
                     </div>
                     {account && <AccountInfo account={account} accountId={accountId} />}
                     <IdentitiesList
-                        identities={identities || []}
+                        identities={authIdentities || []}
                         onRemove={handleRemoveIdentity}
                     />
                     <Card>

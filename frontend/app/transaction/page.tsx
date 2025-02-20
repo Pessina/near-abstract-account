@@ -27,9 +27,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAbstractAccountContract } from "@/contracts/useAbstractAccountContract"
 import { useToast } from "@/hooks/use-toast"
 import { useEnv } from "@/hooks/useEnv"
+import { useAccount } from "@/providers/AccountContext"
 
 type FormValues = {
-    accountId: string;
     contractId: string;
     to: string;
     value: string;
@@ -62,10 +62,10 @@ export default function TransactionForm() {
     const { contract } = useAbstractAccountContract()
     const { toast } = useToast()
     const { networkId, signerContract, infuraRpcUrl, abstractAccountContract } = useEnv()
+    const { accountId, authIdentities } = useAccount()
 
     const { register, handleSubmit, watch, setValue } = useForm<FormValues>({
         defaultValues: {
-            accountId: "",
             contractId: "",
             to: "",
             value: "",
@@ -76,7 +76,6 @@ export default function TransactionForm() {
     })
 
     const actAs = watch("actAs")
-    const accountId = watch("accountId")
     const selectedChain = watch("chain")
     const selectedIdentity = watch("selectedIdentity")
 
@@ -142,25 +141,12 @@ export default function TransactionForm() {
     }, [abstractAccountContract, accountId, chains, selectedChain, selectedIdentity])
 
     useEffect(() => {
-        async function fetchIdentities() {
-            if (!contract || !accountId) return;
-            try {
-                const account = await contract.getAccountById({ account_id: accountId });
-                if (account) {
-                    setAvailableIdentities(account.identities.map(i => i.identity));
-                }
-            } catch (err) {
-                toast({
-                    title: "Error",
-                    description: err instanceof Error ? err.message : "Failed to fetch account identities",
-                    variant: "destructive",
-                });
-            }
+        if (authIdentities) {
+            setAvailableIdentities(authIdentities.map(i => i.identity));
         }
-        fetchIdentities();
-    }, [contract, accountId, toast]);
+    }, [authIdentities]);
 
-    if (!contract) {
+    if (!contract || !accountId) {
         return <div>Loading...</div>
     }
 
@@ -219,7 +205,7 @@ export default function TransactionForm() {
                 }
             }
 
-            const account = await contract.getAccountById({ account_id: data.accountId })
+            const account = await contract.getAccountById({ account_id: accountId })
             if (!account) {
                 toast({
                     title: "Error",
@@ -232,7 +218,7 @@ export default function TransactionForm() {
             const selectedIdentityObj = JSON.parse(selectedIdentity) as Identity;
 
             const userOpTransaction = AbstractAccountContractBuilder.transaction.sign({
-                accountId: data.accountId,
+                accountId: accountId,
                 nonce: account.nonce,
                 payloads: {
                     contract_id: data.contractId,
@@ -265,9 +251,9 @@ export default function TransactionForm() {
             }
 
             setAuthProps({
-                accountId: data.accountId,
+                accountId: accountId,
                 transaction: {
-                    account_id: data.accountId,
+                    account_id: accountId,
                     nonce: account.nonce,
                     action: userOpTransaction.action,
                 },
@@ -315,8 +301,8 @@ export default function TransactionForm() {
                 <CardContent>
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                         <div>
-                            <Label htmlFor="accountId">Account ID</Label>
-                            <Input id="accountId" {...register("accountId")} />
+                            <Label>Account ID</Label>
+                            <div className="p-2 bg-gray-100 rounded">{accountId}</div>
                         </div>
                         {addressAndPublicKey && (
                             <div>
@@ -406,7 +392,7 @@ export default function TransactionForm() {
                         )}
                         {actAs && availableIdentities.length === 0 && (
                             <div className="text-sm text-destructive">
-                                No identities with act-as permission available
+                                No authIdentities with act-as permission available
                             </div>
                         )}
                         <Button type="submit" className="w-full">
