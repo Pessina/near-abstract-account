@@ -5,7 +5,7 @@ import canonicalize from "canonicalize"
 import { UserOperation, Transaction } from "chainsig-aa.js"
 import { useState } from "react"
 
-import AuthenticationButtons, { AuthMethod } from "./AuthenticationButtons"
+import AuthenticationButtons from "./AuthenticationButtons"
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"

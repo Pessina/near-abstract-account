@@ -28,6 +28,15 @@ pub struct IdentityPermissions {
     TODO: Add other permissions here
     - whitelisted actions/methods/contracts/accounts/tokens
     - spent allowance on gas/transfer per day and absolute limit
+
+    For EVM contract calls, the callData in UserOp and data in FunctionCall are encoded.
+    We cannot trust user-provided signatures for decoding since malicious signatures could
+    decode the same encoded data differently (no 1:1 mapping).
+
+    To handle this securely, we should:
+    1. Whitelist both the contract address and its ABI on the user account
+    2. Use the whitelisted ABI to decode the data when session keys request signatures
+    3. Validate the decoded data matches the intended function call
     */
 }
 
