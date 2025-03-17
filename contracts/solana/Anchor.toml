@@ -12,7 +12,7 @@ contracts = "4bGmWPXzFXWJABf5YV5KaStvnpPuvFBxVxB49ssqZHZL"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Devnet"
+cluster = "https://devnet.helius-rpc.com/?api-key=b8c41cbe-c859-4b0b-8c2b-b62c12cfe1de"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
