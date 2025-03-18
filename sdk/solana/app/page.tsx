@@ -4,13 +4,21 @@ import { useState, useEffect } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import * as anchor from "@coral-xyz/anchor";
 
-const PROGRAM_ID = "4bGmWPXzFXWJABf5YV5KaStvnpPuvFBxVxB49ssqZHZL";
+const PROGRAM_ID = "GpCgjE4AW3PwnGPVeCYnLiQ5WGoBhQu5FSD4BR23QwHV";
+
+import { Keypair } from "@solana/web3.js";
+
+import crypto from "crypto";
+
+const seed = "your-unique-counter-seed";
+const counterKeypair = Keypair.fromSeed(
+  Buffer.from(crypto.createHash("sha256").update(seed).digest())
+);
 
 export default function Home() {
   const [message, setMessage] = useState<string>(
     "Connect your wallet to interact with the contract"
   );
-  const [isLoading, setIsLoading] = useState(false);
   const [program, setProgram] = useState<anchor.Program | null>(null);
 
   const { connection } = useConnection();
@@ -31,29 +39,96 @@ export default function Home() {
 
         console.log("Anchor Program:", fetchedIdl);
 
+        console.log("Anchor Program:", Object.keys(anchorProgram.methods));
+
         setProgram(anchorProgram);
+
+        const counter = await anchorProgram.account.counter.fetch(
+          counterKeypair.publicKey
+        );
+
+        console.log("Counter:", counter.count.toString());
       }
     };
 
-    if (wallet.connected) {
-      fetchIdl();
-    }
+    fetchIdl();
   }, [wallet.connected, connection, wallet]);
 
   const initializeContract = async () => {
-    if (!wallet.publicKey || !wallet.signTransaction) {
+    if (!wallet.publicKey || !wallet.signTransaction || !program) {
       setMessage("Wallet not fully connected");
       return;
     }
 
-    setIsLoading(true);
+    const tx = await program.methods.initialize().rpc();
+    const { blockhash, lastValidBlockHeight } =
+      await connection.getLatestBlockhash();
+    await connection.confirmTransaction(
+      {
+        signature: tx,
+        blockhash,
+        lastValidBlockHeight,
+      },
+      "confirmed"
+    );
+    console.log("Transaction confirmed:", tx);
+  };
 
-    if (program) {
-      const tx = await program.methods.initialize().rpc();
-      console.log("Transaction sent via Anchor, signature:", tx);
-      await connection.confirmTransaction(tx, "confirmed");
-      console.log("Transaction confirmed:", tx);
+  const initializeCounter = async () => {
+    if (!wallet.publicKey || !wallet.signTransaction || !program) {
+      setMessage("Wallet not fully connected");
+      return;
     }
+
+    const tx = await program.methods
+      .initializeCounter()
+      .accounts({
+        counter: counterKeypair.publicKey,
+      })
+      .signers([counterKeypair])
+      .rpc();
+    const { blockhash, lastValidBlockHeight } =
+      await connection.getLatestBlockhash();
+    await connection.confirmTransaction(
+      {
+        signature: tx,
+        blockhash,
+        lastValidBlockHeight,
+      },
+      "confirmed"
+    );
+    console.log("Transaction confirmed:", tx);
+
+    // const currentCount = await program.account.counter.fetch(
+    //   counterKeyPair.publicKey
+    // );
+
+    // console.log("Current count:", currentCount.count);
+  };
+
+  const incrementCounter = async () => {
+    if (!wallet.publicKey || !wallet.signTransaction || !program) {
+      setMessage("Wallet not fully connected");
+      return;
+    }
+
+    const tx = await program.methods
+      .increment()
+      .accounts({
+        counter: counterKeypair.publicKey,
+      })
+      .rpc();
+    const { blockhash, lastValidBlockHeight } =
+      await connection.getLatestBlockhash();
+    await connection.confirmTransaction(
+      {
+        signature: tx,
+        blockhash,
+        lastValidBlockHeight,
+      },
+      "confirmed"
+    );
+    console.log("Transaction confirmed:", tx);
   };
 
   return (
@@ -66,15 +141,11 @@ export default function Home() {
           <p className="text-lg">{message}</p>
         </div>
         {wallet.connected && (
-          <button
-            onClick={initializeContract}
-            disabled={isLoading}
-            className={`px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg transition-colors ${
-              isLoading ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-          >
-            {isLoading ? "Initializing..." : "Initialize Contract"}
-          </button>
+          <>
+            <button onClick={initializeContract}>Initialize Contract</button>
+            <button onClick={initializeCounter}>Initialize Counter</button>
+            <button onClick={incrementCounter}>Increment Counter</button>
+          </>
         )}
       </div>
     </main>

@@ -5,8 +5,8 @@ package_manager = "pnpm"
 resolution = true
 skip-lint = false
 
-[programs.localnet]
-contracts = "4bGmWPXzFXWJABf5YV5KaStvnpPuvFBxVxB49ssqZHZL"
+[programs.devnet]
+contracts = "GpCgjE4AW3PwnGPVeCYnLiQ5WGoBhQu5FSD4BR23QwHV"
 
 [registry]
 url = "https://api.apr.dev"

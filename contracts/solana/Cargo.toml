@@ -1,0 +1,36 @@
+[workspace]
+members = [
+  # "near/abstract-account",
+  # "near/interfaces",
+  # "near/auth/webauthn-auth",
+  # "near/auth/ethereum-auth",
+  # "near/auth/solana-auth",
+  # "near/auth/oidc-auth",
+  "programs/contracts",
+]
+resolver = "2"
+
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+
+[profile.release.build-override]
+opt-level = 3
+incremental = false
+codegen-units = 1
+
+# [workspace.dependencies]
+# near-sdk = "5.7.0"
+# p256 = "0.13.2"
+# sha2 = "0.10.8"
+# hex = "0.4.3"
+# schemars = "0.8.21"
+# sha3 = "0.10.8"
+# k256 = "0.13.4"
+# bs58 = "0.5.1"
+# base64 = "0.22.1"
+# borsh = "1.5.3"
+# serde_json = "1.0.135"
+# rsa = { version = "0.9.7", features = ["sha2"] }
+# near-sdk-contract-tools = { version = "3.0.2" }
