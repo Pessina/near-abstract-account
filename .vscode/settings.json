@@ -12,5 +12,9 @@
   },
   "[rust]": {
     "editor.defaultFormatter": "rust-lang.rust-analyzer"
-  }
+  },
+  "rust-analyzer.linkedProjects": [
+    "near/contracts/Cargo.toml",
+    "solana/contracts/Cargo.toml"
+  ]
 }
