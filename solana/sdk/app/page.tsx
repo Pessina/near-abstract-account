@@ -4,13 +4,13 @@ import { useState, useEffect } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import * as anchor from "@coral-xyz/anchor";
 
-const PROGRAM_ID = "GpCgjE4AW3PwnGPVeCYnLiQ5WGoBhQu5FSD4BR23QwHV";
+const PROGRAM_ID = "8KrLertSDNhWZ8hiYiPEeH8UnXs7Q7w9F52pwcbxXBcD";
 
 import { Keypair } from "@solana/web3.js";
 
 import crypto from "crypto";
 
-const seed = "your-unique-counter-seed";
+const seed = "your-unique-counter-seed1";
 const counterKeypair = Keypair.fromSeed(
   Buffer.from(crypto.createHash("sha256").update(seed).digest())
 );
@@ -42,12 +42,6 @@ export default function Home() {
         console.log("Anchor Program:", Object.keys(anchorProgram.methods));
 
         setProgram(anchorProgram);
-
-        const counter = await anchorProgram.account.counter.fetch(
-          counterKeypair.publicKey
-        );
-
-        console.log("Counter:", counter.count.toString());
       }
     };
 
