@@ -33,7 +33,10 @@ pub mod contracts {
         Ok(())
     }
 
-    pub fn verify(_ctx: Context<Verify>, oidc_token: String, n: String, e: String) -> Result<()> {
+    pub fn verify(_ctx: Context<Verify>, oidc_token: String) -> Result<()> {
+        let n = "rxLSY1w1gu-IzjVkBEqZXWcA1adZ15VmGpPYKpt8N_MXbgwICCy__iPVvuvSqetTvshwxEEK8ZcbmEyG_rcPiIBBoHYdtVb_cTlNR7JfT2ZOFKZUW1y3FBnZ2TTBHCgCJ9N7d-r6doQ-NI0GXOWzZh5Q9CPc9NDZoe8RfH-RE4m1RNGAukKThomofesSyw5OY92WxK9sfwTshmlK-J-wFB2OlN7xuwF3Rns_CJLdnajhf5XVMdNqEeSk3Fyoi72qWRQbDhfEhT5qcpkMX42BgWbmlom0ZPwPPhyyd9jrfFNN0BNgvF2kPD2eJ8qsaaUAZn4DBvcTpC5RhiwSY_AB8w";
+        let e = "AQAB";
+
         let parts: Vec<&str> = oidc_token.split('.').collect();
         if parts.len() != 3 {
             panic!("Invalid JWT format - token must have 3 parts");
