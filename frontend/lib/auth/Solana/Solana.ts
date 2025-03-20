@@ -1,8 +1,5 @@
 import type { BaseMessageSignerWalletAdapter } from "@solana/wallet-adapter-base";
-import {
-  PhantomWalletAdapter,
-  SolflareWalletAdapter,
-} from "@solana/wallet-adapter-wallets";
+import { SolflareWalletAdapter } from "@solana/wallet-adapter-wallets";
 import {
   WalletCredentials,
   WalletType,
@@ -12,22 +9,16 @@ import {
 
 import { IdentityClass } from "../Identity";
 
-export type SolanaWalletType = "phantom" | "solflare";
-
 export class Solana extends IdentityClass<Identity, WalletCredentials> {
   private wallet: BaseMessageSignerWalletAdapter | null = null;
 
-  constructor(private walletType: SolanaWalletType) {
+  constructor() {
     super();
   }
 
   private async connectWallet(): Promise<BaseMessageSignerWalletAdapter> {
     if (!this.wallet) {
-      const adapter =
-        this.walletType === "phantom"
-          ? new PhantomWalletAdapter()
-          : new SolflareWalletAdapter();
-
+      const adapter = new SolflareWalletAdapter();
       this.wallet = adapter;
 
       if (!this.wallet.connected) {
@@ -35,7 +26,7 @@ export class Solana extends IdentityClass<Identity, WalletCredentials> {
           await this.wallet.connect();
         } catch (error) {
           this.wallet = null;
-          throw new Error(`Failed to connect to ${this.walletType}: ${error}`);
+          throw new Error(`Failed to connect to Solflare: ${error}`);
         }
       }
     }
@@ -45,10 +36,7 @@ export class Solana extends IdentityClass<Identity, WalletCredentials> {
 
   private isAvailable(): boolean {
     if (typeof window === "undefined") return false;
-
-    return this.walletType === "phantom"
-      ? window?.solana?.isPhantom ?? false
-      : window?.solflare?.isSolflare ?? false;
+    return window?.solflare?.isSolflare ?? false;
   }
 
   public async getIdentity(): Promise<Identity> {

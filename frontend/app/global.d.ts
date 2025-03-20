@@ -8,7 +8,6 @@ declare global {
     okxwallet?: EIP1193Provider;
 
     // Solana wallets
-    solana?: Wallet;
     solflare?: Wallet;
   }
 }

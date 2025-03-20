@@ -11,11 +11,10 @@ import { Solana } from "@/lib/auth/Solana/Solana";
 import { WebAuthn, WebAuthnOperation } from "@/lib/auth/WebAuthn/WebAuthn";
 
 type EthereumWalletType = "metamask" | "okx";
-type SolanaWalletType = "phantom" | "solflare";
 
 type WalletConfig =
   | { type: "ethereum"; wallet: EthereumWalletType }
-  | { type: "solana"; wallet: SolanaWalletType };
+  | { type: "solana" };
 
 type OIDCConfig = {
   clientId: string;
@@ -41,7 +40,7 @@ export class AuthAdapter {
       const ethereum = new Ethereum();
       return ethereum;
     } else {
-      const solana = new Solana(config.wallet);
+      const solana = new Solana();
       return solana;
     }
   }

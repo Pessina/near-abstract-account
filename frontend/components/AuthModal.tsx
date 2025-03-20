@@ -56,8 +56,6 @@ export default function AuthModal({
         config
       );
 
-      console.log({ actAs });
-
       const userOp: UserOperation = {
         transaction,
         auth: {

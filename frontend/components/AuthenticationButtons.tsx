@@ -12,12 +12,12 @@ import { useEnv } from "@/hooks/useEnv";
 import { AuthConfig } from "@/lib/auth/AuthAdapter";
 import { parseOIDCToken } from "@/lib/utils";
 import metamask from "@/public/metamask.svg";
-import phantom from "@/public/sol.svg";
+import solflare from "@/public/sol.svg";
 
 export enum AuthMethod {
   Passkey = "passkey",
   MetaMask = "metamask",
-  Phantom = "phantom",
+  Solflare = "solflare",
   Google = "google",
   Facebook = "facebook",
 }
@@ -45,11 +45,11 @@ const AuthenticationButtons: React.FC<AuthenticationButtonsProps> = ({
   const showPasskey =
     (showAll || authMethods.includes(AuthMethod.Passkey)) && accountId;
   const showMetaMask = showAll || authMethods.includes(AuthMethod.MetaMask);
-  const showPhantom = showAll || authMethods.includes(AuthMethod.Phantom);
+  const showSolflare = showAll || authMethods.includes(AuthMethod.Solflare);
   const showGoogle = showAll || authMethods.includes(AuthMethod.Google);
   const showFacebook = showAll || authMethods.includes(AuthMethod.Facebook);
 
-  const hasPrecedingButtons = showPasskey || showMetaMask || showPhantom;
+  const hasPrecedingButtons = showPasskey || showMetaMask || showSolflare;
   const hasOidcButtons = showGoogle || showFacebook;
   const showSeparator = hasPrecedingButtons && hasOidcButtons;
 
@@ -74,7 +74,7 @@ const AuthenticationButtons: React.FC<AuthenticationButtonsProps> = ({
         </Button>
       )}
 
-      {(showMetaMask || showPhantom) && (
+      {(showMetaMask || showSolflare) && (
         <div className="grid grid-cols-2 gap-4">
           {showMetaMask && (
             <Button
@@ -94,13 +94,12 @@ const AuthenticationButtons: React.FC<AuthenticationButtonsProps> = ({
               <span>MetaMask</span>
             </Button>
           )}
-          {showPhantom && (
+          {showSolflare && (
             <Button
               onClick={() => {
                 onAuth({
                   type: "wallet",
                   config: {
-                    wallet: "phantom",
                     type: "solana",
                   },
                 });
@@ -108,8 +107,8 @@ const AuthenticationButtons: React.FC<AuthenticationButtonsProps> = ({
               variant="outline"
               className="flex items-center justify-center gap-2"
             >
-              <Image src={phantom} alt="Phantom" width="24" height="24" />
-              <span>Phantom</span>
+              <Image src={solflare} alt="Solflare" width="24" height="24" />
+              <span>Solana</span>
             </Button>
           )}
         </div>
