@@ -5,14 +5,9 @@ import React, { useEffect, useState, useMemo } from "react"
 import { useForm } from "react-hook-form"
 import {
     utils,
-    EVM,
-    Bitcoin,
-    Cosmos,
-    BTCRpcAdapters,
+    chainAdapters,
+    contracts,
     MPCSignature,
-    EVMUnsignedTransaction,
-    BTCUnsignedTransaction,
-    CosmosUnsignedTransaction
 } from 'signet.js'
 
 import AuthModal from "@/components/AuthModal"
@@ -82,7 +77,7 @@ export default function TransactionForm() {
     const chainSigContract = useMemo(() => {
         if (!contract) return null;
 
-        return new utils.chains.near.ChainSignatureContract({
+        return new contracts.near.ChainSignatureContract({
             networkId: networkId as "mainnet" | "testnet",
             contractId: signerContract,
         })
@@ -92,16 +87,16 @@ export default function TransactionForm() {
         if (!chainSigContract) return null;
 
         return {
-            evm: new EVM({
+            evm: new chainAdapters.evm.EVM({
                 rpcUrl: infuraRpcUrl,
                 contract: chainSigContract,
             }),
-            btc: new Bitcoin({
+            btc: new chainAdapters.btc.Bitcoin({
                 network: "testnet",
-                btcRpcAdapter: new BTCRpcAdapters.Mempool('https://mempool.space/testnet/api'),
+                btcRpcAdapter: new chainAdapters.btc.BTCRpcAdapters.Mempool('https://mempool.space/testnet/api'),
                 contract: chainSigContract,
             }),
-            osmosis: new Cosmos({
+            osmosis: new chainAdapters.cosmos.Cosmos({
                 chainId: "osmo-test-5",
                 contract: chainSigContract,
             }),
@@ -171,7 +166,7 @@ export default function TransactionForm() {
                         value: BigInt(data.value),
                     })
                     setTransaction(txData.transaction)
-                    mpcPayloads = txData.mpcPayloads
+                    mpcPayloads = txData.hashesToSign
                     break;
                 }
                 case "btc": {
@@ -182,7 +177,7 @@ export default function TransactionForm() {
                         value: data.value,
                     })
                     setTransaction(txData.transaction)
-                    mpcPayloads = txData.mpcPayloads
+                    mpcPayloads = txData.hashesToSign
                     break;
                 }
                 case "osmo": {
@@ -200,7 +195,7 @@ export default function TransactionForm() {
                         memo: "Transaction from NEAR",
                     })
                     setTransaction(txData.transaction)
-                    mpcPayloads = txData.mpcPayloads
+                    mpcPayloads = txData.hashesToSign
                     break;
                 }
             }
@@ -281,13 +276,13 @@ export default function TransactionForm() {
                         let txHash: string | undefined;
                         const rsv = utils.cryptography.toRSV(result as MPCSignature)
                         if (selectedChain == "evm") {
-                            const tx = chains.evm.attachTransactionSignature({ transaction: transaction as EVMUnsignedTransaction, mpcSignatures: [rsv] })
+                            const tx = chains.evm.finalizeTransactionSigning({ transaction: transaction as chainAdapters.evm.EVMUnsignedTransaction, rsvSignatures: [rsv] })
                             txHash = await chains?.evm.broadcastTx(tx)
                         } else if (selectedChain == "btc") {
-                            const tx = chains.btc.attachTransactionSignature({ transaction: transaction as BTCUnsignedTransaction, mpcSignatures: [rsv] })
+                            const tx = chains.btc.finalizeTransactionSigning({ transaction: transaction as chainAdapters.btc.BTCUnsignedTransaction, rsvSignatures: [rsv] })
                             txHash = await chains?.btc.broadcastTx(tx)
                         } else if (selectedChain == "osmo") {
-                            const tx = chains.osmosis.attachTransactionSignature({ transaction: transaction as CosmosUnsignedTransaction, mpcSignatures: [rsv] })
+                            const tx = chains.osmosis.finalizeTransactionSigning({ transaction: transaction as chainAdapters.cosmos.CosmosUnsignedTransaction, rsvSignatures: [rsv] })
                             txHash = await chains?.osmosis.broadcastTx(tx)
                         }
                         console.log({ txHash })
