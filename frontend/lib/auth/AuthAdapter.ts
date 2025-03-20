@@ -1,11 +1,9 @@
-import canonicalize from "canonicalize";
 import {
   WalletCredentials,
   WebAuthnCredentials,
   OIDCCredentials,
   AbstractAccountContractBuilder,
   Identity,
-  Transaction,
 } from "chainsig-aa.js";
 
 import { Ethereum } from "@/lib/auth/Ethereum/Ethereum";
@@ -36,12 +34,6 @@ export type AuthConfig =
   | { type: "wallet"; config: WalletConfig }
   | { type: "webauthn"; config: WebAuthnConfig }
   | { type: "oidc"; config: OIDCConfig };
-
-type ActionMessage = {
-  account_id: string;
-  nonce: string;
-  action: string;
-};
 
 export class AuthAdapter {
   private static getWalletInstance(config: WalletConfig) {
@@ -85,7 +77,7 @@ export class AuthAdapter {
   }
 
   static async sign(
-    message: Transaction | ActionMessage,
+    message: string,
     config: AuthConfig
   ): Promise<
     | {
@@ -101,19 +93,18 @@ export class AuthAdapter {
         authIdentity: Identity;
       }
   > {
-    const canonical = canonicalize(message);
-    if (!canonical) {
+    if (!message) {
       throw new Error("Failed to canonicalize message");
     }
 
     switch (config.type) {
       case "wallet": {
         const wallet = this.getWalletInstance(config.config);
-        return wallet.sign(canonical);
+        return wallet.sign(message);
       }
       case "webauthn": {
         const webAuthn = new WebAuthn();
-        return webAuthn.sign(canonical);
+        return webAuthn.sign(message);
       }
       case "oidc": {
         if (!config.config.token) throw new Error("Token is required");

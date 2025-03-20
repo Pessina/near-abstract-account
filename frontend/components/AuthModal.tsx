@@ -1,130 +1,121 @@
-"use client"
+"use client";
 
-import { useQueryClient } from "@tanstack/react-query"
-import canonicalize from "canonicalize"
-import { UserOperation, Transaction } from "chainsig-aa.js"
-import { useState } from "react"
+import { useQueryClient } from "@tanstack/react-query";
+import canonicalize from "canonicalize";
+import { UserOperation, Transaction, Identity } from "chainsig-aa.js";
 
-import AuthenticationButtons from "./AuthenticationButtons"
+import AuthenticationButtons from "./AuthenticationButtons";
 
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Separator } from "@/components/ui/separator"
-import { useAbstractAccountContract } from "@/contracts/useAbstractAccountContract"
-import { useToast } from "@/hooks/use-toast"
-import { AuthConfig, AuthAdapter } from "@/lib/auth/AuthAdapter"
-import { NEAR_MAX_GAS } from "@/lib/constants"
-import { useAccount } from "@/providers/AccountContext"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import { useAbstractAccountContract } from "@/contracts/useAbstractAccountContract";
+import { useToast } from "@/hooks/use-toast";
+import { AuthConfig, AuthAdapter } from "@/lib/auth/AuthAdapter";
+import { NEAR_MAX_GAS } from "@/lib/constants";
+import { useAccount } from "@/providers/AccountContext";
 
-interface AuthModalProps {
-    isOpen: boolean
-    onClose: () => void
-    accountId: string
-    transaction: Transaction
-    onSuccess?: (result?: unknown) => void
-}
-
-interface Permissions {
-    enable_act_as: boolean
+export interface AuthModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess?: (result?: unknown) => void;
+  accountId: string;
+  transaction: Transaction;
+  actAs?: Identity;
 }
 
 export default function AuthModal({
-    isOpen,
-    onClose,
-    transaction,
-    onSuccess,
+  isOpen,
+  onClose,
+  onSuccess,
+  transaction,
+  actAs,
 }: AuthModalProps) {
-    const [permissions, setPermissions] = useState<Permissions>({
-        enable_act_as: false,
-    })
-    const { toast } = useToast()
-    const { contract } = useAbstractAccountContract()
-    const queryClient = useQueryClient()
-    const { accountId } = useAccount()
+  const { toast } = useToast();
+  const { contract } = useAbstractAccountContract();
+  const queryClient = useQueryClient();
+  const { accountId } = useAccount();
 
-    const canonicalizedTransaction = canonicalize(transaction)
+  const canonicalizedTransaction = canonicalize(transaction);
 
-    const handleAuth = async (config: AuthConfig) => {
-        try {
-            if (!contract) {
-                throw new Error("Contract not initialized")
-            }
+  const handleAuth = async (config: AuthConfig) => {
+    try {
+      if (!contract || !canonicalizedTransaction) {
+        throw new Error(
+          "Contract not initialized or canonicalized transaction is undefined"
+        );
+      }
 
-            const { credentials, authIdentity } = await AuthAdapter.sign(transaction, config)
+      const { credentials, authIdentity } = await AuthAdapter.sign(
+        canonicalizedTransaction,
+        config
+      );
 
-            const userOp: UserOperation = {
-                transaction,
-                auth: {
-                    identity: authIdentity,
-                    credentials
-                }
-            }
+      console.log({ actAs });
 
-            const ret = await contract.auth({
-                args: {
-                    user_op: userOp
-                },
-                gas: NEAR_MAX_GAS,
-                amount: "10", // TODO: Should be dynamic according to the contract current fee
-                waitUntil: "EXECUTED_OPTIMISTIC"
-            })
+      const userOp: UserOperation = {
+        transaction,
+        auth: {
+          identity: authIdentity,
+          credentials,
+        },
+        ...(actAs ? { act_as: actAs } : {}),
+      };
 
-            await Promise.all([
-                queryClient.invalidateQueries({ queryKey: ['account', accountId] }),
-                queryClient.invalidateQueries({ queryKey: ['identities', accountId] })
-            ])
+      const ret = await contract.auth({
+        args: {
+          user_op: userOp,
+        },
+        gas: NEAR_MAX_GAS,
+        amount: "10", // TODO: Should be dynamic according to the contract current fee
+        waitUntil: "EXECUTED_OPTIMISTIC",
+      });
 
-            toast({
-                title: "Success",
-                description: "Transaction executed successfully",
-            })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["account", accountId] }),
+        queryClient.invalidateQueries({ queryKey: ["identities", accountId] }),
+      ]);
 
-            onSuccess?.(ret)
-            onClose()
-        } catch (err) {
-            console.error(err)
-            throw err
-        }
+      toast({
+        title: "Success",
+        description: "Transaction executed successfully",
+      });
+
+      onSuccess?.(ret);
+      onClose();
+    } catch (err) {
+      console.error(err);
+      throw err;
     }
+  };
 
-    if (!accountId) {
-        throw new Error("Auth modal can only be used when logged in")
-    }
+  if (!accountId) {
+    throw new Error("Auth modal can only be used when logged in");
+  }
 
-    return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle>Authentication Required</DialogTitle>
-                    <DialogDescription>
-                        Please authenticate to proceed with the transaction
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                    <AuthenticationButtons
-                        onAuth={handleAuth}
-                        nonce={canonicalizedTransaction}
-                        accountId={accountId}
-                    />
-                    <Separator className="my-4" />
-                    <div className="space-y-4">
-                        <h4 className="text-sm font-medium">Identity Permissions</h4>
-                        <div className="space-y-2">
-                            <div className="flex items-center space-x-2">
-                                <input
-                                    type="checkbox"
-                                    id="act-as"
-                                    checked={permissions.enable_act_as}
-                                    onChange={(e) =>
-                                        setPermissions(prev => ({ ...prev, enable_act_as: e.target.checked }))
-                                    }
-                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                />
-                                <label htmlFor="act-as" className="text-sm">Enable Act As</label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </DialogContent>
-        </Dialog>
-    )
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Authentication Required</DialogTitle>
+          <DialogDescription>
+            Please authenticate to proceed with the transaction
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <AuthenticationButtons
+            onAuth={handleAuth}
+            nonce={canonicalizedTransaction}
+            accountId={accountId}
+          />
+          <Separator className="my-4" />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
