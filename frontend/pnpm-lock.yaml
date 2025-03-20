@@ -87,8 +87,8 @@ importers:
         specifier: ^10.0.2
         version: 10.0.3
       chainsig-aa.js:
-        specifier: link:../sdk/dist
-        version: link:../sdk/dist
+        specifier: link:../near/sdk/dist
+        version: link:../near/sdk/dist
       class-variance-authority:
         specifier: ^0.7.0
         version: 0.7.1
