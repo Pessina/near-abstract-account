@@ -1,6 +1,6 @@
 "use client";
 
-import { GoogleLogin } from '@react-oauth/google';
+import { GoogleLogin } from "@react-oauth/google";
 
 interface GoogleButtonProps {
   onSuccess: (idToken: string) => void;
@@ -12,10 +12,10 @@ const GoogleButton = ({ onSuccess, onError, nonce }: GoogleButtonProps) => {
   return (
     <div className="w-full">
       <GoogleLogin
-        onSuccess={(credential) => onSuccess(credential.credential ?? '')}
+        onSuccess={(credential) => onSuccess(credential.credential ?? "")}
         onError={onError}
         nonce={nonce}
-        locale='pt_BR'
+        locale="pt_BR"
         useOneTap
       />
     </div>

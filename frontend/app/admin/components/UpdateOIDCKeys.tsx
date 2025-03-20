@@ -4,24 +4,30 @@ import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { PublicKey } from "@/contracts/OIDCAuthContract/OIDCAuthContract";
 import { useOIDCAuthContract } from "@/contracts/OIDCAuthContract/useOIDCAuthContract";
 import { useToast } from "@/hooks/use-toast";
 
 const providers = [
   {
-    name: 'google',
-    issuer: 'https://accounts.google.com'
+    name: "google",
+    issuer: "https://accounts.google.com",
   },
   {
-    name: 'auth0',
-    issuer: 'https://dev-um3ne30lucm6ehqq.us.auth0.com/'
+    name: "auth0",
+    issuer: "https://dev-um3ne30lucm6ehqq.us.auth0.com/",
   },
   {
-    name: 'facebook',
-    issuer: 'https://www.facebook.com'
-  }
+    name: "facebook",
+    issuer: "https://www.facebook.com",
+  },
 ];
 
 type OIDCKeys = {
@@ -59,7 +65,8 @@ export default function UpdateOIDCKeys() {
     } catch (err) {
       toast({
         title: "Error",
-        description: err instanceof Error ? err.message : "Failed to fetch keys",
+        description:
+          err instanceof Error ? err.message : "Failed to fetch keys",
         variant: "destructive",
       });
     } finally {
@@ -73,23 +80,23 @@ export default function UpdateOIDCKeys() {
       setLoading(true);
 
       const responses = await Promise.all(
-        providers.map(provider =>
+        providers.map((provider) =>
           fetch(`/admin/api/oidc/${provider.name}/keys`)
         )
       );
 
       const providerData = await Promise.all(
-        responses.map(res => res.json() as Promise<JWKSResponse>)
+        responses.map((res) => res.json() as Promise<JWKSResponse>)
       );
 
-      const transformKeys = (keys: JWKSResponse['keys']) =>
-        keys.map(key => ({
+      const transformKeys = (keys: JWKSResponse["keys"]) =>
+        keys.map((key) => ({
           kid: key.kid,
           n: key.n,
           e: key.e,
           alg: key.alg,
           kty: key.kty,
-          use: key.use
+          use: key.use,
         }));
 
       await Promise.all(
@@ -110,7 +117,8 @@ export default function UpdateOIDCKeys() {
     } catch (err) {
       toast({
         title: "Error",
-        description: err instanceof Error ? err.message : "Failed to update keys",
+        description:
+          err instanceof Error ? err.message : "Failed to update keys",
         variant: "destructive",
       });
     } finally {
@@ -122,7 +130,9 @@ export default function UpdateOIDCKeys() {
     <Card>
       <CardHeader>
         <CardTitle>OIDC Public Keys Management</CardTitle>
-        <CardDescription>View and update OIDC provider public keys used for JWT verification</CardDescription>
+        <CardDescription>
+          View and update OIDC provider public keys used for JWT verification
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex justify-between items-center">
@@ -161,7 +171,10 @@ export default function UpdateOIDCKeys() {
                 <h3 className="font-medium">{issuer}</h3>
                 <div className="pl-4 space-y-2">
                   {publicKeys.map((key) => (
-                    <div key={key.kid} className="p-2 bg-secondary/50 rounded-md">
+                    <div
+                      key={key.kid}
+                      className="p-2 bg-secondary/50 rounded-md"
+                    >
                       <span className="text-sm">
                         {key.kid} ({key.alg}, {key.kty})
                       </span>
