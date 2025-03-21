@@ -7,5 +7,6 @@
 - Create relayer project to sponsor Near transactions
 - Investigate if you should use auth contracts or just make them utility function and call on the main contracts
   - Issue with OIDC contract as it has state that has to be update by external oracle
-- Add Storage Management standard to this contract
-- The Auth Identities should include permissions
+- Update identity list from vec to map. The identities should be unique and not duplicated
+- Allow user to update their identities
+- Include permissions for EVM tx
