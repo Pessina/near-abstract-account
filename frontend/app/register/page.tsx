@@ -54,7 +54,9 @@ export default function RegisterPage() {
           account_id: accountId,
           identity_with_permissions: {
             identity: authIdentity,
-            permissions: null,
+            permissions: {
+              enable_act_as: true,
+            },
           },
         },
       });
