@@ -131,6 +131,7 @@ const AuthenticationButtons: React.FC<AuthenticationButtonsProps> = ({
         <div className="grid grid-cols-2 gap-4">
           {showGoogle && (
             <GoogleButton
+              key={nonce}
               onSuccess={(idToken) => {
                 const { issuer, email } = parseOIDCToken(idToken);
                 onAuth({

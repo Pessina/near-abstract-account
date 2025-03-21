@@ -5,9 +5,10 @@ import {
   Identity,
   AbstractAccountContractBuilder,
 } from "chainsig-aa.js";
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { utils, chainAdapters, contracts, MPCSignature } from "signet.js";
+import { utils, chainAdapters, MPCSignature } from "signet.js";
+import { match } from "ts-pattern";
 
 import AuthModal from "@/components/AuthModal";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { useAbstractAccountContract } from "@/contracts/useAbstractAccountContract";
 import { useToast } from "@/hooks/use-toast";
+import { useChains } from "@/hooks/useChains";
 import { useEnv } from "@/hooks/useEnv";
 import { useAccount } from "@/providers/AccountContext";
 
@@ -63,12 +65,11 @@ export default function TransactionForm() {
     publicKey: string;
   } | null>(null);
   const [transaction, setTransaction] = useState<unknown | null>(null);
-
   const { contract } = useAbstractAccountContract();
   const { toast } = useToast();
-  const { networkId, signerContract, infuraRpcUrl, abstractAccountContract } =
-    useEnv();
+  const { abstractAccountContract } = useEnv();
   const { accountId, authIdentities } = useAccount();
+  const { chains } = useChains();
 
   const { register, handleSubmit, watch, setValue } = useForm<FormValues>({
     defaultValues: {
@@ -86,40 +87,12 @@ export default function TransactionForm() {
   const selectedIdentity = watch("selectedIdentity");
   const actAsIdentity = watch("actAsIdentity");
 
-  const chainSigContract = useMemo(() => {
-    if (!contract) return null;
-
-    return new contracts.near.ChainSignatureContract({
-      networkId: networkId as "mainnet" | "testnet",
-      contractId: signerContract,
-    });
-  }, [contract, networkId, signerContract]);
-
-  const chains = useMemo(() => {
-    if (!chainSigContract) return null;
-
-    return {
-      evm: new chainAdapters.evm.EVM({
-        rpcUrl: infuraRpcUrl,
-        contract: chainSigContract,
-      }),
-      btc: new chainAdapters.btc.Bitcoin({
-        network: "testnet",
-        btcRpcAdapter: new chainAdapters.btc.BTCRpcAdapters.Mempool(
-          "https://mempool.space/testnet/api"
-        ),
-        contract: chainSigContract,
-      }),
-      osmosis: new chainAdapters.cosmos.Cosmos({
-        chainId: "osmo-test-5",
-        contract: chainSigContract,
-      }),
-    };
-  }, [chainSigContract, infuraRpcUrl]);
-
   useEffect(() => {
     async function deriveAddress() {
       if (!chains || !accountId || !selectedIdentity) return;
+
+      const identity =
+        actAs && actAsIdentity ? actAsIdentity : selectedIdentity;
 
       try {
         let addressAndPublicKey: {
@@ -127,7 +100,7 @@ export default function TransactionForm() {
           publicKey: string;
         };
         const path = `${AbstractAccountContractBuilder.path.getPath(
-          JSON.parse(actAsIdentity || selectedIdentity)
+          JSON.parse(identity)
         )},`;
         switch (selectedChain) {
           case "evm": {
@@ -162,6 +135,7 @@ export default function TransactionForm() {
   }, [
     abstractAccountContract,
     accountId,
+    actAs,
     actAsIdentity,
     chains,
     selectedChain,
@@ -189,31 +163,25 @@ export default function TransactionForm() {
     }
 
     try {
-      let mpcPayloads;
-
-      switch (data.chain) {
-        case "evm": {
+      const txData = await match(data.chain)
+        .with("evm", async () => {
           const txData = await chains.evm.prepareTransactionForSigning({
             from: addressAndPublicKey?.address as `0x${string}`,
             to: data.to as `0x${string}`,
             value: BigInt(data.value),
           });
-          setTransaction(txData.transaction);
-          mpcPayloads = txData.hashesToSign;
-          break;
-        }
-        case "btc": {
+          return txData;
+        })
+        .with("btc", async () => {
           const txData = await chains.btc.prepareTransactionForSigning({
             publicKey: addressAndPublicKey?.publicKey,
             from: addressAndPublicKey?.address,
             to: data.to,
             value: data.value,
           });
-          setTransaction(txData.transaction);
-          mpcPayloads = txData.hashesToSign;
-          break;
-        }
-        case "osmo": {
+          return txData;
+        })
+        .with("osmo", async () => {
           const txData = await chains.osmosis.prepareTransactionForSigning({
             address: addressAndPublicKey?.address,
             publicKey: addressAndPublicKey?.publicKey,
@@ -229,21 +197,15 @@ export default function TransactionForm() {
             ],
             memo: "Transaction from NEAR",
           });
-          setTransaction(txData.transaction);
-          mpcPayloads = txData.hashesToSign;
-          break;
-        }
-      }
+          return txData;
+        })
+        .exhaustive();
+
+      setTransaction(txData.transaction);
 
       const account = await contract.getAccountById({ account_id: accountId });
-      if (!account) {
-        toast({
-          title: "Error",
-          description: "Account not found",
-          variant: "destructive",
-        });
-        return;
-      }
+
+      if (!account) throw new Error("Account not found");
 
       const userOpTransaction = AbstractAccountContractBuilder.transaction.sign(
         {
@@ -255,16 +217,20 @@ export default function TransactionForm() {
               {
                 path: "",
                 key_version: 0,
-                payload: mpcPayloads[0],
+                payload: txData.hashesToSign[0],
               },
             ],
           },
         }
       );
 
-      const actAsIdentity = availableIdentities.find(
-        (i) => JSON.stringify(i) === data.actAsIdentity
-      );
+      let actAsIdentity: Identity | undefined;
+
+      if (data.actAs && data.actAsIdentity) {
+        actAsIdentity = availableIdentities.find(
+          (i) => JSON.stringify(i) === data.actAsIdentity
+        );
+      }
 
       setAuthProps({
         accountId: accountId,
@@ -273,7 +239,7 @@ export default function TransactionForm() {
           nonce: account.nonce,
           action: userOpTransaction.action,
         },
-        actAs: actAsIdentity,
+        ...(actAs ? { actAs: actAsIdentity } : {}),
       });
 
       setAuthModalOpen(true);
@@ -287,6 +253,41 @@ export default function TransactionForm() {
     }
   };
 
+  const finalizeTransactionSigning = async (result: MPCSignature) => {
+    if (!chains) throw new Error("Chains not initialized");
+
+    const rsv = utils.cryptography.toRSV(result);
+
+    const txHash = await match(selectedChain)
+      .with("evm", () => {
+        const tx = chains.evm.finalizeTransactionSigning({
+          transaction: transaction as chainAdapters.evm.EVMUnsignedTransaction,
+          rsvSignatures: [rsv],
+        });
+        return chains.evm.broadcastTx(tx);
+      })
+      .with("btc", () => {
+        const tx = chains.btc.finalizeTransactionSigning({
+          transaction: transaction as chainAdapters.btc.BTCUnsignedTransaction,
+          rsvSignatures: [rsv],
+        });
+        return chains.btc.broadcastTx(tx);
+      })
+      .with("osmo", () => {
+        const tx = chains.osmosis.finalizeTransactionSigning({
+          transaction:
+            transaction as chainAdapters.cosmos.CosmosUnsignedTransaction,
+          rsvSignatures: [rsv],
+        });
+        return chains.osmosis.broadcastTx(tx);
+      })
+      .otherwise(() => {
+        throw new Error(`Unsupported chain: ${selectedChain}`);
+      });
+
+    console.log({ txHash });
+  };
+
   return (
     <div className="flex justify-center items-center h-full">
       {authProps && (
@@ -294,35 +295,9 @@ export default function TransactionForm() {
           isOpen={authModalOpen}
           onClose={() => setAuthModalOpen(false)}
           {...authProps}
-          onSuccess={async (result) => {
-            if (!chains) throw new Error("Chains not initialized");
-
-            let txHash: string | undefined;
-            const rsv = utils.cryptography.toRSV(result as MPCSignature);
-            if (selectedChain == "evm") {
-              const tx = chains.evm.finalizeTransactionSigning({
-                transaction:
-                  transaction as chainAdapters.evm.EVMUnsignedTransaction,
-                rsvSignatures: [rsv],
-              });
-              txHash = await chains?.evm.broadcastTx(tx);
-            } else if (selectedChain == "btc") {
-              const tx = chains.btc.finalizeTransactionSigning({
-                transaction:
-                  transaction as chainAdapters.btc.BTCUnsignedTransaction,
-                rsvSignatures: [rsv],
-              });
-              txHash = await chains?.btc.broadcastTx(tx);
-            } else if (selectedChain == "osmo") {
-              const tx = chains.osmosis.finalizeTransactionSigning({
-                transaction:
-                  transaction as chainAdapters.cosmos.CosmosUnsignedTransaction,
-                rsvSignatures: [rsv],
-              });
-              txHash = await chains?.osmosis.broadcastTx(tx);
-            }
-            console.log({ txHash });
-          }}
+          onSuccess={(result) =>
+            finalizeTransactionSigning(result as MPCSignature)
+          }
         />
       )}
       <Card className="w-full md:max-w-2xl">

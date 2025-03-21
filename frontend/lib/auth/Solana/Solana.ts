@@ -21,6 +21,8 @@ export class Solana extends IdentityClass<Identity, WalletCredentials> {
       const adapter = new SolflareWalletAdapter();
       this.wallet = adapter;
 
+      console.log("this.wallet.connected", this.wallet.connected);
+
       if (!this.wallet.connected) {
         try {
           await this.wallet.connect();
