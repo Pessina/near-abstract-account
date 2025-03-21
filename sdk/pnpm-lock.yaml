@@ -26,6 +26,9 @@ importers:
       bs58:
         specifier: ^6.0.0
         version: 6.0.0
+      canonicalize:
+        specifier: ^2.1.0
+        version: 2.1.0
       near-api-js:
         specifier: ^5.0.1
         version: 5.0.1
@@ -1136,6 +1139,10 @@ packages:
 
   caniuse-lite@1.0.30001696:
     resolution: {integrity: sha512-pDCPkvzfa39ehJtJ+OwGT/2yvT2SbjfHhiIW2LWOAcMQ7BzwxT/XuyUp4OTOd0XFWA6BKw0JalnBHgSi5DGJBQ==}
+
+  canonicalize@2.1.0:
+    resolution: {integrity: sha512-F705O3xrsUtgt98j7leetNhTWPe+5S72rlL5O4jA1pKqBVQ/dT1O1D6PFxmSXvc0SUOinWS57DKx0I3CHrXJHQ==}
+    hasBin: true
 
   chalk@4.1.2:
     resolution: {integrity: sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA==}
@@ -4128,6 +4135,8 @@ snapshots:
   camelcase@6.3.0: {}
 
   caniuse-lite@1.0.30001696: {}
+
+  canonicalize@2.1.0: {}
 
   chalk@4.1.2:
     dependencies:

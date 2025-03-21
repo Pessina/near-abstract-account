@@ -1,8 +1,8 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import canonicalize from "canonicalize";
 import { UserOperation, Transaction, Identity } from "chainsig-aa.js";
+import { AbstractAccountContractBuilder } from "chainsig-aa.js";
 
 import AuthenticationButtons from "./AuthenticationButtons";
 
@@ -19,7 +19,6 @@ import { useToast } from "@/hooks/use-toast";
 import { AuthConfig, AuthAdapter } from "@/lib/auth/AuthAdapter";
 import { NEAR_MAX_GAS } from "@/lib/constants";
 import { useAccount } from "@/providers/AccountContext";
-
 export interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -41,7 +40,8 @@ export default function AuthModal({
   const queryClient = useQueryClient();
   const { accountId } = useAccount();
 
-  const canonicalizedTransaction = canonicalize(transaction);
+  const canonicalizedTransaction =
+    AbstractAccountContractBuilder.nonce.transaction(transaction);
 
   const handleAuth = async (config: AuthConfig) => {
     try {

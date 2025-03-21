@@ -1,6 +1,5 @@
 "use client";
 
-import canonicalize from "canonicalize";
 import {
   Transaction,
   Identity,
@@ -37,15 +36,6 @@ export default function AccountPage() {
   const [enableActAs, setEnableActAs] = useState(false);
   const { account, isLoading } = useAccountData();
 
-  const addIdentityWithAuthNonce = canonicalize({
-    account_id: accountId,
-    nonce: account?.nonce.toString(),
-    action: "AddIdentityWithAuth",
-    permissions: {
-      enable_act_as: enableActAs,
-    },
-  });
-
   if (isLoading || !account || !accountId) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -53,6 +43,15 @@ export default function AccountPage() {
       </div>
     );
   }
+
+  const addIdentityWithAuthNonce =
+    AbstractAccountContractBuilder.nonce.addIdentityWithAuth({
+      account_id: accountId,
+      nonce: account?.nonce.toString(),
+      permissions: {
+        enable_act_as: enableActAs,
+      },
+    });
 
   const handleAddIdentity = async (config: AuthConfig) => {
     if (!addIdentityWithAuthNonce) {

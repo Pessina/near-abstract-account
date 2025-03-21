@@ -1,6 +1,6 @@
 {
   "name": "chainsig-aa.js",
-  "version": "0.0.1-beta.1",
+  "version": "0.0.1-beta.3",
   "description": "",
   "type": "module",
   "exports": {
@@ -58,6 +58,7 @@
     "@near-js/utils": "^1.0.1",
     "bn.js": "^5.2.1",
     "bs58": "^6.0.0",
+    "canonicalize": "^2.1.0",
     "near-api-js": "^5.0.1",
     "viem": "^2.23.2"
   },

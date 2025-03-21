@@ -9,7 +9,8 @@ import type {
   SignPayloadsRequest,
   Transaction,
 } from '../types/user-operation'
-import { bytesToHex, hexToBytes, isAddress, keccak256, type Hex } from 'viem'
+import { isAddress, keccak256, type Hex } from 'viem'
+import { canonicalizeOrThrow } from './canonicalize'
 
 export class AbstractAccountContractBuilder {
   static identity = {
@@ -122,6 +123,25 @@ export class AbstractAccountContractBuilder {
       }
 
       throw new Error('Unknown identity type')
+    },
+  }
+
+  static nonce = {
+    transaction: (args: Transaction): string => {
+      return canonicalizeOrThrow(args)
+    },
+
+    addIdentityWithAuth: (args: {
+      account_id: string
+      nonce: string
+      permissions: {
+        enable_act_as: boolean
+      }
+    }): string => {
+      return canonicalizeOrThrow({
+        ...args,
+        action: 'AddIdentityWithAuth',
+      })
     },
   }
 }

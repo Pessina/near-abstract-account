@@ -87,8 +87,8 @@ importers:
         specifier: ^10.0.2
         version: 10.0.3
       chainsig-aa.js:
-        specifier: 0.0.1-beta.1
-        version: 0.0.1-beta.1(bufferutil@4.0.9)(typescript@5.7.3)(utf-8-validate@5.0.10)(zod@3.24.1)
+        specifier: 0.0.1-beta.3
+        version: 0.0.1-beta.3(bufferutil@4.0.9)(typescript@5.7.3)(utf-8-validate@5.0.10)(zod@3.24.1)
       class-variance-authority:
         specifier: ^0.7.0
         version: 0.7.1
@@ -2350,6 +2350,10 @@ packages:
   canonicalize@2.0.0:
     resolution: {integrity: sha512-ulDEYPv7asdKvqahuAY35c1selLdzDwHqugK92hfkzvlDCwXRRelDkR+Er33md/PtnpqHemgkuDPanZ4fiYZ8w==}
 
+  canonicalize@2.1.0:
+    resolution: {integrity: sha512-F705O3xrsUtgt98j7leetNhTWPe+5S72rlL5O4jA1pKqBVQ/dT1O1D6PFxmSXvc0SUOinWS57DKx0I3CHrXJHQ==}
+    hasBin: true
+
   cashaddrjs@0.4.4:
     resolution: {integrity: sha512-xZkuWdNOh0uq/mxJIng6vYWfTowZLd9F4GMAlp2DwFHlcCqCm91NtuAc47RuV4L7r4PYcY5p6Cr2OKNb4hnkWA==}
 
@@ -2363,8 +2367,8 @@ packages:
   chain-registry@1.69.158:
     resolution: {integrity: sha512-6cBo7H5mCOWurmYcyFynWD89ByQH1BTNMNoUojrYjAYhlMiHhT2vXi1oBPW/Me8L1auDoFHNj5RyiZt85CXnpQ==}
 
-  chainsig-aa.js@0.0.1-beta.1:
-    resolution: {integrity: sha512-YfC69aVg7jn6RqiyAuJHAsAJ0e4QHRpDlug6+/+CRReqaAvZoYnK2VsVmQ7M0VzS/0ZbVJCSdMXtCCtcztR/vg==}
+  chainsig-aa.js@0.0.1-beta.3:
+    resolution: {integrity: sha512-WQKe/mpBwqZ9B993nHOkKgRn4bmn80Jc56setqjhY/4xDqXRf3ijxjgNoiCjmISit/OlbBHIX+mQUlVDrDqFbA==}
 
   chalk@4.1.2:
     resolution: {integrity: sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA==}
@@ -7883,6 +7887,8 @@ snapshots:
 
   canonicalize@2.0.0: {}
 
+  canonicalize@2.1.0: {}
+
   cashaddrjs@0.4.4:
     dependencies:
       big-integer: 1.6.36
@@ -7897,7 +7903,7 @@ snapshots:
     dependencies:
       '@chain-registry/types': 0.50.97
 
-  chainsig-aa.js@0.0.1-beta.1(bufferutil@4.0.9)(typescript@5.7.3)(utf-8-validate@5.0.10)(zod@3.24.1):
+  chainsig-aa.js@0.0.1-beta.3(bufferutil@4.0.9)(typescript@5.7.3)(utf-8-validate@5.0.10)(zod@3.24.1):
     dependencies:
       '@near-js/accounts': 1.3.1
       '@near-js/crypto': 1.4.1
@@ -7905,6 +7911,7 @@ snapshots:
       '@near-js/utils': 1.0.1
       bn.js: 5.2.1
       bs58: 6.0.0
+      canonicalize: 2.1.0
       near-api-js: 5.0.1
       viem: 2.23.13(bufferutil@4.0.9)(typescript@5.7.3)(utf-8-validate@5.0.10)(zod@3.24.1)
     transitivePeerDependencies:

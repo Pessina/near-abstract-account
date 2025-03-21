@@ -34,7 +34,7 @@
     "auth0-js": "^9.28.0",
     "canonicalize": "^2.0.0",
     "cbor": "^10.0.2",
-    "chainsig-aa.js": "0.0.1-beta.1",
+    "chainsig-aa.js": "0.0.1-beta.3",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "jwt-decode": "^4.0.0",
