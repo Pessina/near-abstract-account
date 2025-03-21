@@ -23,10 +23,6 @@ const envSchema = z.object({
   googleClientId: z
     .string()
     .min(1, "NEXT_PUBLIC_GOOGLE_CLIENT_ID is not defined"),
-  auth0Domain: z.string().min(1, "NEXT_PUBLIC_AUTH0_DOMAIN is not defined"),
-  auth0ClientId: z
-    .string()
-    .min(1, "NEXT_PUBLIC_AUTH0_CLIENT_ID is not defined"),
   infuraRpcUrl: z.string().min(1, "NEXT_PUBLIC_INFURA_RPC_URL is not defined"),
 });
 
@@ -42,8 +38,6 @@ export const useEnv = (): Env => {
     networkId: process.env.NEXT_PUBLIC_NETWORK_ID,
     facebookAppId: process.env.NEXT_PUBLIC_FACEBOOK_APP_ID,
     googleClientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-    auth0Domain: process.env.NEXT_PUBLIC_AUTH0_DOMAIN,
-    auth0ClientId: process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID,
     infuraRpcUrl: process.env.NEXT_PUBLIC_INFURA_RPC_URL,
   };
 

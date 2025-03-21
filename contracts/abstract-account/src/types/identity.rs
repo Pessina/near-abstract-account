@@ -61,7 +61,7 @@ pub enum Identity {
 
 impl Identity {
     /// Injects the compressed public key into a WebAuthn identity from an account's stored identity
-    /// If the identity is not WebAuthn, logs a message and does nothing
+    /// If the identity is not WebAuthn, does nothing
     pub fn inject_webauthn_compressed_public_key(&mut self, account: &Account) {
         match self {
             Identity::WebAuthn(webauthn) => {
