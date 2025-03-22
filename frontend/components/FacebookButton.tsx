@@ -1,8 +1,9 @@
 "use client";
 
+import { useFacebookAuth } from "facebook-oauth-pkce";
+
 import { Button } from "@/components/ui/button";
 import { useEnv } from "@/hooks/useEnv";
-import { useFacebookAuth } from "@/hooks/useFacebookAuth";
 
 type FacebookButtonProps = {
   text: string;
@@ -35,7 +36,7 @@ export default function FacebookButton({
 
   const handleLogin = async () => {
     await initiateLogin({
-      nonce: nonce,
+      nonce,
     });
   };
 
