@@ -77,7 +77,6 @@ export class WebAuthn extends IdentityClass<Identity, WebAuthnCredentials> {
       };
     };
 
-    // Decode attestation object and get public key
     const decodedAttestationObj = cbor.decode(cred.response.attestationObject);
     const authData = parseAuthenticatorData(decodedAttestationObj.authData);
     const publicKey = cbor.decode(
@@ -86,10 +85,9 @@ export class WebAuthn extends IdentityClass<Identity, WebAuthnCredentials> {
     const x = toHex(publicKey.get(-2));
     const y = toHex(publicKey.get(-3));
 
-    // Create compressed public key by prepending 0x02 or 0x03 based on y coordinate
     const yLastBit = parseInt(y.slice(-1), 16) % 2;
     const prefix = yLastBit === 0 ? "0x02" : "0x03";
-    const compressedPublicKey = prefix + x.slice(2); // Remove '0x' from x before concatenating
+    const compressedPublicKey = prefix + x.slice(2);
 
     return AbstractAccountContractBuilder.identity.webauthn({
       key_id: toHex(new Uint8Array(cred.rawId)),
