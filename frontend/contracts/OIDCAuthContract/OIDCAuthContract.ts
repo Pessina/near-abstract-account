@@ -6,12 +6,12 @@ export interface PublicKey {
   e: string;
   alg: string;
   kty: string;
-  use: string; // Matches Rust struct field name
+  use: string;
 }
 
 type OIDCAuthContractType = Contract & {
   update_keys: (args: { issuer: string; keys: PublicKey[] }) => Promise<void>;
-  get_keys: () => Promise<[string, PublicKey[]][]>; // Returns array of [issuer, keys] tuples
+  get_keys: () => Promise<[string, PublicKey[]][]>;
 };
 
 export class OIDCAuthContract {

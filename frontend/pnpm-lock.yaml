@@ -87,8 +87,8 @@ importers:
         specifier: ^10.0.2
         version: 10.0.3
       chainsig-aa.js:
-        specifier: 0.0.1-beta.3
-        version: 0.0.1-beta.3(bufferutil@4.0.9)(typescript@5.7.3)(utf-8-validate@5.0.10)(zod@3.24.1)
+        specifier: 0.0.2-beta.1
+        version: 0.0.2-beta.1(bufferutil@4.0.9)(typescript@5.7.3)(utf-8-validate@5.0.10)(zod@3.24.1)
       class-variance-authority:
         specifier: ^0.7.0
         version: 0.7.1
@@ -2370,8 +2370,8 @@ packages:
   chain-registry@1.69.158:
     resolution: {integrity: sha512-6cBo7H5mCOWurmYcyFynWD89ByQH1BTNMNoUojrYjAYhlMiHhT2vXi1oBPW/Me8L1auDoFHNj5RyiZt85CXnpQ==}
 
-  chainsig-aa.js@0.0.1-beta.3:
-    resolution: {integrity: sha512-WQKe/mpBwqZ9B993nHOkKgRn4bmn80Jc56setqjhY/4xDqXRf3ijxjgNoiCjmISit/OlbBHIX+mQUlVDrDqFbA==}
+  chainsig-aa.js@0.0.2-beta.1:
+    resolution: {integrity: sha512-hRwVNDJp4V/Ru+E5rhb6h6XdXJR8rvKC7fxm2kcGDsGyYfB1rykpZtDZswCwil7y+PyJKOJvEwFR/Rne/Vz76A==}
 
   chalk@4.1.2:
     resolution: {integrity: sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA==}
@@ -7913,7 +7913,7 @@ snapshots:
     dependencies:
       '@chain-registry/types': 0.50.97
 
-  chainsig-aa.js@0.0.1-beta.3(bufferutil@4.0.9)(typescript@5.7.3)(utf-8-validate@5.0.10)(zod@3.24.1):
+  chainsig-aa.js@0.0.2-beta.1(bufferutil@4.0.9)(typescript@5.7.3)(utf-8-validate@5.0.10)(zod@3.24.1):
     dependencies:
       '@near-js/accounts': 1.3.1
       '@near-js/crypto': 1.4.1
