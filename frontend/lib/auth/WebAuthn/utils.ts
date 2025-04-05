@@ -20,17 +20,18 @@ export function concatUint8Arrays(arrays: Uint8Array[]): Uint8Array {
   return toReturn;
 }
 
-// Parse the signature from the AddIdentity and remove the leading zero if necessary
 export function parseSignature(signature: Uint8Array): string {
   const parsedSignature = AsnParser.parse(signature, ECDSASigValue);
   let rBytes = new Uint8Array(parsedSignature.r);
   let sBytes = new Uint8Array(parsedSignature.s);
+
   if (shouldRemoveLeadingZero(rBytes)) {
     rBytes = rBytes.slice(1);
   }
   if (shouldRemoveLeadingZero(sBytes)) {
     sBytes = sBytes.slice(1);
   }
+
   const finalSignature = concatUint8Arrays([rBytes, sBytes]);
   return toHex(finalSignature);
 }
