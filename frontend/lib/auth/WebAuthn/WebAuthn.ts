@@ -136,7 +136,6 @@ export class WebAuthn extends IdentityClass<Identity, WebAuthnCredentials> {
     const utf8Decoder = new TextDecoder("utf-8");
 
     const decodedClientData = utf8Decoder.decode(cred.response.clientDataJSON);
-    const clientDataObj = JSON.parse(decodedClientData);
 
     const authenticatorData = toHex(
       new Uint8Array(cred.response.authenticatorData)
@@ -150,12 +149,7 @@ export class WebAuthn extends IdentityClass<Identity, WebAuthnCredentials> {
     return {
       authIdentity,
       credentials: {
-        client_data: JSON.stringify({
-          type: clientDataObj.type,
-          challenge: clientDataObj.challenge,
-          origin: clientDataObj.origin,
-          crossOrigin: clientDataObj.crossOrigin,
-        }),
+        client_data: decodedClientData,
         authenticator_data: authenticatorData,
         signature,
       },
