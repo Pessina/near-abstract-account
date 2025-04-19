@@ -115,6 +115,20 @@ mod tests {
     }
 
     #[test]
+    fn validate_signature_should_succeed_2() {
+        let contract = WebAuthnAuthContract::default();
+        let compressed_public_key =
+            "0x031a08c5e977ab0a71d1ac3e5b8c435a431afb4c6d641b00a8b91496c5b085e6a3".to_string();
+        let webauthn_data = WebAuthnValidationData {
+            signature:"0x23c70b2fa596b1c56ffc3f43567ccf86ddf910304ac32eb2d44ad59e0e4e3441c9f2c9c57cecb348e6ed6e5b2a242a477089b010f5bc62862c91d4ee4741c4c4".to_string(),
+            authenticator_data: "0x49960de5880e8c687434170f6476605b8fe4aeb9a28632c7995cf3ba831d97631d00000000".to_string(),
+            client_data: r#"{"type":"webauthn.get","challenge":"4SzZvQR_13EYvnAvUF0Qq78E07BiBSZKKNvvMVQbpyo","origin":"http://localhost:3000","crossOrigin":false}"#.to_string(),
+        };
+
+        assert!(contract.verify_p256(webauthn_data, compressed_public_key));
+    }
+
+    #[test]
     fn validate_signature_should_fail() {
         let contract = WebAuthnAuthContract::default();
         let compressed_public_key = get_compressed_public_key();
