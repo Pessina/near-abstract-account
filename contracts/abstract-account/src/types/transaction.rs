@@ -30,7 +30,10 @@ pub struct Auth {
 #[derive(Deserialize, Serialize, JsonSchema, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub struct Transaction {
+    // account_id must be signed by the Identity to bind the signature to the given account.
+    // Otherwise, a signature from an Identity with permissions on multiple accounts could be used to create a transaction valid across any of them.
     pub account_id: String,
+    // nonce must be signed to prevent replay attacks
     pub nonce: u128,
     pub action: Action,
 }
