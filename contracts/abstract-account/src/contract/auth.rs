@@ -13,6 +13,7 @@ use interfaces::auth::{
 use near_sdk::{env, require, Promise};
 use serde_json::Value;
 use utils::utils::parse_credentials;
+
 impl AbstractAccountContract {
     fn get_auth_contract(&self, name: &AuthTypeNames) -> AccountId {
         self.auth_contracts
